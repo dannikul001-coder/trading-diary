@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f1724">
+  <meta name="description" content="Персональный торговый дневник — сделки, статистика, графики и дисциплина.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <title>Trading Diary — Торговый дневник</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><img src="assets/logo.svg" alt=""></div>
+      <div><strong>Trading Diary</strong><span>Дисциплина • Аналитика</span></div>
+    </div>
+    <nav class="nav" id="mainNav">
+      <button class="nav-item active" data-view="dashboard"><span>⌂</span>Главная</button>
+      <button class="nav-item" data-view="trades"><span>↗</span>Сделки</button>
+      <button class="nav-item" data-view="statistics"><span>▦</span>Статистика</button>
+      <button class="nav-item" data-view="charts"><span>◒</span>Графики</button>
+      <button class="nav-item" data-view="plan"><span>✓</span>План</button>
+      <button class="nav-item" data-view="notes"><span>✎</span>Заметки</button>
+      <button class="nav-item" data-view="goal"><span>★</span>Главная цель</button>
+      <button class="nav-item" data-view="goals"><span>◎</span>Цели</button>
+      <button class="nav-item" data-view="settings"><span>⚙</span>Настройки</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="quote-card"><span>“</span><p id="quoteText">Результат начинается с дисциплины.</p></div>
+      <div class="storage-status"><i></i><span>Локальное хранилище</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn mobile-only" id="menuBtn" aria-label="Меню">☰</button>
+        <div><div class="eyebrow" id="currentSection">Главная</div><h1>Постоянство создаёт результат.</h1></div>
+      </div>
+      <div class="topbar-right">
+        <div class="live-info"><span id="liveDate">—</span><b id="liveTime">—</b><small id="liveZone">UTC</small></div>
+        <button class="icon-btn" id="themeBtn" title="Тема">◐</button>
+        <button class="profile-btn" id="profileBtn"><span class="avatar">TD</span><span class="profile-name">Войти</span><b>⌄</b></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="view active" id="view-dashboard">
+        <div class="section-head"><div><h2>Обзор</h2><p>Текущая картина по реальным сделкам из журнала.</p></div><button class="primary-btn" data-action="open-trade">＋ Добавить сделку</button></div>
+        <div class="kpi-grid" id="dashboardKpis"></div>
+        <div class="dashboard-grid">
+          <article class="card chart-card large"><div class="card-head"><div><h3>Баланс</h3><p id="balanceChartMeta">Пока нет сделок</p></div><div class="segmented" id="dashboardChartRange"><button data-range="7">7д</button><button class="active" data-range="30">30д</button><button data-range="90">90д</button><button data-range="365">Год</button><button data-range="all">Все</button></div></div><div class="chart-wrap"><canvas id="balanceChart"></canvas><div class="empty-chart" id="balanceEmpty">Добавьте первую сделку, чтобы увидеть график.</div></div></article>
+          <article class="card psychology-card"><div class="card-head"><div><h3>Психология</h3><p>Состояние на основе заполненных полей сделок.</p></div></div><div id="psychology"></div></article>
+        </div>
+        <article class="card main-goal-dashboard" id="dashboardGoalCard"></article>
+        <div class="dashboard-grid lower">
+          <article class="card"><div class="card-head"><div><h3>Статистика периодов</h3><p>Сегодня, неделя и месяц рассчитываются автоматически.</p></div><button class="ghost-btn" data-view-target="statistics">Подробнее →</button></div><div class="period-grid" id="periodStats"></div></article>
+          <article class="card"><div class="card-head"><div><h3>Сегодняшний вывод</h3><p>Короткая запись по текущей торговой сессии.</p></div><button class="ghost-btn" data-view-target="notes">Заметки →</button></div><div id="journalPreview" class="journal-preview"></div></article>
+        </div>
+      </section>
+
+      <section class="view" id="view-goal">
+        <div class="section-head"><div><h2>Главная цель</h2><p>Одна масштабная цель, к которой постепенно движется весь дневник.</p></div><button class="primary-btn" data-action="edit-main-goal">Настроить цель</button></div>
+        <article class="card main-goal-view" id="mainGoalView"></article>
+        <div class="goal-metrics" id="mainGoalMetrics"></div>
+        <article class="card"><div class="card-head"><div><h3>Прогресс по цели</h3><p>Показатели рассчитываются только по данным журнала.</p></div></div><div id="goalMilestones" class="goal-milestones"></div></article>
+      </section>
+
+      <section class="view" id="view-trades">
+        <div class="section-head"><div><h2>Сделки</h2><p>Таблица пустая при первом запуске. Добавляйте реальные сделки вручную.</p></div><button class="primary-btn" data-action="open-trade">＋ Новая сделка</button></div>
+        <article class="card table-card">
+          <div class="toolbar"><div class="search"><span>⌕</span><input id="tradeSearch" placeholder="Поиск инструмента, стратегии, заметки..."></div><div class="filters" id="tradeFilters"><button class="active" data-filter="all">Все</button><button data-filter="today">Сегодня</button><button data-filter="week">Неделя</button><button data-filter="month">Месяц</button></div><select id="tradeSort"><option value="date-desc">Новые сначала</option><option value="date-asc">Старые сначала</option><option value="pnl-desc">P&L ↓</option><option value="pnl-asc">P&L ↑</option></select></div>
+          <div class="table-scroll"><table><thead><tr><th>Дата / время</th><th>Инструмент</th><th>Тип</th><th>Ставка</th><th>Payout</th><th>Результат</th><th>P&L</th><th>Стратегия</th><th></th></tr></thead><tbody id="tradesBody"></tbody></table></div>
+          <div class="empty-state" id="tradesEmpty"><div class="empty-icon">↗</div><h3>Сделок пока нет</h3><p>Добавьте первую сделку — баланс и вся статистика начнут рассчитываться автоматически.</p><button class="primary-btn" data-action="open-trade">Добавить первую сделку</button></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-statistics">
+        <div class="section-head"><div><h2>Статистика</h2><p>Детальная аналитика без предзаполненных значений.</p></div></div>
+        <div class="stats-cards" id="detailStats"></div>
+        <article class="card"><div class="card-head"><div><h3>Дни / недели / месяцы</h3><p>Разбивка по фактическим сделкам.</p></div></div><div class="table-scroll"><table><thead><tr><th>Период</th><th>Сделки</th><th>Win</th><th>Loss</th><th>Draw</th><th>Win rate</th><th>Прибыль</th><th>Убыток</th><th>P&L</th></tr></thead><tbody id="breakdownBody"></tbody></table></div><div class="empty-inline" id="breakdownEmpty">Добавьте сделки, чтобы увидеть разбивку.</div></article>
+      </section>
+
+      <section class="view" id="view-charts">
+        <div class="section-head"><div><h2>Графики</h2><p>Баланс, накопленный P&L и распределение результатов.</p></div></div>
+        <div class="charts-grid"><article class="card chart-card"><div class="card-head"><div><h3 id="mainChartTitle">Баланс</h3><p>По времени совершения сделок.</p></div><div class="segmented" id="mainChartType"><button class="active" data-type="balance">Баланс</button><button data-type="pnl">P&L</button><button data-type="daily">По дням</button></div></div><div class="chart-wrap tall"><canvas id="mainChart"></canvas><div class="empty-chart" id="mainEmpty">График появится после добавления сделок.</div></div></article><article class="card"><div class="card-head"><div><h3>Результаты</h3><p>Количество исходов.</p></div></div><div class="result-bars" id="resultBars"></div></article></div>
+      </section>
+
+      <section class="view" id="view-plan"><div class="section-head"><div><h2>План на сегодня</h2><p>Задачи торговой сессии.</p></div><button class="primary-btn" data-action="add-plan">＋ Задача</button></div><article class="card"><div id="planList"></div><div class="empty-inline" id="planEmpty">Задач пока нет.</div></article></section>
+      <section class="view" id="view-notes"><div class="section-head"><div><h2>Заметки</h2><p>Наблюдения, ошибки и выводы.</p></div><button class="primary-btn" data-action="add-note">＋ Заметка</button></div><div class="notes-grid" id="notesGrid"></div><div class="empty-inline" id="notesEmpty">Заметок пока нет.</div></section>
+      <section class="view" id="view-goals"><div class="section-head"><div><h2>Цели</h2><p>Контролируйте процесс, а не только финансовый результат.</p></div><button class="primary-btn" data-action="add-goal">＋ Цель</button></div><div class="goals-grid" id="goalsGrid"></div><div class="empty-inline" id="goalsEmpty">Целей пока нет.</div></section>
+
+      <section class="view" id="view-settings">
+        <div class="section-head"><div><h2>Настройки</h2><p>Параметры дневника сохраняются в профиле или локально в гостевом режиме.</p></div></div>
+        <div class="settings-grid">
+          <article class="card settings-card"><h3>Основные</h3><div class="form-grid"><label>Валюта<select id="settingCurrency"></select></label><label>Часовой пояс<select id="settingTimezone"></select></label><label>Начальный баланс<input id="settingBalance" type="number" min="0" step="0.01"></label><label>Дата<select id="settingDateFormat"><option value="DD.MM.YYYY">DD.MM.YYYY</option><option value="YYYY-MM-DD">YYYY-MM-DD</option><option value="MM/DD/YYYY">MM/DD/YYYY</option></select></label></div><button class="primary-btn" id="saveGeneral">Сохранить настройки</button></article>
+          <article class="card settings-card"><div class="card-head"><div><h3>Инструменты</h3><p>Добавляйте Forex, Crypto, индексы, сырьё и свои инструменты.</p></div><button class="ghost-btn" data-action="add-instrument">＋ Добавить</button></div><div id="instrumentSettings"></div></article>
+          <article class="card settings-card"><div class="card-head"><div><h3>Стратегии</h3><p>Список стратегий доступен в форме сделки.</p></div><button class="ghost-btn" data-action="add-strategy">＋ Добавить</button></div><div id="strategySettings"></div></article>
+          <article class="card settings-card"><h3>Данные</h3><p class="muted">JSON хранит весь дневник. CSV подходит для таблиц и импорта сделок с предварительным распознаванием колонок.</p><div class="button-row"><button class="secondary-btn" id="exportJson">Экспорт JSON</button><button class="secondary-btn" id="importJsonBtn">Импорт JSON</button><button class="secondary-btn" id="exportCsv">Экспорт CSV</button><button class="secondary-btn" id="importCsvBtn">Импорт CSV</button><input type="file" id="jsonFile" accept="application/json,.json" hidden><input type="file" id="csvFile" accept="text/csv,.csv" hidden></div></article>
+          <article class="card settings-card"><h3>Подготовка к облачной версии</h3><p class="muted">Сейчас данные изолированы в браузере. Архитектура storage уже отделена от интерфейса, поэтому позже можно подключить аккаунты и облачную базу без переписывания UI.</p><div class="cloud-placeholder"><span>☁</span><div><b>Cloud sync</b><small>Не подключено</small></div></div></article>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop"><div class="modal" id="modal"><button class="modal-close" id="modalClose">×</button><div id="modalContent"></div></div></div>
+<div class="toast-container" id="toastContainer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/data.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/statistics.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
