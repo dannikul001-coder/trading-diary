@@ -136,10 +136,26 @@
 </section>
 <section class="view" id="view-goals"><div class="section-head"><div><h2>Цели</h2><p>Конкретные измеримые цели с периодом, метрикой, текущим значением и остатком.</p></div><button class="primary-btn" data-action="add-goal">＋ Цель</button></div><div class="goals-grid" id="goalsGrid"></div><div class="empty-inline" id="goalsEmpty">Целей пока нет.</div></section>
 <section class="view" id="view-training">
-<div class="training-hero training-hero-v25"><div><div class="eyebrow">TRADING DIARY / LEARNING LAB</div><h2>Обучение</h2><p>Интерактивная база знаний: видео, посты, изображения, практика, тесты и личный прогресс.</p></div><div class="training-progress-card"><span>МОЙ ПРОГРЕСС</span><strong id="trainingProgressLabel">0%</strong><div class="training-progress-bar"><i id="trainingProgressBar" style="width:0%"></i></div><small id="trainingProgressText">Начни с любого урока.</small></div></div>
-<div class="training-category-tabs" id="trainingCategoryTabs"></div>
-<div class="training-layout"><div class="training-main"><div class="training-section-title"><div><span class="eyebrow">КАТАЛОГ</span><h3>Материалы обучения</h3></div><div class="training-search"><span>⌕</span><input id="trainingSearch" placeholder="Поиск урока..."></div></div><div class="training-grid training-grid-v25" id="trainingLessonGrid"></div></div>
-<aside class="training-sidebar"><article class="card training-side-card"><div class="card-head"><div><span class="eyebrow">ПУТЬ ОБУЧЕНИЯ</span><h3>Твой маршрут</h3></div></div><div id="trainingRoadmap" class="training-roadmap"></div></article><article class="card training-side-card"><div class="card-head"><div><span class="eyebrow">ФОРМАТЫ</span><h3>Что внутри урока</h3></div></div><div class="training-format-list"><div><b>🎥</b><span><strong>Видео</strong><small>YouTube / встроенный плеер</small></span></div><div><b>📖</b><span><strong>Пост</strong><small>Текст, схемы, изображения</small></span></div><div><b>🎯</b><span><strong>Практика</strong><small>Кейсы и задания</small></span></div><div><b>🧠</b><span><strong>Тест</strong><small>Проверка понимания</small></span></div><div><b>📝</b><span><strong>Конспект</strong><small>Личные заметки</small></span></div></div></article></aside></div></section>
+<div class="learning-shell">
+  <div class="learning-topbar">
+    <div><span class="eyebrow">TRADING DIARY / LEARNING LAB</span><h2>Обучение</h2><p>От базовых принципов до практического разбора сделки — в одном маршруте.</p></div>
+    <div class="learning-progress"><span>ПРОГРЕСС</span><strong id="trainingProgressLabel">0%</strong><div><i id="trainingProgressBar" style="width:0%"></i></div><small id="trainingProgressText">Начни с любого урока.</small></div>
+  </div>
+  <div class="learning-category-rail" id="trainingCategoryTabs"></div>
+  <div class="learning-layout-v26">
+    <main class="learning-catalog">
+      <div class="learning-toolbar"><div><span class="eyebrow">КАТАЛОГ ЗНАНИЙ</span><h3>Материалы</h3></div><label class="learning-search"><span>⌕</span><input id="trainingSearch" placeholder="Поиск урока, темы или навыка..."></label></div>
+      <div class="learning-feature" id="trainingFeature"></div>
+      <div class="learning-section-label"><span>ВСЕ МАТЕРИАЛЫ</span><small id="trainingResultCount">0 уроков</small></div>
+      <div class="training-grid training-grid-v26" id="trainingLessonGrid"></div>
+    </main>
+    <aside class="learning-sidebar-v26">
+      <article class="card learning-sidebar-card"><span class="eyebrow">ТВОЙ МАРШРУТ</span><h3>Учебная карта</h3><div id="trainingRoadmap" class="training-roadmap"></div></article>
+      <article class="card learning-sidebar-card learning-next-card"><span class="eyebrow">СЛЕДУЮЩИЙ ШАГ</span><div id="trainingNextLesson"><b>Выбери первый урок</b><span>После прохождения здесь появится следующий материал.</span></div></article>
+    </aside>
+  </div>
+</div>
+</section>
 <section class="view" id="view-admin">
 <div class="section-head"><div><div class="eyebrow">CONTROL CENTER / V25</div><h2>Админ-панель</h2><p>Пользователи, баланс, роли, обучение и операционные действия.</p></div><span class="section-badge" id="adminRoleBadge">ADMIN</span></div>
 <div class="admin-overview-grid" id="adminOverview"></div>
