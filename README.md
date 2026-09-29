@@ -39,3 +39,10 @@ Recommended clean start: sign in with the intended account, clear the workspace 
 - `sync_key`, фото и остальные поля сохраняются при загрузке из облака.
 - 2855+ существующих сделок не удаляются и не пересоздаются из-за ошибки одной новой сделки.
 - SQL-миграции V18/V19 повторно выполнять не нужно.
+
+
+## V21 balance operations and photo viewer
+- Run `supabase/migration_v9_balance_withdrawals.sql` once after the existing balance migrations.
+- Balance operations now support both `deposit` (Пополнение) and `withdrawal` (Вывод). Existing rows remain deposits.
+- Amounts accept and preserve cents to 0.01. Withdrawals reduce balance and appear in history and balance charts.
+- Trade photos now open inside the app modal instead of a blank new browser page.

@@ -109,8 +109,8 @@ function cloudRowToPlan(r){return{id:r.id,date:r.plan_date||'',task:r.task||'',d
 function cloudRowToGoal(r){return{id:r.id,period:r.period||'',title:r.title||'',target:Number(r.target)||0,currentValue:Number(r.current_value)||0}}
 function cloudRowToInstrument(r){return{id:r.id,name:r.name||'',symbol:r.symbol||'',category:r.category||'Custom',custom:true}}
 function cloudRowToStrategy(r){return{id:r.id,name:r.name||'',description:r.description||'',custom:true}}
-function depositToCloudRow(d,userId){return{...(UUID_RE.test(String(d?.id||''))?{id:d.id}:{}),user_id:userId,operation_date:d?.date||null,operation_time:d?.time||'00:00',amount:Number(d?.amount)||0,note:d?.note||''}}
-function cloudRowToDeposit(r){return{id:r.id,date:r.operation_date||'',time:r.operation_time?String(r.operation_time).slice(0,5):'00:00',amount:Number(r.amount)||0,note:r.note||''}}
+function depositToCloudRow(d,userId){return{...(UUID_RE.test(String(d?.id||''))?{id:d.id}:{}),user_id:userId,operation_date:d?.date||null,operation_time:d?.time||'00:00',amount:Math.round((Number(d?.amount)||0)*100)/100,operation_type:d?.operationType==='withdrawal'?'withdrawal':'deposit',note:d?.note||''}}
+function cloudRowToDeposit(r){return{id:r.id,date:r.operation_date||'',time:r.operation_time?String(r.operation_time).slice(0,5):'00:00',amount:Number(r.amount)||0,operationType:r.operation_type==='withdrawal'?'withdrawal':'deposit',note:r.note||''}}
 function cloudRowToProfile(r){return{displayName:r?.display_name||'',avatarUrl:r?.avatar_url||''}}
 
 async function cloudSelectAll(table, userId, columns='*', orderBy='created_at', ascending=true){

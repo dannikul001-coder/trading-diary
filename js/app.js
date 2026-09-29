@@ -72,7 +72,7 @@ function handleDelegatedSubmit(e){
   renderJournalView();
 }
 function handleDelegated(e){
-  const t=e.target.closest('button,[data-view],[data-view-target],[data-action],[data-settings-tab],[data-appearance-preset],[data-edit-trade],[data-delete-trade],[data-toggle-plan],[data-delete-plan],[data-delete-note],[data-delete-goal],[data-delete-instrument],[data-delete-strategy],[data-delete-deposit],[data-edit-deposit],[data-photo-trade]');
+  const t=e.target.closest('button,[data-view],[data-view-target],[data-action],[data-settings-tab],[data-appearance-preset],[data-edit-trade],[data-delete-trade],[data-toggle-plan],[data-delete-plan],[data-delete-note],[data-delete-goal],[data-delete-instrument],[data-delete-strategy],[data-delete-deposit],[data-edit-deposit],[data-delete-withdrawal],[data-edit-withdrawal],[data-photo-trade]');
   if(!t)return;
   if(t.id==='calendarPrev'){calendarCursor.setMonth(calendarCursor.getMonth()-1);renderCalendar();return;}
   if(t.id==='calendarNext'){calendarCursor.setMonth(calendarCursor.getMonth()+1);renderCalendar();return;}
@@ -92,7 +92,9 @@ function handleDelegated(e){
   if(t.dataset.deleteInstrument){state.instruments=state.instruments.filter(i=>i.id!==t.dataset.deleteInstrument);saveState();return;}
   if(t.dataset.deleteStrategy){const i=Number(t.dataset.deleteStrategy);state.strategies.splice(i,1);saveState();return;}
   if(t.dataset.editDeposit){editDeposit(t.dataset.editDeposit);return;}
-  if(t.dataset.deleteDeposit){deleteDeposit(t.dataset.deleteDeposit);return;}
+  if(t.dataset.deleteDeposit){deleteBalanceOperation(t.dataset.deleteDeposit);return;}
+  if(t.dataset.editWithdrawal){editBalanceOperation(t.dataset.editWithdrawal,'withdrawal');return;}
+  if(t.dataset.deleteWithdrawal){deleteBalanceOperation(t.dataset.deleteWithdrawal);return;}
   if(t.dataset.photoTrade){const tr=state.trades.find(x=>x.id===t.dataset.photoTrade);if(tr?.photoData)openTradePhoto(tr.photoData);return;}
 }
 function openMainGoalModal(){
@@ -125,7 +127,8 @@ function actions(a){
   ]);
   if(a==='add-instrument')return openSimpleModal('Новый инструмент','Он появится в выборе сделки.',f=>{state.instruments.push({id:uid(),category:f.category,name:f.name,custom:true});saveState();toast('Инструмент добавлен')},[{name:'name',label:'Название',type:'text',required:true},{name:'category',label:'Категория',type:'select',options:['Forex','Crypto','Commodities','Indices','Stocks','OTC','Custom']}]);
   if(a==='add-strategy')return openSimpleModal('Новая стратегия','Добавьте название и правило, которое можно проверить по журналу.',f=>{state.strategies.push({name:f.name,description:f.description||''});saveState();toast('Стратегия добавлена')},[{name:'name',label:'Название',type:'text',required:true},{name:'description',label:'Правило / описание',type:'textarea',placeholder:'Когда входить, когда пропускать, какой риск'}]);
-  if(a==='add-deposit')return openSimpleModal('Пополнение баланса','Пополнение не считается торговой прибылью и отображается отдельной операцией на графике баланса.',f=>{state.deposits=state.deposits||[];state.deposits.push({id:uid(),date:f.date||localDateKey(),time:f.time||'00:00',amount:Math.max(0,Number(String(f.amount||'').replace(',','.'))||0),note:f.note||''});state.deposits.sort((x,y)=>(x.date+' '+x.time).localeCompare(y.date+' '+y.time));saveState();renderAll();toast('Пополнение добавлено')},[{name:'date',label:'Дата',type:'date',value:localDateKey()},{name:'time',label:'Время',type:'time',value:'00:00'},{name:'amount',label:`Сумма (${state.settings.currency})`,type:'number',step:'0.01',min:'0.01',required:true,placeholder:'100.00'},{name:'note',label:'Комментарий',type:'text',placeholder:'Пополнение счёта'}]);
+  if(a==='add-deposit')return openBalanceOperationModal('deposit');
+  if(a==='add-withdrawal')return openBalanceOperationModal('withdrawal');
 }
 
 function renderAll(){applyAppearance();renderMainGoal();renderKpis();renderTrades();renderPeriodStats();renderPsychology();renderJournal();renderJournalView();renderBreakdown();renderPlans();renderNotes();renderGoals();renderResultBars();renderDetailStats();renderAnalyticsInsights();renderSettings();renderDashboardPlan();renderJournalExtras();renderBalanceChart(document.querySelector('#dashboardChartRange .active')?.dataset.range==='all'?'all':Number(document.querySelector('#dashboardChartRange .active')?.dataset.range||30));if(activeView==='charts'){renderMainChart(document.querySelector('#mainChartType .active')?.dataset.type||'balance');renderSecondaryCharts();}if(activeView==='calendar')renderCalendar();if(activeView==='playbook')renderPlaybook();if(activeView==='psychology')renderPsychologyFull();if(activeView==='import'){renderImportView();renderImportHistory()}const quote=document.getElementById('quoteText');if(quote)quote.textContent=DEFAULT_DATA.quotes[new Date().getDate()%DEFAULT_DATA.quotes.length]}
@@ -242,7 +245,17 @@ async function compressTradePhoto(file){
     return c.toDataURL('image/jpeg',.78);
   }catch{return ''}
 }
-function openTradePhoto(data){if(!data)return;const win=window.open('','_blank','noopener,noreferrer');if(win){win.document.write(`<title>Фото сделки</title><body style="margin:0;background:#111;display:grid;place-items:center;min-height:100vh"><img src="${data}" style="max-width:100%;max-height:100vh;object-fit:contain"></body>`);win.document.close()}}
+function openTradePhoto(data){
+  if(!data)return;
+  const box=document.getElementById('modalContent');
+  if(!box)return;
+  box.innerHTML=`<div class="photo-viewer"><div class="photo-viewer-head"><div><div class="eyebrow">TRADE MATERIAL</div><h2>Фото сделки</h2><div class="sub">Скриншот хранится вместе со сделкой и не открывает новую вкладку.</div></div><button type="button" class="secondary-btn" id="photoViewerClose">Закрыть</button></div><div class="photo-viewer-stage"><img src="${escapeAttr(data)}" alt="Фото сделки" id="tradePhotoViewerImg"><div class="photo-viewer-empty" id="photoViewerEmpty">Не удалось загрузить изображение.</div></div></div>`;
+  document.getElementById('modal')?.classList.add('photo-viewer-modal');
+  openModal();
+  const img=document.getElementById('tradePhotoViewerImg'),empty=document.getElementById('photoViewerEmpty');
+  img?.addEventListener('error',()=>{img.style.display='none';if(empty)empty.style.display='grid'});
+  document.getElementById('photoViewerClose')?.addEventListener('click',closeModal);
+}
 function openTradeModal(id){
   const t=id?state.trades.find(x=>x.id===id):null;
   const instOptions=state.instruments.reduce((o,i)=>{(o[i.category]??=[]).push(i);return o},{});
@@ -304,14 +317,37 @@ async function deleteTrade(id){
 }
 async function deleteAllTrades(){if(!state.trades.length){toast('Сделок уже нет');return}if(!confirm(`Удалить ВСЕ ${state.trades.length} сделок? Это действие нельзя отменить.`))return;if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){const {error}=await window.supabaseClient.from('trades').delete().eq('user_id',window.currentUser.id);if(error){toast('Не удалось удалить сделки из облака',true);return}}state.trades=[];saveLocalOnly();localStorage.removeItem('tradingDiary_cloudTradesDirty');renderAll();toast('Все сделки удалены')}
 async function resetWorkspace(){if(!confirm('Стереть все данные рабочего пространства? Будут удалены сделки, заметки, планы, цели, журнал, стратегии, инструменты и пополнения. Настройки и главная цель вернутся к исходным значениям.'))return;if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){const uid=window.currentUser.id;for(const table of ['trades','notes','plans','goals','journals','instruments','strategies','balance_operations','main_goals','settings']){const {error}=await window.supabaseClient.from(table).delete().eq('user_id',uid);if(error&&!(table==='balance_operations'&&['42P01','PGRST205'].includes(error.code))){toast(`Не удалось очистить ${table}`,true);return}}}state=clone(DEFAULT_DATA);state.deposits=[];saveLocalOnly();localStorage.removeItem('tradingDiary_cloudTradesDirty');localStorage.removeItem('tradingDiary_cloudWorkspaceDirty');renderAll();toast('Рабочее пространство очищено')}
-async function editDeposit(id){const d=(state.deposits||[]).find(x=>String(x.id)===String(id));if(!d)return;openSimpleModal('Редактировать пополнение','Изменение сохраняется в локальном журнале и облаке.',f=>{d.date=f.date||d.date;d.time=f.time||d.time;d.amount=Math.max(0,Number(String(f.amount||'').replace(',','.'))||0);d.note=f.note||'';state.deposits.sort((x,y)=>(x.date+' '+x.time).localeCompare(y.date+' '+y.time));saveState();renderAll();toast('Пополнение изменено')},[{name:'date',label:'Дата',type:'date',value:d.date},{name:'time',label:'Время',type:'time',value:d.time||'00:00'},{name:'amount',label:`Сумма (${state.settings.currency})`,type:'number',step:'0.01',min:'0.01',required:true,value:Number(d.amount||0).toFixed(2)},{name:'note',label:'Комментарий',type:'text',value:d.note||''}])}
-async function deleteDeposit(id){if(!confirm('Удалить это пополнение?'))return;if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady&&window.cloudBalanceSupported!==false){const {error}=await window.supabaseClient.from('balance_operations').delete().eq('user_id',window.currentUser.id).eq('id',id);if(error){toast('Не удалось удалить пополнение из облака',true);return;}}state.deposits=(state.deposits||[]).filter(x=>x.id!==id);saveLocalOnly();localStorage.setItem('tradingDiary_cloudWorkspaceDirty','1');renderAll();toast('Пополнение удалено')}
+function openBalanceOperationModal(type,existing=null){
+  const isWithdrawal=type==='withdrawal';
+  const title=existing?(isWithdrawal?'Редактировать вывод':'Редактировать пополнение'):(isWithdrawal?'Вывод средств':'Пополнение баланса');
+  const sub=isWithdrawal?'Сумма списывается с баланса. Это не торговый P&L.':'Сумма добавляется к балансу. Это не торговый P&L.';
+  const submit=f=>{
+    state.deposits=state.deposits||[];
+    const amount=Math.round(Math.max(0,Number(String(f.amount||'').replace(',','.'))||0)*100)/100;
+    if(!amount){toast('Введите сумму больше 0',true);return}
+    const row=existing||{id:uid()};
+    row.date=f.date||localDateKey();row.time=f.time||'00:00';row.amount=amount;row.note=f.note||'';row.operationType=type;
+    if(!existing)state.deposits.push(row);
+    state.deposits.sort((x,y)=>(x.date+' '+x.time).localeCompare(y.date+' '+y.time));
+    saveState();renderAll();toast(existing?(isWithdrawal?'Вывод изменён':'Пополнение изменено'):(isWithdrawal?'Вывод добавлен':'Пополнение добавлено'));
+  };
+  openSimpleModal(title,sub,submit,[
+    {name:'date',label:'Дата',type:'date',value:existing?.date||localDateKey()},
+    {name:'time',label:'Время',type:'time',value:existing?.time||'00:00'},
+    {name:'amount',label:`Сумма (${state.settings.currency})`,type:'number',step:'0.01',min:'0.01',required:true,value:existing?Number(existing.amount||0).toFixed(2):'',placeholder:'100.00'},
+    {name:'note',label:'Комментарий',type:'text',value:existing?.note||'',placeholder:isWithdrawal?'Вывод на карту / из платформы':'Пополнение с карты / платформы'}
+  ]);
+}
+function editDeposit(id){return editBalanceOperation(id,'deposit')}
+function editBalanceOperation(id,type){const d=(state.deposits||[]).find(x=>String(x.id)===String(id));if(!d)return;openBalanceOperationModal(type,d)}
+function deleteBalanceOperation(id){const d=(state.deposits||[]).find(x=>String(x.id)===String(id));if(!d)return;const isWithdrawal=d.operationType==='withdrawal';if(!confirm(`${isWithdrawal?'Удалить этот вывод':'Удалить это пополнение'}?`))return;if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady&&window.cloudBalanceSupported!==false){window.supabaseClient.from('balance_operations').delete().eq('user_id',window.currentUser.id).eq('id',id).then(({error})=>{if(error){toast('Не удалось удалить операцию из облака',true);return;}finishDeleteBalanceOperation(id,isWithdrawal)});return;}finishDeleteBalanceOperation(id,isWithdrawal)}
+function finishDeleteBalanceOperation(id,isWithdrawal){state.deposits=(state.deposits||[]).filter(x=>String(x.id)!==String(id));saveLocalOnly();localStorage.setItem('tradingDiary_cloudWorkspaceDirty','1');renderAll();toast(isWithdrawal?'Вывод удалён':'Пополнение удалено')}
 function togglePlan(id){const p=state.plans.find(x=>x.id===id);if(p){p.done=!p.done;saveState()}}
 function deletePlan(id){state.plans=state.plans.filter(x=>x.id!==id);saveState()}
 function deleteNote(id){state.notes=state.notes.filter(x=>x.id!==id);saveState()}
 function deleteGoal(id){state.goals=state.goals.filter(x=>x.id!==id);saveState()}
 function openSimpleModal(title,sub,submit,fields){document.getElementById('modal').classList.add('simple-modal');document.getElementById('modalContent').innerHTML=`<h2>${title}</h2><div class="sub">${sub}</div><form id="simpleForm"><div class="modal-form">${fields.map(f=>`<label class="${f.type==='textarea'?'full':''}">${f.label}${f.type==='select'?`<select name="${f.name}">${f.options.map(o=>`<option ${String(f.value??'')===String(o)?'selected':''}>${escapeHtml(o)}</option>`).join('')}</select>`:f.type==='textarea'?`<textarea name="${f.name}" placeholder="${escapeAttr(f.placeholder||'')}">${escapeHtml(f.value||'')}</textarea>`:`<input name="${f.name}" type="${f.type||'text'}" value="${escapeAttr(f.value??'')}" placeholder="${escapeAttr(f.placeholder||'')}" ${f.required?'required':''} ${f.step!=null?`step="${escapeAttr(f.step)}"`:''} ${f.min!=null?`min="${escapeAttr(f.min)}"`:''} ${f.max!=null?`max="${escapeAttr(f.max)}"`:''}>`}</label>`).join('')}</div><div class="modal-actions"><button type="button" class="secondary-btn" id="cancelModal">Отмена</button><button class="primary-btn">Сохранить</button></div></form>`;openModal();document.getElementById('cancelModal').onclick=closeModal;document.getElementById('simpleForm').onsubmit=e=>{e.preventDefault();submit(Object.fromEntries(new FormData(e.target)));closeModal()}}
-function openModal(){const el=document.getElementById('modalBackdrop');if(!el)return;el.classList.add('open');el.classList.remove('show')};function closeModal(){const el=document.getElementById('modalBackdrop');if(!el)return;el.classList.remove('open','show');document.getElementById('modal')?.classList.remove('simple-modal')}
+function openModal(){const el=document.getElementById('modalBackdrop');if(!el)return;el.classList.add('open');el.classList.remove('show')};function closeModal(){const el=document.getElementById('modalBackdrop');if(!el)return;el.classList.remove('open','show');document.getElementById('modal')?.classList.remove('simple-modal','photo-viewer-modal')}
 function updateClock(){const p=localParts();document.getElementById('liveDate').textContent=new Intl.DateTimeFormat('ru-RU',{timeZone:state.settings.timezone,day:'2-digit',month:'long',year:'numeric'}).format(new Date());document.getElementById('liveTime').textContent=`${p.hour}:${p.minute}:${p.second}`;document.getElementById('liveZone').textContent=state.settings.timezone}
 function formatDate(d){if(!d)return'—';const [y,m,day]=d.split('-');return state.settings.dateFormat==='YYYY-MM-DD'?d:state.settings.dateFormat==='MM/DD/YYYY'?`${m}/${day}/${y}`:`${day}.${m}.${y}`}
 function toast(msg,error=false){const el=document.createElement('div');el.className='toast'+(error?' error':'');el.textContent=msg;document.getElementById('toastContainer').appendChild(el);setTimeout(()=>el.remove(),2600)}

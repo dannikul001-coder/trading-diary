@@ -749,3 +749,9 @@ body[class*="theme-paper"] .card,body[class*="theme-ivory"] .card,body[class*="t
 .profile-account-line b{font:500 11px var(--mono);overflow:hidden;text-overflow:ellipsis}
 .profile-account-actions{padding-top:4px;border-top:1px solid var(--site-secondary-line)}
 @media(max-width:700px){.profile-avatar-editor{align-items:flex-start;flex-direction:column}.profile-avatar-actions{width:100%}.profile-account-line{align-items:flex-start;flex-direction:column}.deposit-actions{justify-content:flex-start}}
+
+/* V21 — balance withdrawals + in-app photo viewer */
+.balance-operation-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.withdrawal-btn{border-color:color-mix(in srgb,var(--loss) 45%,var(--line));color:var(--loss)}
+.deposit-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:9px}.withdrawal-summary b{color:var(--loss)}.balance-summary b{color:var(--accent)}.withdrawal-row>strong{color:var(--loss)}
+.photo-viewer-modal{width:min(1100px,96vw);max-height:92vh}.photo-viewer{display:grid;gap:14px}.photo-viewer-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.photo-viewer-stage{min-height:55vh;max-height:72vh;border:1px solid var(--line);border-radius:12px;background:#0a0e12;display:grid;place-items:center;overflow:auto;padding:14px}.photo-viewer-stage img{display:block;max-width:100%;max-height:68vh;width:auto;height:auto;object-fit:contain}.photo-viewer-empty{display:none;place-items:center;color:#d7dde1;font:600 12px var(--mono);min-height:35vh}
+@media(max-width:700px){.deposit-summary-grid{grid-template-columns:1fr}.balance-operation-actions{width:100%}.balance-operation-actions .ghost-btn{flex:1}.photo-viewer-head{flex-direction:column}.photo-viewer-head .secondary-btn{width:100%}.photo-viewer-stage{min-height:48vh;max-height:68vh}.photo-viewer-stage img{max-height:62vh}}
