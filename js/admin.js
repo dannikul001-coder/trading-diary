@@ -43,6 +43,9 @@ function bindAdminUI(){
 }
 async function handleAdminAction(action,userId){
  if(action==='retry-users')return loadAdminUsers();
+ if(action==='refresh-all'){await loadAdminUsers();await loadAdminLearning();return;}
+ if(action==='focus-users'){document.querySelector('[data-admin-tab=\"users\"]')?.click();return;}
+ if(action==='focus-learning'){document.querySelector('[data-admin-tab=\"learning\"]')?.click();return;}
  if(action==='open-user')return openAdminUser(userId);
  if(action==='role-toggle')return toggleAdminRole(userId);
  if(action==='admin-deposit')return adminBalanceModal(userId,'deposit');

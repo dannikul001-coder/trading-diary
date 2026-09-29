@@ -63,3 +63,6 @@ Recommended clean start: sign in with the intended account, clear the workspace 
 3. После назначения роли выйди и войди в аккаунт администратора заново.
 
 Не вставляй пароль администратора в код, SQL-файл или GitHub.
+
+## V27 compatibility fix
+If your existing `balance_operations` table was created before `operation_type` existed, run `supabase/migration_v12_admin_balance_compat.sql` once. It only adds/backfills the operation type and index; it does not delete trades or balance records.
