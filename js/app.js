@@ -47,6 +47,7 @@ function bindGlobal(){
   document.querySelectorAll('[data-appearance-preset]').forEach(b=>b.addEventListener('click',()=>applyAppearancePreset(b.dataset.appearancePreset)));
   document.getElementById('deleteAllTrades')?.addEventListener('click',deleteAllTrades);
   document.getElementById('resetWorkspace')?.addEventListener('click',resetWorkspace);
+  document.getElementById('trainingSearch')?.addEventListener('input',filterTrainingLessons);
   document.getElementById('exportJson').onclick=exportJson;
   document.getElementById('importJsonBtn').onclick=()=>document.getElementById('jsonFile').click();
   document.getElementById('exportCsv').onclick=exportCsv;
@@ -72,11 +73,13 @@ function handleDelegatedSubmit(e){
   renderJournalView();
 }
 function handleDelegated(e){
-  const t=e.target.closest('button,[data-view],[data-view-target],[data-action],[data-settings-tab],[data-appearance-preset],[data-edit-trade],[data-delete-trade],[data-toggle-plan],[data-delete-plan],[data-delete-note],[data-delete-goal],[data-delete-instrument],[data-delete-strategy],[data-delete-deposit],[data-edit-deposit],[data-delete-withdrawal],[data-edit-withdrawal],[data-photo-trade]');
+  const t=e.target.closest('button,[data-view],[data-view-target],[data-action],[data-settings-tab],[data-appearance-preset],[data-edit-trade],[data-delete-trade],[data-toggle-plan],[data-delete-plan],[data-delete-note],[data-delete-goal],[data-delete-instrument],[data-delete-strategy],[data-delete-deposit],[data-edit-deposit],[data-delete-withdrawal],[data-edit-withdrawal],[data-photo-trade],[data-training-category],[data-training-open]');
   if(!t)return;
   if(t.id==='calendarPrev'){calendarCursor.setMonth(calendarCursor.getMonth()-1);renderCalendar();return;}
   if(t.id==='calendarNext'){calendarCursor.setMonth(calendarCursor.getMonth()+1);renderCalendar();return;}
   if(t.dataset.calendarDate){showView('trades');const q=document.getElementById('tradeSearch');if(q)q.value=t.dataset.calendarDate;tradeSearch=t.dataset.calendarDate;tradeFilter='all';renderTrades();return;}
+  if(t.dataset.trainingCategory){document.querySelectorAll('[data-training-category]').forEach(x=>x.classList.toggle('active',x===t));filterTrainingLessons();return;}
+  if(t.dataset.trainingOpen){showTrainingExample(t.dataset.trainingOpen);return;}
   if(t.dataset.trainingLocked){toast('Раздел «Обучение» временно закрыт: технические работы.');return;}
   if(t.dataset.view){showView(t.dataset.view);return;}
   if(t.dataset.viewTarget){showView(t.dataset.viewTarget);return;}
@@ -129,6 +132,21 @@ function actions(a){
   if(a==='add-strategy')return openSimpleModal('Новая стратегия','Добавьте название и правило, которое можно проверить по журналу.',f=>{state.strategies.push({name:f.name,description:f.description||''});saveState();toast('Стратегия добавлена')},[{name:'name',label:'Название',type:'text',required:true},{name:'description',label:'Правило / описание',type:'textarea',placeholder:'Когда входить, когда пропускать, какой риск'}]);
   if(a==='add-deposit')return openBalanceOperationModal('deposit');
   if(a==='add-withdrawal')return openBalanceOperationModal('withdrawal');
+}
+
+function filterTrainingLessons(){
+  const q=String(document.getElementById('trainingSearch')?.value||'').trim().toLowerCase();
+  const active=document.querySelector('[data-training-category].active')?.dataset.trainingCategory||'all';
+  document.querySelectorAll('.training-lesson').forEach(card=>{
+    const category=card.dataset.category||'';const title=(card.dataset.title||card.textContent||'').toLowerCase();
+    card.style.display=(active==='all'||category===active)&&(!q||title.includes(q))?'':'none';
+  });
+}
+function showTrainingExample(){
+  const el=document.getElementById('trainingLessonGrid');
+  if(!el)return;
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+  toast('Пример урока — пока это каркас. Реальные материалы подключим после твоей структуры.');
 }
 
 function renderAll(){applyAppearance();renderMainGoal();renderKpis();renderTrades();renderPeriodStats();renderPsychology();renderJournal();renderJournalView();renderBreakdown();renderPlans();renderNotes();renderGoals();renderResultBars();renderDetailStats();renderAnalyticsInsights();renderSettings();renderDashboardPlan();renderJournalExtras();renderBalanceChart(document.querySelector('#dashboardChartRange .active')?.dataset.range==='all'?'all':Number(document.querySelector('#dashboardChartRange .active')?.dataset.range||30));if(activeView==='charts'){renderMainChart(document.querySelector('#mainChartType .active')?.dataset.type||'balance');renderSecondaryCharts();}if(activeView==='calendar')renderCalendar();if(activeView==='playbook')renderPlaybook();if(activeView==='psychology')renderPsychologyFull();if(activeView==='import'){renderImportView();renderImportHistory()}const quote=document.getElementById('quoteText');if(quote)quote.textContent=DEFAULT_DATA.quotes[new Date().getDate()%DEFAULT_DATA.quotes.length]}

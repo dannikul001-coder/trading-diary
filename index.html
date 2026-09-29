@@ -38,7 +38,7 @@
       <button class="nav-item" data-view="psychology" title="Психология"><span>12</span><b>Психология</b></button>
       <div class="rail-group-label rail-space">SYSTEM</div>
       <button class="nav-item" data-view="import" title="Import Center"><span>13</span><b>Импорт</b></button>
-      <button class="nav-item" data-view="settings" title="Настройки"><span>14</span><b>Настройки</b></button><button class="nav-item nav-locked" type="button" data-training-locked="1" title="Технические работы"><span>15</span><b>Обучение</b><em>Тех. работы</em></button>
+      <button class="nav-item" data-view="settings" title="Настройки"><span>14</span><b>Настройки</b></button><button class="nav-item" data-view="training" title="Обучение"><span>15</span><b>Обучение</b></button><button class="nav-item admin-only" id="adminNav" data-view="admin" title="Админ-панель"><span>AD</span><b>Админ</b></button>
     </nav>
     <div class="rail-bottom">
       <button class="rail-avatar" id="profileBtn" title="Профиль"><span class="avatar">TD</span><em class="profile-name">Войти</em></button>
@@ -63,7 +63,7 @@
   <div class="mobile-drawer" id="sidebar">
     <div class="drawer-head"><strong>Trading Diary</strong><button class="icon-btn" id="drawerClose" type="button">×</button></div>
     <nav class="nav">
-      <button class="nav-item active" data-view="dashboard"><span>01</span>Обзор</button><button class="nav-item" data-view="trades"><span>02</span>Сделки</button><button class="nav-item" data-view="calendar"><span>03</span>Календарь</button><button class="nav-item" data-view="statistics"><span>04</span>Аналитика</button><button class="nav-item" data-view="charts"><span>05</span>Графики</button><button class="nav-item" data-view="plan"><span>06</span>План</button><button class="nav-item" data-view="playbook"><span>07</span>Playbook</button><button class="nav-item" data-view="goal"><span>08</span>Главная цель</button><button class="nav-item" data-view="goals"><span>09</span>Цели</button><button class="nav-item" data-view="journal"><span>10</span>Журнал</button><button class="nav-item" data-view="notes"><span>11</span>Заметки</button><button class="nav-item" data-view="psychology"><span>12</span>Психология</button><button class="nav-item" data-view="import"><span>13</span>Import Center</button><button class="nav-item" data-view="settings"><span>14</span>Настройки</button><button class="nav-item nav-locked" type="button" data-training-locked="1" title="Технические работы"><span>15</span>Обучение</button>
+      <button class="nav-item active" data-view="dashboard"><span>01</span>Обзор</button><button class="nav-item" data-view="trades"><span>02</span>Сделки</button><button class="nav-item" data-view="calendar"><span>03</span>Календарь</button><button class="nav-item" data-view="statistics"><span>04</span>Аналитика</button><button class="nav-item" data-view="charts"><span>05</span>Графики</button><button class="nav-item" data-view="plan"><span>06</span>План</button><button class="nav-item" data-view="playbook"><span>07</span>Playbook</button><button class="nav-item" data-view="goal"><span>08</span>Главная цель</button><button class="nav-item" data-view="goals"><span>09</span>Цели</button><button class="nav-item" data-view="journal"><span>10</span>Журнал</button><button class="nav-item" data-view="notes"><span>11</span>Заметки</button><button class="nav-item" data-view="psychology"><span>12</span>Психология</button><button class="nav-item" data-view="import"><span>13</span>Import Center</button><button class="nav-item" data-view="settings"><span>14</span>Настройки</button><button class="nav-item" data-view="training" title="Обучение"><span>15</span>Обучение</button><button class="nav-item admin-only" id="adminNavTop" data-view="admin" title="Админ-панель"><span>AD</span>Админ</button>
     </nav>
   </div>
 
@@ -134,6 +134,54 @@
 <article class="card import-history-card"><div class="card-head"><div><h3>История импорта</h3><p>Последние операции сохраняются в профиле.</p></div></div><div id="importHistory"></div></article>
 </section>
 <section class="view" id="view-goals"><div class="section-head"><div><h2>Цели</h2><p>Конкретные измеримые цели с периодом, метрикой, текущим значением и остатком.</p></div><button class="primary-btn" data-action="add-goal">＋ Цель</button></div><div class="goals-grid" id="goalsGrid"></div><div class="empty-inline" id="goalsEmpty">Целей пока нет.</div></section>
+<section class="view" id="view-training">
+<div class="training-hero">
+  <div>
+    <div class="eyebrow">TRADING DIARY / LEARNING LAB</div>
+    <h2>Обучение</h2>
+    <p>Будущая учебная система: видео, статьи, изображения, практика и проверка знаний в одной вкладке.</p>
+  </div>
+  <div class="training-progress-card"><span>МОЙ ПРОГРЕСС</span><strong>Структура готова</strong><div class="training-progress-bar"><i style="width:18%"></i></div><small>Контент подключим после того, как ты передашь структуру материалов.</small></div>
+</div>
+<div class="training-category-tabs" id="trainingCategoryTabs">
+  <button class="active" data-training-category="all">Все</button>
+  <button data-training-category="basics">Основы</button>
+  <button data-training-category="candles">Свечи и паттерны</button>
+  <button data-training-category="technical">Технический анализ</button>
+  <button data-training-category="indicators">Индикаторы</button>
+  <button data-training-category="strategies">Стратегии</button>
+  <button data-training-category="psychology">Психология</button>
+  <button data-training-category="practice">Практика</button>
+</div>
+<div class="training-layout">
+  <div class="training-main">
+    <div class="training-section-title"><div><span class="eyebrow">КАТАЛОГ</span><h3>Материалы обучения</h3></div><div class="training-search"><span>⌕</span><input id="trainingSearch" placeholder="Поиск урока..."></div></div>
+    <div class="training-feature card">
+      <div class="training-feature-media"><div class="training-play">▶</div><span>VIDEO / ARTICLE / PRACTICE</span></div>
+      <div class="training-feature-copy"><span class="training-badge">ПРИМЕР СТРУКТУРЫ</span><h3>Как понять, куда движется рынок?</h3><p>Комбинация видео, теории, изображения графика, практики и контрольных вопросов.</p><div class="training-meta-row"><span>🎥 Видео</span><span>📚 Теория</span><span>🎯 Практика</span><span>📝 Тест</span></div><button class="primary-btn" data-training-open="market-structure">Открыть пример урока →</button></div>
+    </div>
+    <div class="training-grid" id="trainingLessonGrid">
+      <article class="training-lesson card" data-category="basics" data-title="Базовая структура рынка"><div class="training-thumb thumb-a"><span>01</span><b>FOUNDATION</b></div><div class="training-lesson-body"><span class="training-type">СТАТЬЯ + ПРАКТИКА</span><h4>Базовая структура рынка</h4><p>Максимумы, минимумы, импульсы и откаты.</p><div><span>8 мин</span><span>•</span><span>3 задания</span></div></div></article>
+      <article class="training-lesson card" data-category="candles" data-title="Свечные паттерны"><div class="training-thumb thumb-b"><span>02</span><b>CANDLE LAB</b></div><div class="training-lesson-body"><span class="training-type">КАРТОЧКИ + ИЗОБРАЖЕНИЯ</span><h4>Свечные паттерны</h4><p>Справочник формаций с визуальными примерами.</p><div><span>Карточки</span><span>•</span><span>Практика</span></div></div></article>
+      <article class="training-lesson card" data-category="technical" data-title="Уровни и структура"><div class="training-thumb thumb-c"><span>03</span><b>CHART LAB</b></div><div class="training-lesson-body"><span class="training-type">ВИДЕО + РАЗБОР</span><h4>Уровни и структура</h4><p>Работа с графиком и разметкой ключевых зон.</p><div><span>Видео</span><span>•</span><span>Разбор</span></div></div></article>
+      <article class="training-lesson card" data-category="strategies" data-title="Стратегия: сценарий входа"><div class="training-thumb thumb-d"><span>04</span><b>PLAYBOOK</b></div><div class="training-lesson-body"><span class="training-type">ВИДЕО + СЦЕНАРИЙ</span><h4>Сценарий входа</h4><p>Условия, подтверждения и разбор ошибок.</p><div><span>Видео</span><span>•</span><span>Тест</span></div></div></article>
+      <article class="training-lesson card" data-category="psychology" data-title="Психология после серии сделок"><div class="training-thumb thumb-e"><span>05</span><b>MINDSET</b></div><div class="training-lesson-body"><span class="training-type">ПОСТ + ПРАКТИКА</span><h4>Психология трейдера</h4><p>Эмоции, дисциплина и контроль торгового процесса.</p><div><span>Пост</span><span>•</span><span>Чек-лист</span></div></div></article>
+      <article class="training-lesson card" data-category="practice" data-title="Практический кейс"><div class="training-thumb thumb-f"><span>06</span><b>CASE</b></div><div class="training-lesson-body"><span class="training-type">ИНТЕРАКТИВ</span><h4>Практический кейс</h4><p>Посмотри на график и выбери торговый сценарий.</p><div><span>График</span><span>•</span><span>Ответ</span></div></div></article>
+    </div>
+  </div>
+  <aside class="training-sidebar">
+    <article class="card training-side-card"><div class="card-head"><div><span class="eyebrow">ПУТЬ ОБУЧЕНИЯ</span><h3>Твой маршрут</h3></div></div><div class="training-roadmap"><div class="done"><i>✓</i><span>Основы</span><small>Подготовка</small></div><div class="current"><i>02</i><span>Технический анализ</span><small>Текущий блок</small></div><div><i>03</i><span>Стратегии</span><small>Следующий этап</small></div><div><i>04</i><span>Практика</span><small>Закрепление</small></div></div></article>
+    <article class="card training-side-card"><div class="card-head"><div><span class="eyebrow">ФОРМАТЫ</span><h3>Что может быть внутри</h3></div></div><div class="training-format-list"><div><b>🎥</b><span><strong>Видео</strong><small>YouTube Unlisted / встроенный плеер</small></span></div><div><b>📖</b><span><strong>Пост / статья</strong><small>Текст, выделения, схемы и изображения</small></span></div><div><b>🎯</b><span><strong>Практика</strong><small>Задания и разбор графиков</small></span></div><div><b>🧠</b><span><strong>Тест</strong><small>Проверка понимания материала</small></span></div><div><b>📝</b><span><strong>Конспект</strong><small>Личные заметки прямо в уроке</small></span></div></div></article>
+  </aside>
+</div>
+<div class="training-empty-note"><strong>Это каркас Stage 2.</strong> Сейчас здесь показана только демонстрационная структура. После того как ты передашь список/файл с реальными материалами, категории, порядок, типы уроков и элементы страницы будут перестроены под твою фактическую программу.</div>
+</section>
+<section class="view" id="view-admin">
+<div class="section-head"><div><div class="eyebrow">CONTROL CENTER</div><h2>Админ-панель</h2><p>Управление пользователями и учебной платформой. Данные защищены Supabase RLS.</p></div><span class="section-badge" id="adminRoleBadge">ADMIN</span></div>
+<div class="admin-tabs" id="adminTabs"><button class="active" data-admin-tab="users">Пользователи</button><button data-admin-tab="learning">Обучение</button></div>
+<div class="admin-panel active" data-admin-panel="users"><div class="admin-toolbar"><div><h3>Пользователи</h3><p>Статистика аккаунтов без доступа к паролям.</p></div><button class="secondary-btn" id="adminRefreshUsers">Обновить</button></div><div class="table-scroll"><table class="admin-users-table"><thead><tr><th>Пользователь</th><th>Регистрация</th><th>Последний вход</th><th>Сделки</th><th>P&amp;L</th><th>Win rate</th><th>Обучение</th><th>Роль</th></tr></thead><tbody id="adminUsersBody"></tbody></table></div><div class="empty-inline" id="adminUsersEmpty">Пользователи не загружены.</div></div>
+<div class="admin-panel" data-admin-panel="learning"><div class="admin-toolbar"><div><h3>Конструктор обучения</h3><p>Категории, уроки, статус публикации и контент урока.</p></div><div class="admin-actions"><button class="secondary-btn" id="adminRefreshLearning">Обновить</button><button class="primary-btn" id="adminAddLesson">＋ Новый урок</button></div></div><div class="admin-learning-layout"><aside class="admin-category-list" id="adminCategoryList"></aside><div class="admin-lessons" id="adminLessons"></div></div></div>
+</section>
 <section class="view" id="view-settings">
 <div class="settings-hero">
 <div><div class="eyebrow">WORKSPACE CONFIGURATION</div><h2>Настройки</h2><p>Единое место для поведения дневника, визуального языка, торговли и данных.</p></div>
@@ -184,6 +232,7 @@
 <script src="js/charts.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/admin.js"></script>
 <script src="js/import-center.js"></script>
 <script src="js/app.js"></script>
 </body>

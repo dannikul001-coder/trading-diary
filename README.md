@@ -46,3 +46,20 @@ Recommended clean start: sign in with the intended account, clear the workspace 
 - Balance operations now support both `deposit` (Пополнение) and `withdrawal` (Вывод). Existing rows remain deposits.
 - Amounts accept and preserve cents to 0.01. Withdrawals reduce balance and appear in history and balance charts.
 - Trade photos now open inside the app modal instead of a blank new browser page.
+
+## Stage 2 — Admin Control Center
+
+Добавлена защищённая админ-панель через Supabase RBAC:
+- обычные пользователи не видят «Обучение» и «Админ»;
+- администратор видит «Обучение» и «Админ»;
+- админ видит список пользователей с агрегированной статистикой;
+- админ может создавать, редактировать, публиковать и удалять учебные уроки;
+- пароли пользователей никогда не читаются и не передаются в браузер;
+- доступ к админским данным проверяется в PostgreSQL/RLS, а не только скрытием кнопок.
+
+Перед первым входом администратора:
+1. Создай обычный аккаунт администратора в Supabase Auth.
+2. В `supabase/migration_v10_admin_learning.sql` в самом конце замени `ВАШ_ADMIN_EMAIL` на email этого аккаунта и выполни соответствующий INSERT.
+3. После назначения роли выйди и войди в аккаунт администратора заново.
+
+Не вставляй пароль администратора в код, SQL-файл или GitHub.

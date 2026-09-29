@@ -130,6 +130,7 @@ function handleAuthUser(user,event){
   currentUser=user||null;
   window.currentUser=currentUser;
   updateProfileUI();
+  document.dispatchEvent(new CustomEvent('auth:ready'));
 
   if(currentUser && event==='SIGNED_IN' && window.emailConfirmationCallbackPending){
     window.emailConfirmationCallbackPending=false;
@@ -196,6 +197,7 @@ function initAuth(){
     currentUser=user;
     window.currentUser=user;
     updateProfileUI();
+    document.dispatchEvent(new CustomEvent('auth:ready'));
 
     if(cloudHydrationUserId!==user.id){
       setTimeout(()=>hydrateCloudUser(user),0);
