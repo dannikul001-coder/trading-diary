@@ -4,8 +4,9 @@ function saveLocalOnly(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 function clone(v){return JSON.parse(JSON.stringify(v))}
-function loadState(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return clone(DEFAULT_DATA);try{const s=JSON.parse(raw);return {...clone(DEFAULT_DATA),...s,settings:{...clone(DEFAULT_DATA).settings,...(s.settings||{}),appearance:{...clone(DEFAULT_DATA).settings.appearance,...((s.settings||{}).appearance||{})}},mainGoal:{...clone(DEFAULT_DATA).mainGoal,...(s.mainGoal||{})},trades:Array.isArray(s.trades)?s.trades:[],notes:Array.isArray(s.notes)?s.notes:[],plans:Array.isArray(s.plans)?s.plans:[],goals:Array.isArray(s.goals)?s.goals:[],journal:s.journal||{},deposits:Array.isArray(s.deposits)?s.deposits:[],importHistory:Array.isArray(s.importHistory)?s.importHistory:[]}}catch{return clone(DEFAULT_DATA)}}
+function loadState(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return clone(DEFAULT_DATA);try{const s=JSON.parse(raw);return {...clone(DEFAULT_DATA),...s,settings:{...clone(DEFAULT_DATA).settings,...(s.settings||{}),appearance:{...clone(DEFAULT_DATA).settings.appearance,...((s.settings||{}).appearance||{})}},profile:{...clone(DEFAULT_DATA).profile,...(s.profile||{})},mainGoal:{...clone(DEFAULT_DATA).mainGoal,...(s.mainGoal||{})},trades:Array.isArray(s.trades)?s.trades:[],notes:Array.isArray(s.notes)?s.notes:[],plans:Array.isArray(s.plans)?s.plans:[],goals:Array.isArray(s.goals)?s.goals:[],journal:s.journal||{},deposits:Array.isArray(s.deposits)?s.deposits:[],importHistory:Array.isArray(s.importHistory)?s.importHistory:[]}}catch{return clone(DEFAULT_DATA)}}
 let state=loadState();
+ensureTradeSyncKeys(state.trades);
 function saveState(){
   saveLocalOnly();
   // Only mark cloud data dirty for the currently authenticated user.
@@ -55,8 +56,22 @@ function isCloudUser(){return !!(window.currentUser&&window.supabaseClient&&wind
 function cloud(){return window.supabaseClient}
 function notifyState(){saveLocalOnly();document.dispatchEvent(new CustomEvent('state:changed'))}
 
+function stableTradeBaseKey(t){
+  const external=String(t?.externalId||'').trim();
+  if(external)return `ext:${external}`;
+  return `sig:${String(t?.date||'')}|${String(t?.time||'')}|${String(t?.instrument||'').trim().toLowerCase()}|${String(t?.type||'CALL')}|${String(t?.expiration||'')}|${Number(t?.stake||0).toFixed(8)}|${Number(t?.payout||0).toFixed(8)}|${String(t?.result||'draw')}|${String(t?.closeDate||'')}|${String(t?.closeTime||'')}|${Number(t?.openPrice??0).toFixed(10)}|${Number(t?.closePrice??0).toFixed(10)}`;
+}
+function ensureTradeSyncKeys(trades){
+  const used=new Set();
+  for(const t of trades||[]){
+    let key=String(t?.syncKey||'').trim() || stableTradeBaseKey(t);
+    if(used.has(key)){let n=2;while(used.has(`${key}#${n}`))n++;key=`${key}#${n}`}
+    t.syncKey=key;used.add(key);
+  }
+}
 function tradeToCloudRow(t,userId){
-  const row={...(UUID_RE.test(String(t.id||''))?{id:t.id}:{}),user_id:userId,trade_date:t.date,trade_time:t.time||null,instrument:t.instrument,instrument_category:t.category||'Custom',direction:t.type||'CALL',expiration:t.expiration||null,stake:Number(t.stake)||0,payout:Number(t.payout)||0,result:t.result||'draw',strategy:t.strategy||null,account:t.platform||'Manual',note:t.note||null};
+  if(!t.syncKey)t.syncKey=stableTradeBaseKey(t);
+  const row={...(UUID_RE.test(String(t.id||''))?{id:t.id}:{}),user_id:userId,sync_key:t.syncKey,trade_date:t.date,trade_time:t.time||null,instrument:t.instrument,instrument_category:t.category||'Custom',direction:t.type||'CALL',expiration:t.expiration||null,stake:Number(t.stake)||0,payout:Number(t.payout)||0,result:t.result||'draw',strategy:t.strategy||null,account:t.platform||'Manual',note:t.note||null};
   if(cloudTradeOptionalColumns.external_trade_id&&cloudTradeExternalSupported&&t.externalId)row.external_trade_id=t.externalId;
   if(cloudTradeOptionalColumns.close_trade_date)row.close_trade_date=t.closeDate||null;
   if(cloudTradeOptionalColumns.close_trade_time)row.close_trade_time=t.closeTime||null;
@@ -96,6 +111,7 @@ function cloudRowToInstrument(r){return{id:r.id,name:r.name||'',symbol:r.symbol|
 function cloudRowToStrategy(r){return{id:r.id,name:r.name||'',description:r.description||'',custom:true}}
 function depositToCloudRow(d,userId){return{...(UUID_RE.test(String(d?.id||''))?{id:d.id}:{}),user_id:userId,operation_date:d?.date||null,operation_time:d?.time||'00:00',amount:Number(d?.amount)||0,note:d?.note||''}}
 function cloudRowToDeposit(r){return{id:r.id,date:r.operation_date||'',time:r.operation_time?String(r.operation_time).slice(0,5):'00:00',amount:Number(r.amount)||0,note:r.note||''}}
+function cloudRowToProfile(r){return{displayName:r?.display_name||'',avatarUrl:r?.avatar_url||''}}
 
 async function cloudSelectAll(table, userId, columns='*', orderBy='created_at', ascending=true){
   if(!cloud()||!userId)return [];
@@ -159,70 +175,24 @@ async function loadCloudTrades(userId,options={}){
 
 async function syncTradesToCloud(userId){
   if(!cloud()||!userId||cloudSyncBusy)return false;
-
   cloudSyncBusy=true;
   try{
-    let remoteRows;
-    try{
-      remoteRows=await cloudSelectAll('trades',userId,'id,external_trade_id','created_at',true);
-    }catch(error){
-      if(['42703','PGRST204'].includes(error?.code)){
-        cloudTradeExternalSupported=false;
-        remoteRows=await cloudSelectAll('trades',userId,'id','created_at',true);
-      }else throw error;
-    }
-    const remoteIds=new Set(remoteRows.map(row=>row.id));
-    const remoteByExternal=cloudTradeExternalSupported ? new Map(remoteRows.filter(row=>row.external_trade_id).map(row=>[String(row.external_trade_id),row.id])) : new Map();
-
-    for(const trade of state.trades){
-      const originalId=String(trade?.id||'');
-      const externalId=String(trade?.externalId||'').trim();
-      const matchedExternalId=externalId && remoteByExternal.has(externalId) ? remoteByExternal.get(externalId) : '';
-      const safeId=matchedExternalId || (UUID_RE.test(originalId) && remoteIds.has(originalId) ? originalId : '');
-      const row=tradeToCloudRow(trade,userId);
-
-      if(safeId) row.id=safeId;
-      else delete row.id;
-
-      let result;
-      if(safeId){
-        result=await cloud().from('trades').update(row).eq('id',safeId).eq('user_id',userId).select().single();
-      }else{
-        result=await cloud().from('trades').insert(row).select().single();
-      }
-
-      // The frontend can be newer than the live Supabase schema. If an optional
-      // trade column has not been migrated yet, disable only that column and retry
-      // the same operation instead of breaking the whole sync loop.
+    ensureTradeSyncKeys(state.trades);
+    const batchSize=250;
+    for(let i=0;i<state.trades.length;i+=batchSize){
+      const batch=state.trades.slice(i,i+batchSize).map(t=>tradeToCloudRow(t,userId));
+      let result=await cloud().from('trades').upsert(batch,{onConflict:'user_id,sync_key'}).select('id,sync_key');
       if(result.error){
         const missingColumn=missingCloudColumn(result.error);
         if(disableMissingTradeColumn(missingColumn)){
-          const retryRow=tradeToCloudRow(trade,userId);
-          if(safeId)retryRow.id=safeId;
-          else delete retryRow.id;
-          result=safeId
-            ?await cloud().from('trades').update(retryRow).eq('id',safeId).eq('user_id',userId).select().single()
-            :await cloud().from('trades').insert(retryRow).select().single();
+          const retryBatch=batch.map(row=>{const x={...row};delete x[missingColumn];return x});
+          result=await cloud().from('trades').upsert(retryBatch,{onConflict:'user_id,sync_key'}).select('id,sync_key');
         }
       }
-
       if(result.error)throw result.error;
-
-      if(result.data?.id){
-        trade.id=result.data.id;
-        cloudKnown.trades.add(result.data.id);
-        remoteIds.delete(result.data.id);
-        if(externalId) remoteByExternal.delete(externalId);
-      }
+      const byKey=new Map((result.data||[]).map(r=>[String(r.sync_key),r.id]));
+      for(const t of state.trades){const id=byKey.get(String(t.syncKey));if(id)t.id=id;}
     }
-
-    const stale=[...remoteIds].filter(id=>UUID_RE.test(String(id)));
-    if(stale.length){
-      const {error}=await cloud().from('trades').delete().eq('user_id',userId).in('id',stale);
-      if(error)throw error;
-      stale.forEach(id=>cloudKnown.trades.delete(id));
-    }
-
     saveLocalOnly();
     localStorage.removeItem('tradingDiary_cloudTradesDirty');
     return true;
@@ -231,7 +201,6 @@ async function syncTradesToCloud(userId){
     return false;
   }finally{cloudSyncBusy=false}
 }
-
 async function syncNotesRow(item,userId,remoteIds=new Set()){
   const row=noteToCloudRow(item,userId);
   const originalId=String(item?.id||'');
@@ -305,12 +274,8 @@ async function syncRows(table,rows,toRow,knownKey,userId=window.currentUser?.id)
     }
   }
 
-  const stale=[...remoteIds].filter(id=>UUID_RE.test(String(id)));
-  if(stale.length){
-    const {error}=await cloud().from(table).delete().eq('user_id',userId).in('id',stale);
-    if(error)throw error;
-    stale.forEach(id=>cloudKnown[knownKey].delete(id));
-  }
+  // IMPORTANT: synchronization never deletes remote rows merely because a device
+  // does not currently have them. Explicit delete actions call Supabase DELETE directly.
 }
 
 async function loadCloudWorkspace(userId){
@@ -325,7 +290,7 @@ async function loadCloudWorkspace(userId){
       return false;
     }
   }
-  const [cloudNotes,cloudPlans,cloudGoals,settings,mainGoal,cloudInstruments,cloudStrategies,cloudJournals,cloudDeposits]=await Promise.all([
+  const [cloudNotes,cloudPlans,cloudGoals,settings,mainGoal,cloudInstruments,cloudStrategies,cloudJournals,profileRow,cloudDeposits]=await Promise.all([
     cloudSelectAll('notes',userId,'*','created_at',false),
     cloudSelectAll('plans',userId,'*','plan_date',false),
     cloudSelectAll('goals',userId,'*','created_at',false),
@@ -334,6 +299,7 @@ async function loadCloudWorkspace(userId){
     cloudSelectAll('instruments',userId,'*','created_at',true),
     cloudSelectAll('strategies',userId,'*','created_at',true),
     cloudSelectAll('journals',userId,'*','journal_date',false),
+    cloud().from('profiles').select('id,display_name,avatar_url').eq('id',userId).maybeSingle(),
     cloudBalanceSupported?cloudSelectAll('balance_operations',userId,'*','operation_date',true).catch(error=>{
       if(['42P01','PGRST205'].includes(error?.code)){cloudBalanceSupported=false;return [];}
       throw error;
@@ -350,7 +316,9 @@ async function loadCloudWorkspace(userId){
   const builtInStrategies=DEFAULT_DATA.strategies.filter(s=>typeof s==='string');state.strategies=[...builtInStrategies,...cloudStrategies.map(cloudRowToStrategy)];
   const j={};cloudJournalsRows.forEach(r=>{j[r.journal_date]={id:r.id,text:r.text||'',worked:r.worked||'',failed:r.failed||'',lesson:r.lesson||''}});state.journal=j;
   state.deposits=cloudDepositRows.map(cloudRowToDeposit);
+  if(profileRow?.data)state.profile=cloudRowToProfile(profileRow.data);
   notifyState();
+  if(typeof updateProfileUI==='function')updateProfileUI();
   cloudLoaded.notes=cloudLoaded.plans=cloudLoaded.goals=cloudLoaded.settings=cloudLoaded.mainGoal=cloudLoaded.instruments=cloudLoaded.strategies=cloudLoaded.journal=true;
   localStorage.removeItem('tradingDiary_cloudWorkspaceDirty');
   return true;
@@ -378,6 +346,10 @@ async function syncWorkspace(userId=window.currentUser?.id,force=false){
     };
     const sr=await cloud().from('settings').upsert(settingsRow,{onConflict:'user_id'});
     if(sr.error)throw sr.error;
+
+    const profile=state.profile||{};
+    const pr=await cloud().from('profiles').upsert({id:userId,display_name:profile.displayName||null,avatar_url:profile.avatarUrl||null},{onConflict:'id'});
+    if(pr.error)throw pr.error;
 
     const g=state.mainGoal||{};
     const mr=await cloud().from('main_goals').upsert({
@@ -427,12 +399,6 @@ async function syncWorkspace(userId=window.currentUser?.id,force=false){
         remoteJournalIds.delete(rr.data.id);
       }
     }
-    const staleJournalIds=[...remoteJournalIds].filter(id=>UUID_RE.test(String(id)));
-    if(staleJournalIds.length){
-      const dr=await cloud().from('journals').delete().eq('user_id',userId).in('id',staleJournalIds);
-      if(dr.error)throw dr.error;
-    }
-
     saveLocalOnly();
     localStorage.removeItem('tradingDiary_cloudWorkspaceDirty');
     return true;

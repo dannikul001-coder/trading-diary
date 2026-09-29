@@ -36,6 +36,7 @@ async function hydrateCloudUser(user){
       if(typeof loadCloudWorkspace==='function'){
         await loadCloudWorkspace(userId);
       }
+      await loadProfileCloud(userId);
 
       window.cloudDataReady=true;
       document.dispatchEvent(new CustomEvent('cloud:data-ready'));
@@ -207,18 +208,109 @@ window.getCurrentUser=()=>currentUser;
 function updateProfileUI(){
   const b=document.getElementById('profileBtn');
   if(!b)return;
-
   const name=b.querySelector('.profile-name');
   const avatar=b.querySelector('.avatar');
-
   if(currentUser){
+    const profile=state.profile||{};
     const email=currentUser.email||'Профиль';
-    name.textContent=email;
-    avatar.textContent=(email[0]||'U').toUpperCase();
+    name.textContent=profile.displayName||email;
+    if(profile.avatarUrl){
+      avatar.textContent='';
+      avatar.style.backgroundImage=`url("${profile.avatarUrl.replace(/"/g,'')}")`;
+      avatar.style.backgroundSize='cover';
+      avatar.style.backgroundPosition='center';
+    }else{
+      avatar.style.backgroundImage='';
+      avatar.textContent=(profile.displayName||email||'U').trim().charAt(0).toUpperCase();
+    }
   }else{
     name.textContent='Войти';
+    avatar.style.backgroundImage='';
     avatar.textContent='TD';
   }
+}
+
+async function loadProfileCloud(userId){
+  if(!supabaseClient||!userId)return;
+  try{
+    const {data,error}=await supabaseClient.from('profiles').select('id,display_name,avatar_url').eq('id',userId).maybeSingle();
+    if(error)throw error;
+    state.profile={displayName:data?.display_name||'',avatarUrl:data?.avatar_url||''};
+    saveLocalOnly();
+    updateProfileUI();
+  }catch(error){console.error('Profile load:',error)}
+}
+
+function resizeAvatar(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(reader.error||new Error('Не удалось прочитать изображение'));
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error('Файл не является изображением'));
+      img.onload=()=>{
+        const max=320,scale=Math.min(1,max/Math.max(img.width,img.height));
+        const c=document.createElement('canvas');
+        c.width=Math.max(1,Math.round(img.width*scale));
+        c.height=Math.max(1,Math.round(img.height*scale));
+        const ctx=c.getContext('2d');
+        ctx.drawImage(img,0,0,c.width,c.height);
+        resolve(c.toDataURL('image/jpeg',.82));
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function openProfileModal(){
+  if(!currentUser){openAuthModal();return;}
+  const profile=state.profile||{};
+  const displayName=profile.displayName||'';
+  const avatarHtml=profile.avatarUrl?`<img src="${escapeAttr(profile.avatarUrl)}" alt="">`:`<span>${escapeHtml((displayName||currentUser.email||'U').charAt(0).toUpperCase())}</span>`;
+  document.getElementById('modalContent').innerHTML=`
+    <div class="profile-editor">
+      <div class="profile-editor-head"><div><div class="eyebrow">ACCOUNT / PROFILE</div><h2>Оформление профиля</h2><p class="sub">Никнейм и аватарка сохраняются в облачном профиле и доступны на других устройствах.</p></div></div>
+      <div class="profile-avatar-editor"><div class="profile-avatar-preview" id="profileAvatarPreview">${avatarHtml}</div><div class="profile-avatar-actions"><input id="profileAvatarInput" type="file" accept="image/*" hidden><button type="button" class="secondary-btn" id="profileAvatarChoose">Изменить аватарку</button><button type="button" class="ghost-btn" id="profileAvatarRemove">Удалить фото</button><small>Изображение автоматически сжимается.</small></div></div>
+      <label class="profile-field"><span>Никнейм</span><input id="profileDisplayName" maxlength="32" value="${escapeAttr(displayName)}" placeholder="Например, Danni"></label>
+      <div class="profile-account-line"><span>Email</span><b>${escapeHtml(currentUser.email||'')}</b></div>
+      <div class="modal-actions"><button type="button" class="secondary-btn" id="profileClose">Закрыть</button><button type="button" class="primary-btn" id="profileSave">Сохранить профиль</button></div>
+      <div class="profile-account-actions"><button type="button" class="danger-btn" id="profileLogout">Выйти из аккаунта</button></div>
+    </div>`;
+  openModal();
+  let avatarData=profile.avatarUrl||'';
+  const input=document.getElementById('profileAvatarInput'),preview=document.getElementById('profileAvatarPreview');
+  document.getElementById('profileAvatarChoose').onclick=()=>input.click();
+  input.onchange=async()=>{
+    const file=input.files?.[0];
+    if(!file)return;
+    try{avatarData=await resizeAvatar(file);preview.innerHTML=`<img src="${escapeAttr(avatarData)}" alt="">`}
+    catch(e){toast(e.message||'Не удалось обработать фото',true)}
+  };
+  document.getElementById('profileAvatarRemove').onclick=()=>{
+    avatarData='';
+    preview.innerHTML=`<span>${escapeHtml((document.getElementById('profileDisplayName').value||currentUser.email||'U').charAt(0).toUpperCase())}</span>`;
+  };
+  document.getElementById('profileClose').onclick=closeModal;
+  document.getElementById('profileSave').onclick=async()=>{
+    const btn=document.getElementById('profileSave');
+    btn.disabled=true;
+    const next={displayName:String(document.getElementById('profileDisplayName').value||'').trim().slice(0,32),avatarUrl:avatarData};
+    if(supabaseClient&&currentUser){
+      const {error}=await supabaseClient.from('profiles').upsert({id:currentUser.id,display_name:next.displayName||null,avatar_url:next.avatarUrl||null},{onConflict:'id'});
+      if(error){btn.disabled=false;toast(error.message||'Не удалось сохранить профиль',true);return;}
+    }
+    state.profile=next;
+    saveLocalOnly();
+    updateProfileUI();
+    closeModal();
+    toast('Профиль сохранён');
+  };
+  document.getElementById('profileLogout').onclick=async()=>{
+    closeModal();
+    openAuthModal();
+    setTimeout(()=>document.getElementById('logoutBtn')?.click(),0);
+  };
 }
 
 function openAuthModal(){
@@ -306,5 +398,5 @@ document.addEventListener('DOMContentLoaded',()=>{
   initAuth();
 
   const b=document.getElementById('profileBtn');
-  if(b)b.addEventListener('click',openAuthModal);
+  if(b)b.addEventListener('click',openProfileModal);
 });

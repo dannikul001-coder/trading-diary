@@ -18,7 +18,7 @@ const DEFAULT_DATA = {
   ].map(([category,name]) => ({id: cryptoId(), category, name, custom:false})),
   strategies: ['Без стратегии','Trend','Breakout','Support / Resistance','Price Action','News','Scalping'],
   settings: {currency:'USD', timezone:Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', startingBalance:0, dateFormat:'DD.MM.YYYY', appearance:{preset:'midnight',theme:'dark',primary:'#0b1220',secondary:'#131d2d',accent:'teal'}},
-  trades: [], notes: [], plans: [], goals: [], journal: {}, mainGoal: {title:'Построить стабильную торговую систему',description:'Долгосрочная цель: постепенно прийти к заданному балансу, win rate и дисциплине без разрушения риск-менеджмента.',targetBalance:10000,targetWinRate:60,targetTrades:500,targetPnl:5000}
+  trades: [], notes: [], plans: [], goals: [], journal: {}, deposits: [], profile: {displayName:'',avatarUrl:''}, mainGoal: {title:'Построить стабильную торговую систему',description:'Долгосрочная цель: постепенно прийти к заданному балансу, win rate и дисциплине без разрушения риск-менеджмента.',targetBalance:10000,targetWinRate:60,targetTrades:500,targetPnl:5000}
 };
 function cryptoId(){return 'id_'+Math.random().toString(36).slice(2)+Date.now().toString(36)}
 const TZ_FALLBACK=['UTC','Europe/London','Europe/Berlin','Europe/Moscow','Europe/Kyiv','Europe/Paris','Asia/Dubai','Asia/Tbilisi','Asia/Almaty','Asia/Tashkent','Asia/Tokyo','Asia/Shanghai','Asia/Singapore','Australia/Sydney','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Toronto','America/Sao_Paulo','Africa/Cairo','Africa/Johannesburg','Asia/Kolkata','Asia/Bangkok','Asia/Jakarta','Pacific/Auckland'];

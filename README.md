@@ -18,3 +18,17 @@
 Откройте `index.html` через локальный сервер или используйте GitHub Pages.
 
 GitHub Pages лучше подключать только после локальной проверки регистрации, входа, создания сделки, P&L и выхода из аккаунта.
+
+## Safe cloud sync v5
+
+Run `supabase/migration_v5_safe_trade_sync.sql` once in Supabase SQL Editor before importing the clean trade history.
+
+Normal synchronization uses a stable per-user `sync_key` and batched UPSERTs. Normal sync never deletes remote trades because a device has fewer rows. Explicit deletes are recorded as cloud tombstones (`deleted_at`) so another device cannot resurrect the deleted trade.
+
+Recommended clean start: sign in with the intended account, clear the workspace once if old local data must also be removed, then use Import Center to import the XLSX/CSV history. The provided terminal export format is supported, including Russian headers such as `Направление`, `Сделка`, `Экспирация`, `Актив`, `Время открытия`, `Время закрытия`, `Цена открытия`, `Цена закрытия`, `Размер сделки`, `Прибыль`, `Валюта`.
+
+
+## V19 — профиль и пополнения
+- Пополнения баланса хранятся в `balance_operations`, принимают сотые (`0.01`) и показываются историей с редактированием/удалением.
+- Профиль справа сверху позволяет менять никнейм и аватарку; данные сохраняются в `profiles` и доступны на других устройствах.
+- Перед использованием V19 один раз выполнить `supabase/migration_v8_profile_deposits.sql`.

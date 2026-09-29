@@ -69,6 +69,14 @@ function buildImportedTrade(raw,mapping,headers){
     currency:String(val('currency')||'').trim()
   };
 }
+function assignImportSyncKeys(rows){
+  const counts=new Map();
+  for(const t of rows){
+    const base=t.externalId ? `ext:${t.externalId}` : `sig:${t.date}|${t.time}|${String(t.instrument).trim().toLowerCase()}|${t.type}|${t.expiration||''}|${Number(t.stake||0).toFixed(8)}|${Number(t.payout||0).toFixed(8)}|${t.result}|${t.closeDate||''}|${t.closeTime||''}|${Number(t.openPrice??0).toFixed(10)}|${Number(t.closePrice??0).toFixed(10)}`;
+    const n=(counts.get(base)||0)+1; counts.set(base,n); t.syncKey=n===1?base:`${base}#${n}`;
+  }
+  return rows;
+}
 function readImportFile(file){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
@@ -80,7 +88,7 @@ function readImportFile(file){
           const lines=text.split(/\r?\n/).filter(x=>x.trim()); if(!lines.length)throw new Error('empty');
           const parseLine=line=>{let out=[],cur='',q=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'&&line[i+1]==='"'){cur+='"';i++;continue}if(c==='"'){q=!q;continue}if(c===','&&!q){out.push(cur);cur='';continue}cur+=c}out.push(cur);return out};
           const headers=parseLine(lines[0]); const mapping=detectImportMapping(headers); const rows=lines.slice(1).map(parseLine).map(r=>buildImportedTrade(r,mapping,headers)).filter(Boolean);
-          resolve({file:file.name,rows,headers,mapping}); return;
+          resolve({file:file.name,rows:assignImportSyncKeys(rows),headers,mapping}); return;
         }
         const wb=XLSX.read(reader.result,{type:'array',cellDates:true});
         const rows=[];
@@ -90,7 +98,7 @@ function readImportFile(file){
           const headers=data[0].map(v=>String(v??'')); const mapping=detectImportMapping(headers);
           for(const raw of data.slice(1)){const t=buildImportedTrade(raw,mapping,headers);if(t)rows.push(t)}
         });
-        resolve({file:file.name,rows});
+        resolve({file:file.name,rows:assignImportSyncKeys(rows)});
       }catch(err){reject(err)}
     };
     if(/\.csv$/i.test(file.name)||/text\/csv/i.test(file.type))reader.readAsText(file);else reader.readAsArrayBuffer(file);

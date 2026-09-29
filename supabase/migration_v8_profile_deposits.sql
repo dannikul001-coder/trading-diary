@@ -1,0 +1,52 @@
+-- Trading Diary V19: profile editing + durable balance top-ups
+-- Run once in Supabase SQL Editor on the live project.
+
+create table if not exists public.balance_operations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  operation_date date not null,
+  operation_time time default '00:00',
+  amount numeric(18,2) not null check (amount > 0),
+  note text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.profiles
+  add column if not exists display_name text;
+
+alter table public.profiles
+  add column if not exists avatar_url text;
+
+alter table public.balance_operations
+  add column if not exists note text;
+
+alter table public.balance_operations enable row level security;
+alter table public.profiles enable row level security;
+
+drop policy if exists profiles_own_data on public.profiles;
+create policy profiles_own_data on public.profiles
+  for all to authenticated
+  using ((select auth.uid()) = id)
+  with check ((select auth.uid()) = id);
+
+drop policy if exists balance_operations_select_own on public.balance_operations;
+drop policy if exists balance_operations_insert_own on public.balance_operations;
+drop policy if exists balance_operations_update_own on public.balance_operations;
+drop policy if exists balance_operations_delete_own on public.balance_operations;
+
+create policy balance_operations_select_own on public.balance_operations
+  for select to authenticated using ((select auth.uid()) = user_id);
+create policy balance_operations_insert_own on public.balance_operations
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy balance_operations_update_own on public.balance_operations
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+create policy balance_operations_delete_own on public.balance_operations
+  for delete to authenticated using ((select auth.uid()) = user_id);
+
+create index if not exists balance_operations_user_date_idx
+  on public.balance_operations(user_id, operation_date, operation_time);
+
+notify pgrst, 'reload schema';
