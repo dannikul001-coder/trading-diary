@@ -6,7 +6,7 @@ const DEFAULT_DATA = {
     'Не каждая сделка должна быть сделана.'
   ],
   currencies: [
-    ['USD','$'],['EUR','€'],['GBP','£'],['JPY','¥'],['CHF','CHF'],['CAD','C$'],['AUD','A$'],['NZD','NZ$'],['CNY','¥'],['HKD','HK$'],['SGD','S$'],['SEK','kr'],['NOK','kr'],['DKK','kr'],['PLN','zł'],['CZK','Kč'],['TRY','₺'],['AED','د.إ'],['UAH','₴'],['GEL','₾'],['KZT','₸']
+    ['USD','$'],['EUR','€'],['GBP','£'],['RUB','₽'],['JPY','¥'],['CHF','CHF'],['CAD','C$'],['AUD','A$'],['NZD','NZ$'],['CNY','¥'],['HKD','HK$'],['SGD','S$'],['SEK','kr'],['NOK','kr'],['DKK','kr'],['ISK','kr'],['PLN','zł'],['CZK','Kč'],['HUF','Ft'],['RON','lei'],['BGN','лв'],['TRY','₺'],['UAH','₴'],['GEL','₾'],['KZT','₸'],['UZS','soʻm'],['AZN','₼'],['AMD','֏'],['BYN','Br'],['MDL','L'],['AED','د.إ'],['SAR','﷼'],['QAR','﷼'],['KWD','د.ك'],['BHD','ب.د'],['OMR','﷼'],['ILS','₪'],['INR','₹'],['PKR','₨'],['BDT','৳'],['THB','฿'],['VND','₫'],['MYR','RM'],['IDR','Rp'],['PHP','₱'],['KRW','₩'],['TWD','NT$'],['ZAR','R'],['BRL','R$'],['MXN','MX$'],['ARS','$'],['CLP','$'],['COP','$'],['PEN','S/'],['UYU','$U'],['EGP','£'],['MAD','د.م.'],['NGN','₦'],['KES','KSh'],['GHS','₵'],['TZS','TSh'],['XAU','Au'],['XAG','Ag']
   ],
   instruments: [
     ['Forex','EUR/USD'],['Forex','GBP/USD'],['Forex','USD/JPY'],['Forex','USD/CHF'],['Forex','AUD/USD'],['Forex','USD/CAD'],['Forex','NZD/USD'],['Forex','EUR/GBP'],['Forex','EUR/JPY'],['Forex','GBP/JPY'],['Forex','EUR/CHF'],['Forex','AUD/JPY'],['Forex','CAD/JPY'],['Forex','NZD/JPY'],['Forex','USD/TRY'],['Forex','USD/SGD'],['Forex','USD/MXN'],['Forex','USD/ZAR'],

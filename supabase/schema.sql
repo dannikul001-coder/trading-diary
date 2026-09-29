@@ -128,6 +128,17 @@ create table if not exists public.strategies (
   updated_at timestamptz default now()
 );
 
+create table if not exists public.balance_operations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  operation_date date not null,
+  operation_time time default '00:00',
+  amount numeric(18,2) not null check (amount > 0),
+  note text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 alter table public.profiles enable row level security;
 alter table public.settings enable row level security;
 alter table public.trades enable row level security;
@@ -138,9 +149,11 @@ alter table public.goals enable row level security;
 alter table public.main_goals enable row level security;
 alter table public.instruments enable row level security;
 alter table public.strategies enable row level security;
+alter table public.balance_operations enable row level security;
 
 -- Policies are intentionally omitted here because the production database
 -- already has them. This file documents the target schema; do not re-run it
 -- blindly against a live database.
 
 create index if not exists trades_user_external_trade_id_idx on public.trades(user_id, external_trade_id);
+create index if not exists balance_operations_user_date_idx on public.balance_operations(user_id, operation_date, operation_time);
