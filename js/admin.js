@@ -1,86 +1,104 @@
-let adminState={isAdmin:false,users:[],categories:[],lessons:[],category:'all'};
+let adminState={isAdmin:false,users:[],categories:[],lessons:[],category:'all',search:'',selectedUser:null,trainingProgress:[]};
+let trainingState={categories:[],lessons:[],category:'all',search:'',progress:[]};
 
-document.addEventListener('DOMContentLoaded',()=>{bindAdminUI(); refreshAdminAccess();});
+document.addEventListener('DOMContentLoaded',()=>{bindAdminUI();refreshAdminAccess();bindTrainingUI();});
 document.addEventListener('auth:ready',refreshAdminAccess);
+document.addEventListener('cloud:data-ready',()=>{if(adminState.isAdmin){loadAdminUsers();loadAdminLearning();}loadTrainingView();});
 
 async function refreshAdminAccess(){
-  const client=window.supabaseClient;
-  const user=window.currentUser;
-  if(!client||!user){setAdminVisibility(false);return;}
-  const {data,error}=await client.from('user_roles').select('role').eq('user_id',user.id).maybeSingle();
-  adminState.isAdmin=!error && data?.role==='admin';
-  setAdminVisibility(adminState.isAdmin);
-  if(adminState.isAdmin) loadAdminUsers();
+ const client=window.supabaseClient,user=window.currentUser;
+ if(!client||!user){setAdminVisibility(false);return;}
+ const {data,error}=await client.from('user_roles').select('role').eq('user_id',user.id).maybeSingle();
+ adminState.isAdmin=!error&&data?.role==='admin'; setAdminVisibility(adminState.isAdmin);
+ if(adminState.isAdmin){loadAdminUsers();loadAdminLearning();}
+ loadTrainingView();
 }
 function setAdminVisibility(ok){
-  document.querySelectorAll('.admin-only').forEach(x=>x.hidden=!ok);
-  const view=document.getElementById('view-admin'); if(view)view.hidden=!ok;
-  const training=document.querySelector('[data-view="training"]'); const tv=document.getElementById('view-training');
-  if(training) training.hidden=!ok; if(tv) tv.hidden=!ok;
-  if(!ok && typeof activeView!=='undefined' && activeView==='admin' && typeof showView==='function')showView('dashboard');
+ document.querySelectorAll('.admin-only').forEach(x=>x.hidden=!ok);
+ const view=document.getElementById('view-admin');if(view)view.hidden=!ok;
+ const training=document.querySelectorAll('[data-view="training"]');training.forEach(x=>x.hidden=!ok);
+ const tv=document.getElementById('view-training');if(tv)tv.hidden=!ok;
+ if(!ok&&typeof activeView!=='undefined'&&activeView==='admin'&&typeof showView==='function')showView('dashboard');
 }
 function bindAdminUI(){
-  document.addEventListener('click',e=>{
-    const t=e.target.closest('[data-admin-tab]');
-    if(t){document.querySelectorAll('[data-admin-tab]').forEach(x=>x.classList.toggle('active',x===t));document.querySelectorAll('[data-admin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.adminPanel===t.dataset.adminTab));if(t.dataset.adminTab==='learning')loadAdminLearning();}
-  });
-  document.getElementById('adminRefreshUsers')?.addEventListener('click',loadAdminUsers);
-  document.getElementById('adminRefreshLearning')?.addEventListener('click',loadAdminLearning);
-  document.getElementById('adminAddLesson')?.addEventListener('click',()=>adminLessonModal());
+ document.addEventListener('click',e=>{
+  const tab=e.target.closest('[data-admin-tab]');if(tab){document.querySelectorAll('[data-admin-tab]').forEach(x=>x.classList.toggle('active',x===tab));document.querySelectorAll('[data-admin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.adminPanel===tab.dataset.adminTab));if(tab.dataset.adminTab==='learning')loadAdminLearning();if(tab.dataset.adminTab==='users')loadAdminUsers();return;}
+  const act=e.target.closest('[data-admin-action]');if(act){handleAdminAction(act.dataset.adminAction,act.dataset.userId||'');return;}
+  const cat=e.target.closest('[data-admin-category]');if(cat){adminState.category=cat.dataset.adminCategory;renderAdminLearning();return;}
+  const edit=e.target.closest('[data-admin-edit]');if(edit){adminLessonModal(edit.dataset.adminEdit);return;}
+  const pub=e.target.closest('[data-admin-publish]');if(pub){toggleLessonPublish(pub.dataset.adminPublish);return;}
+  const del=e.target.closest('[data-admin-delete]');if(del){deleteAdminLesson(del.dataset.adminDelete);return;}
+  const preview=e.target.closest('[data-admin-preview]');if(preview){previewLesson(preview.dataset.adminPreview);return;}
+  const dup=e.target.closest('[data-admin-duplicate]');if(dup){duplicateLesson(dup.dataset.adminDuplicate);return;}
+  const tcat=e.target.closest('[data-training-category]');if(tcat){trainingState.category=tcat.dataset.trainingCategory;renderTrainingView();return;}
+  const topen=e.target.closest('[data-training-open]');if(topen){openTrainingLesson(topen.dataset.trainingOpen);return;}
+  if(e.target.id==='nextQuoteBtn')nextQuote();
+ });
+ document.getElementById('adminRefreshUsers')?.addEventListener('click',loadAdminUsers);
+ document.getElementById('adminRefreshLearning')?.addEventListener('click',loadAdminLearning);
+ document.getElementById('adminAddLesson')?.addEventListener('click',()=>adminLessonModal());
+ document.getElementById('adminAddCategory')?.addEventListener('click',adminCategoryModal);
+ document.getElementById('adminUserSearch')?.addEventListener('input',e=>{adminState.search=e.target.value.toLowerCase();renderAdminUsers();});
+ document.getElementById('trainingSearch')?.addEventListener('input',e=>{trainingState.search=e.target.value.toLowerCase();renderTrainingView();});
+}
+async function handleAdminAction(action,userId){
+ if(action==='open-user')return openAdminUser(userId);
+ if(action==='role-toggle')return toggleAdminRole(userId);
+ if(action==='admin-deposit')return adminBalanceModal(userId,'deposit');
+ if(action==='admin-withdrawal')return adminBalanceModal(userId,'withdrawal');
 }
 async function loadAdminUsers(){
-  if(!adminState.isAdmin||!window.supabaseClient)return;
-  const body=document.getElementById('adminUsersBody'); if(body)body.innerHTML='<tr><td colspan="8">Загрузка…</td></tr>';
-  const {data,error}=await window.supabaseClient.rpc('admin_list_users');
-  if(error){if(body)body.innerHTML=`<tr><td colspan="8">${escapeHtml(error.message||'Ошибка')}</td></tr>`;return;}
-  adminState.users=data||[]; renderAdminUsers();
+ if(!adminState.isAdmin||!window.supabaseClient)return;
+ const body=document.getElementById('adminUsersBody');if(body)body.innerHTML='<tr><td colspan="10">Загрузка…</td></tr>';
+ const {data,error}=await window.supabaseClient.rpc('admin_list_users');
+ if(error){if(body)body.innerHTML=`<tr><td colspan="10">${escapeHtml(error.message||'Ошибка')}</td></tr>`;return;}
+ adminState.users=data||[];renderAdminUsers();renderAdminOverview();
 }
 function renderAdminUsers(){
-  const body=document.getElementById('adminUsersBody'),empty=document.getElementById('adminUsersEmpty'); if(!body)return;
-  empty?.classList.toggle('show',!adminState.users.length); body.innerHTML=adminState.users.map(u=>`<tr><td><div class="admin-user-cell"><div class="admin-avatar">${u.avatar_url?`<img src="${escapeAttr(u.avatar_url)}" alt="">`:escapeHtml((u.display_name||u.email||'U').charAt(0).toUpperCase())}</div><div><b>${escapeHtml(u.display_name||'Без никнейма')}</b><small>${escapeHtml(u.email||'')}</small></div></div></td><td>${formatAdminDate(u.created_at)}</td><td>${formatAdminDate(u.last_sign_in_at)}</td><td>${Number(u.trades_count||0).toLocaleString('ru-RU')}</td><td class="${Number(u.pnl)>0?'positive':Number(u.pnl)<0?'negative':''}">${formatMoneyPlain(Number(u.pnl||0))}</td><td>${Number(u.win_rate||0).toFixed(1)}%</td><td>${Number(u.lessons_completed||0)}</td><td><span class="admin-role ${u.role==='admin'?'is-admin':''}">${u.role==='admin'?'ADMIN':'USER'}</span></td></tr>`).join('');
+ const body=document.getElementById('adminUsersBody');if(!body)return;
+ const q=adminState.search;const rows=adminState.users.filter(u=>!q||String(u.email||'').toLowerCase().includes(q)||String(u.display_name||'').toLowerCase().includes(q));
+ body.innerHTML=rows.map(u=>`<tr><td><div class="admin-user-cell"><div class="admin-avatar">${u.avatar_url?`<img src="${escapeAttr(u.avatar_url)}" alt="">`:escapeHtml((u.display_name||u.email||'U').charAt(0).toUpperCase())}</div><div><b>${escapeHtml(u.display_name||'Без никнейма')}</b><small>${escapeHtml(u.email||'')}</small></div></div></td><td class="admin-balance">${formatMoneyPlain(Number(u.current_balance||0))}</td><td class="positive">+${formatMoneyPlain(Number(u.deposits||0))}</td><td class="negative">−${formatMoneyPlain(Number(u.withdrawals||0))}</td><td>${Number(u.trades_count||0).toLocaleString('ru-RU')}</td><td class="${Number(u.pnl)>0?'positive':Number(u.pnl)<0?'negative':''}">${formatMoneyPlain(Number(u.pnl||0))}</td><td>${Number(u.win_rate||0).toFixed(1)}%</td><td>${formatAdminDate(u.last_sign_in_at)}</td><td><span class="admin-role ${u.role==='admin'?'is-admin':''}">${u.role==='admin'?'ADMIN':'USER'}</span></td><td><div class="admin-row-actions"><button class="mini-btn" data-admin-action="open-user" data-user-id="${u.id}">Открыть</button>${u.id!==window.currentUser?.id?`<button class="mini-btn" data-admin-action="role-toggle" data-user-id="${u.id}">${u.role==='admin'?'Снять admin':'Сделать admin'}</button>`:''}</div></td></tr>`).join('')||'<tr><td colspan="10">Ничего не найдено.</td></tr>';
+}
+function renderAdminOverview(){
+ const box=document.getElementById('adminOverview');if(!box)return;const u=adminState.users;
+ const trades=u.reduce((s,x)=>s+Number(x.trades_count||0),0),pnl=u.reduce((s,x)=>s+Number(x.pnl||0),0),bal=u.reduce((s,x)=>s+Number(x.current_balance||0),0),active=u.filter(x=>x.last_sign_in_at).length;
+ box.innerHTML=`<div class="admin-stat"><span>Пользователи</span><b>${u.length}</b><small>${active} с историей входов</small></div><div class="admin-stat"><span>Все сделки</span><b>${trades.toLocaleString('ru-RU')}</b><small>по всем аккаунтам</small></div><div class="admin-stat"><span>Совокупный P&amp;L</span><b>${formatMoneyPlain(pnl)}</b><small>торговый результат</small></div><div class="admin-stat"><span>Баланс участников</span><b>${formatMoneyPlain(bal)}</b><small>начальный + операции + P&amp;L</small></div>`;
+}
+async function openAdminUser(id){
+ const {data,error}=await window.supabaseClient.rpc('admin_user_detail',{target_user:id});if(error){toast(error.message,true);return;}adminState.selectedUser=data;renderAdminUserModal(data);
+}
+function renderAdminUserModal(d){
+ const u=d.user,s=d.summary||{};openModal();document.getElementById('modalContent').innerHTML=`<div class="admin-detail"><div class="admin-detail-head"><div><span class="eyebrow">USER CONTROL</span><h2>${escapeHtml(u.display_name||'Без никнейма')}</h2><p>${escapeHtml(u.email||'')}</p></div><span class="admin-role ${u.role==='admin'?'is-admin':''}">${u.role}</span></div><div class="admin-detail-kpis"><div><span>Баланс</span><b>${formatMoneyPlain(Number(s.current_balance||0))}</b></div><div><span>Сделки</span><b>${Number(s.trades||0).toLocaleString('ru-RU')}</b></div><div><span>P&amp;L</span><b>${formatMoneyPlain(Number(s.pnl||0))}</b></div><div><span>Win Rate</span><b>${Number(s.win_rate||0).toFixed(1)}%</b></div><div><span>Пополнения</span><b>${formatMoneyPlain(Number(s.deposits||0))}</b></div><div><span>Выводы</span><b>${formatMoneyPlain(Number(s.withdrawals||0))}</b></div></div><div class="admin-detail-actions"><button class="secondary-btn" data-admin-action="admin-deposit" data-user-id="${u.id}">＋ Пополнить</button><button class="secondary-btn" data-admin-action="admin-withdrawal" data-user-id="${u.id}">− Вывести</button></div><div class="admin-detail-section"><h3>Последние сделки</h3><div class="admin-mini-list">${(d.trades||[]).map(t=>`<div><span>${escapeHtml(t.date||'')} ${escapeHtml(String(t.time||'').slice(0,5))}</span><b>${escapeHtml(t.instrument||'')}</b><strong class="${Number(t.pnl)>=0?'positive':'negative'}">${formatMoneyPlain(Number(t.pnl||0))}</strong></div>`).join('')||'<small>Нет сделок</small>'}</div></div><div class="admin-detail-section"><h3>Последние операции</h3><div class="admin-mini-list">${(d.operations||[]).map(o=>`<div><span>${escapeHtml(o.date||'')}</span><b>${o.type==='withdrawal'?'Вывод':'Пополнение'}</b><strong>${o.type==='withdrawal'?'−':'+'}${formatMoneyPlain(Number(o.amount||0))}</strong></div>`).join('')||'<small>Нет операций</small>'}</div></div></div>`;
+}
+async function toggleAdminRole(id){const u=adminState.users.find(x=>x.id===id);if(!u)return;if(!confirm(`${u.role==='admin'?'Снять права администратора у':'Назначить администратором'} ${u.email}?`))return;const {error}=await window.supabaseClient.rpc('admin_set_user_role',{target_user:id,new_role:u.role==='admin'?'user':'admin'});if(error){toast(error.message,true);return;}toast('Роль обновлена');loadAdminUsers();}
+function adminBalanceModal(userId,type){
+ openSimpleModal(type==='deposit'?'Админ: пополнение':'Админ: вывод','Операция будет записана в баланс выбранного участника.',async f=>{const {error}=await window.supabaseClient.rpc('admin_add_balance_operation',{target_user:userId,op_type:type,op_amount:Number(f.amount),op_note:f.note||'',op_date:f.date||new Date().toISOString().slice(0,10),op_time:f.time||new Date().toTimeString().slice(0,5)});if(error){toast(error.message,true);return;}toast('Операция записана');openAdminUser(userId);loadAdminUsers();},[{name:'amount',label:'Сумма',type:'number',step:'0.01',required:true},{name:'date',label:'Дата',type:'date',value:new Date().toISOString().slice(0,10)},{name:'time',label:'Время',type:'time',value:new Date().toTimeString().slice(0,5)},{name:'note',label:'Комментарий',type:'text',value:''}]);
 }
 async function loadAdminLearning(){
-  if(!adminState.isAdmin||!window.supabaseClient)return;
-  const [c,l]=await Promise.all([
-    window.supabaseClient.from('learning_categories').select('*').order('sort_order'),
-    window.supabaseClient.from('learning_lessons').select('*').order('sort_order')
-  ]);
-  if(c.error||l.error){toast((c.error||l.error)?.message||'Ошибка обучения',true);return;}
-  adminState.categories=c.data||[];adminState.lessons=l.data||[];renderAdminLearning();
+ if(!adminState.isAdmin||!window.supabaseClient)return;const [c,l]=await Promise.all([window.supabaseClient.from('learning_categories').select('*').order('sort_order'),window.supabaseClient.from('learning_lessons').select('*').order('sort_order')]);if(c.error||l.error){toast((c.error||l.error)?.message||'Ошибка обучения',true);return;}adminState.categories=c.data||[];adminState.lessons=l.data||[];renderAdminLearning();loadTrainingView();
 }
 function renderAdminLearning(){
-  const cats=document.getElementById('adminCategoryList'), lessons=document.getElementById('adminLessons'); if(!cats||!lessons)return;
-  cats.innerHTML=`<button class="admin-category ${adminState.category==='all'?'active':''}" data-admin-category="all">Все уроки <b>${adminState.lessons.length}</b></button>`+adminState.categories.map(c=>`<button class="admin-category ${adminState.category===c.id?'active':''}" data-admin-category="${c.id}">${escapeHtml(c.title)} <b>${adminState.lessons.filter(l=>l.category_id===c.id).length}</b></button>`).join('');
-  cats.querySelectorAll('[data-admin-category]').forEach(b=>b.onclick=()=>{adminState.category=b.dataset.adminCategory;renderAdminLearning();});
-  const list=adminState.category==='all'?adminState.lessons:adminState.lessons.filter(l=>l.category_id===adminState.category);
-  lessons.innerHTML=list.map(l=>`<article class="admin-lesson-row"><div><span class="admin-status ${l.status}">${l.status==='published'?'ОПУБЛИКОВАН':'ЧЕРНОВИК'}</span><h4>${escapeHtml(l.title)}</h4><p>${escapeHtml(l.excerpt||'Без описания')}</p><small>${escapeHtml(l.lesson_type||'article')} · ${escapeHtml(adminState.categories.find(c=>c.id===l.category_id)?.title||'Без категории')}</small></div><div class="admin-row-actions"><button class="secondary-btn" data-admin-edit="${l.id}">Изменить</button><button class="ghost-btn" data-admin-publish="${l.id}">${l.status==='published'?'Снять':'Опубликовать'}</button><button class="danger-btn" data-admin-delete="${l.id}">Удалить</button></div></article>`).join('')||'<div class="empty-inline">Уроков пока нет.</div>';
-  lessons.querySelectorAll('[data-admin-edit]').forEach(b=>b.onclick=()=>adminLessonModal(b.dataset.adminEdit));
-  lessons.querySelectorAll('[data-admin-publish]').forEach(b=>b.onclick=()=>toggleLessonPublish(b.dataset.adminPublish));
-  lessons.querySelectorAll('[data-admin-delete]').forEach(b=>b.onclick=()=>deleteAdminLesson(b.dataset.adminDelete));
+ const cats=document.getElementById('adminCategoryList'),lessons=document.getElementById('adminLessons');if(!cats||!lessons)return;
+ cats.innerHTML=`<button class="admin-category ${adminState.category==='all'?'active':''}" data-admin-category="all">Все уроки <b>${adminState.lessons.length}</b></button>`+adminState.categories.map(c=>`<button class="admin-category ${adminState.category===c.id?'active':''}" data-admin-category="${c.id}">${escapeHtml(c.title)} <b>${adminState.lessons.filter(l=>l.category_id===c.id).length}</b></button>`).join('');
+ const list=adminState.category==='all'?adminState.lessons:adminState.lessons.filter(l=>l.category_id===adminState.category);
+ lessons.innerHTML=list.map(l=>`<article class="admin-lesson-row"><div><span class="admin-status ${l.status}">${l.status==='published'?'ОПУБЛИКОВАН':'ЧЕРНОВИК'}</span><h4>${escapeHtml(l.title)}</h4><p>${escapeHtml(l.excerpt||'Без описания')}</p><small>${escapeHtml(l.lesson_type||'article')} · ${escapeHtml(adminState.categories.find(c=>c.id===l.category_id)?.title||'Без категории')}</small></div><div class="admin-row-actions"><button class="secondary-btn" data-admin-preview="${l.id}">Просмотр</button><button class="secondary-btn" data-admin-edit="${l.id}">Изменить</button><button class="ghost-btn" data-admin-duplicate="${l.id}">Копия</button><button class="ghost-btn" data-admin-publish="${l.id}">${l.status==='published'?'Снять':'Опубликовать'}</button><button class="danger-btn" data-admin-delete="${l.id}">Удалить</button></div></article>`).join('')||'<div class="empty-inline">Уроков пока нет.</div>';
 }
-function adminLessonModal(id){
-  const l=adminState.lessons.find(x=>x.id===id)||{};
-  openSimpleModal(id?'Изменить урок':'Новый урок','Контент можно расширить позже: видео YouTube, статья, изображение, практика и тест.',async f=>{
-    const slug=(f.slug||f.title||'lesson').toLowerCase().trim().replace(/[^a-z0-9а-яё]+/gi,'-').replace(/^-+|-+$/g,'');
-    const row={title:f.title,slug:slug||`lesson-${Date.now()}`,excerpt:f.excerpt||'',lesson_type:f.lesson_type||'article',category_id:adminState.categories.find(c=>c.title===f.category_id)?.id || (adminState.categories.some(c=>c.id===f.category_id)?f.category_id:null),duration_minutes:f.duration?Number(f.duration):null,status:f.status||'draft',content:{videoUrl:f.videoUrl||'',article:f.article||'',imageUrl:f.imageUrl||'',practice:f.practice||'',quiz:f.quiz||''},created_by:window.currentUser?.id||null};
-    let res=id?await window.supabaseClient.from('learning_lessons').update(row).eq('id',id):await window.supabaseClient.from('learning_lessons').insert(row);
-    if(res.error){toast(res.error.message,true);return;} toast(id?'Урок обновлён':'Урок создан'); await loadAdminLearning();
-  },[
-    {name:'title',label:'Название',type:'text',value:l.title||'',required:true},
-    {name:'slug',label:'Slug',type:'text',value:l.slug||'',placeholder:'market-structure'},
-    {name:'category_id',label:'Категория',type:'select',options:adminState.categories.map(c=>c.title),value:adminState.categories.find(c=>c.id===l.category_id)?.title||adminState.categories[0]?.title||''},
-    {name:'lesson_type',label:'Тип',type:'select',options:['video','article','post','practice','interactive'],value:l.lesson_type||'article'},
-    {name:'duration',label:'Минуты',type:'number',value:l.duration_minutes||''},
-    {name:'status',label:'Статус',type:'select',options:['draft','published'],value:l.status||'draft'},
-    {name:'excerpt',label:'Краткое описание',type:'textarea',value:l.excerpt||''},
-    {name:'videoUrl',label:'YouTube / видео URL',type:'text',value:l.content?.videoUrl||''},
-    {name:'imageUrl',label:'URL изображения',type:'text',value:l.content?.imageUrl||''},
-    {name:'article',label:'Текст / теория',type:'textarea',value:l.content?.article||''},
-    {name:'practice',label:'Практика / задание',type:'textarea',value:l.content?.practice||''},
-    {name:'quiz',label:'Тест / вопросы',type:'textarea',value:l.content?.quiz||''}
-  ]);
-  // openSimpleModal returns the selected option text; normalize category after form serialization via wrapper below
-}
+function adminCategoryModal(id){const c=adminState.categories.find(x=>x.id===id)||{};openSimpleModal(id?'Изменить категорию':'Новая категория','Категории формируют левую навигацию обучения.',async f=>{const row={title:f.title,slug:(f.slug||f.title).toLowerCase().trim().replace(/[^a-z0-9а-яё]+/gi,'-'),description:f.description||'',sort_order:Number(f.sort_order)||0,published:f.published!=='false'};const r=id?await window.supabaseClient.from('learning_categories').update(row).eq('id',id):await window.supabaseClient.from('learning_categories').insert(row);if(r.error){toast(r.error.message,true);return;}toast('Категория сохранена');loadAdminLearning();},[{name:'title',label:'Название',type:'text',value:c.title||'',required:true},{name:'slug',label:'Slug',type:'text',value:c.slug||''},{name:'description',label:'Описание',type:'textarea',value:c.description||''},{name:'sort_order',label:'Порядок',type:'number',value:c.sort_order||0}]);}
+function adminLessonModal(id){const l=adminState.lessons.find(x=>x.id===id)||{};openSimpleModal(id?'Изменить урок':'Новый урок','Структура: видео → теория/пост → примеры → практика → тест → конспект.',async f=>{const cat=adminState.categories.find(c=>c.title===f.category_id);const row={title:f.title,slug:(f.slug||f.title).toLowerCase().trim().replace(/[^a-z0-9а-яё]+/gi,'-'),excerpt:f.excerpt||'',lesson_type:f.lesson_type||'article',category_id:cat?.id||null,duration_minutes:f.duration?Number(f.duration):null,status:f.status||'draft',content:{videoUrl:f.videoUrl||'',article:f.article||'',imageUrl:f.imageUrl||'',practice:f.practice||'',quiz:f.quiz||'',keyTakeaway:f.keyTakeaway||''},created_by:window.currentUser?.id||null};const r=id?await window.supabaseClient.from('learning_lessons').update(row).eq('id',id):await window.supabaseClient.from('learning_lessons').insert(row);if(r.error){toast(r.error.message,true);return;}toast(id?'Урок обновлён':'Урок создан');loadAdminLearning();},[{name:'title',label:'Название',type:'text',value:l.title||'',required:true},{name:'slug',label:'Slug',type:'text',value:l.slug||''},{name:'category_id',label:'Категория',type:'select',options:adminState.categories.map(c=>c.title),value:adminState.categories.find(c=>c.id===l.category_id)?.title||adminState.categories[0]?.title||''},{name:'lesson_type',label:'Тип',type:'select',options:['video','article','post','practice','interactive'],value:l.lesson_type||'article'},{name:'duration',label:'Минуты',type:'number',value:l.duration_minutes||''},{name:'status',label:'Статус',type:'select',options:['draft','published'],value:l.status||'draft'},{name:'excerpt',label:'Краткое описание',type:'textarea',value:l.excerpt||''},{name:'videoUrl',label:'YouTube / видео URL',type:'text',value:l.content?.videoUrl||''},{name:'imageUrl',label:'URL изображения',type:'text',value:l.content?.imageUrl||''},{name:'article',label:'Теория / пост',type:'textarea',value:l.content?.article||''},{name:'practice',label:'Практика / задание',type:'textarea',value:l.content?.practice||''},{name:'quiz',label:'Тест / вопросы',type:'textarea',value:l.content?.quiz||''},{name:'keyTakeaway',label:'Главный вывод',type:'textarea',value:l.content?.keyTakeaway||''}]);}
 async function toggleLessonPublish(id){const l=adminState.lessons.find(x=>x.id===id);if(!l)return;const {error}=await window.supabaseClient.from('learning_lessons').update({status:l.status==='published'?'draft':'published'}).eq('id',id);if(error)toast(error.message,true);else loadAdminLearning();}
+async function duplicateLesson(id){const l=adminState.lessons.find(x=>x.id===id);if(!l)return;const row={...l};delete row.id;row.title=`${l.title} — копия`;row.slug=`${l.slug}-copy-${Date.now()}`;row.status='draft';row.created_by=window.currentUser?.id||null;const {error}=await window.supabaseClient.from('learning_lessons').insert(row);if(error)toast(error.message,true);else{toast('Копия создана');loadAdminLearning();}}
 async function deleteAdminLesson(id){if(!confirm('Удалить урок?'))return;const {error}=await window.supabaseClient.from('learning_lessons').delete().eq('id',id);if(error)toast(error.message,true);else loadAdminLearning();}
+function previewLesson(id){openTrainingLesson(id);}
+
+async function loadTrainingView(){if(!window.supabaseClient||!window.currentUser||!adminState.isAdmin)return;const [c,l,p]=await Promise.all([window.supabaseClient.from('learning_categories').select('*').eq('published',true).order('sort_order'),window.supabaseClient.from('learning_lessons').select('*').eq('status','published').order('sort_order'),window.supabaseClient.from('learning_progress').select('*').eq('user_id',window.currentUser.id)]);if(c.error||l.error)return;trainingState.categories=c.data||[];trainingState.lessons=l.data||[];trainingState.progress=p.data||[];renderTrainingView();}
+function renderTrainingView(){const tabs=document.getElementById('trainingCategoryTabs'),grid=document.getElementById('trainingLessonGrid');if(!tabs||!grid)return;tabs.innerHTML=`<button class="active ${trainingState.category==='all'?'active':''}" data-training-category="all">Все <b>${trainingState.lessons.length}</b></button>`+trainingState.categories.map(c=>`<button class="${trainingState.category===c.id?'active':''}" data-training-category="${c.id}">${escapeHtml(c.title)} <b>${trainingState.lessons.filter(l=>l.category_id===c.id).length}</b></button>`).join('');
+ const q=trainingState.search;let list=trainingState.category==='all'?trainingState.lessons:trainingState.lessons.filter(l=>l.category_id===trainingState.category);if(q)list=list.filter(l=>(l.title+' '+(l.excerpt||'')).toLowerCase().includes(q));
+ grid.innerHTML=list.map((l,i)=>{const done=trainingState.progress.some(p=>p.lesson_id===l.id&&p.status==='completed');return `<article class="training-lesson card training-db-card" data-training-open="${l.id}"><div class="training-thumb thumb-${String.fromCharCode(97+(i%6))}"><span>${String(i+1).padStart(2,'0')}</span><b>${escapeHtml((l.lesson_type||'article').toUpperCase())}</b></div><div class="training-lesson-body"><span class="training-type">${done?'✓ ПРОЙДЕНО':'УРОК'}</span><h4>${escapeHtml(l.title)}</h4><p>${escapeHtml(l.excerpt||'Открыть материал и пройти практику.')}</p><div><span>${l.duration_minutes?l.duration_minutes+' мин':'Материал'}</span><span>•</span><span>${done?'Завершён':'Открыть →'}</span></div></div></article>`}).join('')||'<div class="empty-inline">Опубликованных уроков пока нет.</div>';
+ const roadmap=document.getElementById('trainingRoadmap');if(roadmap)roadmap.innerHTML=trainingState.categories.map((c,i)=>`<div class="${trainingState.category===c.id?'current':''}"><i>${String(i+1).padStart(2,'0')}</i><span>${escapeHtml(c.title)}</span><small>${trainingState.lessons.filter(l=>l.category_id===c.id).length} уроков</small></div>`).join('');
+ const completed=trainingState.progress.filter(x=>x.status==='completed').length,total=trainingState.lessons.length,percent=total?Math.round(completed/total*100):0;const pl=document.getElementById('trainingProgressLabel'),pb=document.getElementById('trainingProgressBar'),pt=document.getElementById('trainingProgressText');if(pl)pl.textContent=percent+'%';if(pb)pb.style.width=percent+'%';if(pt)pt.textContent=`Завершено ${completed} из ${total} уроков.`;
+}
+async function openTrainingLesson(id){const l=trainingState.lessons.find(x=>x.id===id)||adminState.lessons.find(x=>x.id===id);if(!l)return;const c=l.content||{};openModal();document.getElementById('modalContent').innerHTML=`<div class="training-lesson-modal"><span class="eyebrow">${escapeHtml(l.lesson_type||'lesson')}</span><h2>${escapeHtml(l.title)}</h2><p class="lesson-excerpt">${escapeHtml(l.excerpt||'')}</p>${c.videoUrl?`<div class="lesson-video-link"><a href="${escapeAttr(c.videoUrl)}" target="_blank" rel="noopener">▶ Открыть видео</a></div>`:''}${c.imageUrl?`<img class="lesson-image" src="${escapeAttr(c.imageUrl)}" alt="">`:''}<div class="lesson-block"><h3>Теория</h3><div>${escapeHtml(c.article||'Материал будет добавлен.')}</div></div><div class="lesson-block"><h3>Практика</h3><div>${escapeHtml(c.practice||'Практическое задание будет добавлено.')}</div></div><div class="lesson-block"><h3>Главный вывод</h3><div>${escapeHtml(c.keyTakeaway||'Сформулируй главный вывод после прохождения урока.')}</div></div><div class="modal-actions"><button class="primary-btn" id="completeLessonBtn">${trainingState.progress.some(p=>p.lesson_id===l.id&&p.status==='completed')?'Пройдено ✓':'Отметить как пройдено'}</button></div></div>`;document.getElementById('completeLessonBtn')?.addEventListener('click',async()=>{const {error}=await window.supabaseClient.from('learning_progress').upsert({user_id:window.currentUser.id,lesson_id:l.id,status:'completed',progress:100,updated_at:new Date().toISOString()});if(error){toast(error.message,true);return;}toast('Урок отмечен как пройденный');closeModal();loadTrainingView();});}
+function bindTrainingUI(){}
 function formatAdminDate(v){return v?new Intl.DateTimeFormat('ru-RU',{dateStyle:'short',timeStyle:'short'}).format(new Date(v)):'—';}
+function nextQuote(){const q=(DEFAULT_DATA.quotes||[]);if(!q.length)return;const idx=(Number(localStorage.getItem('tradingDiary_quoteIndex')||0)+1)%q.length;localStorage.setItem('tradingDiary_quoteIndex',idx);renderQuote(idx);}
+function renderQuote(idx){const q=(DEFAULT_DATA.quotes||[])[idx%(DEFAULT_DATA.quotes||[]).length];const box=document.getElementById('dashboardQuote');if(box)box.textContent=q;}

@@ -1,0 +1,94 @@
+-- Trading Diary Stage 2 V25: expanded admin control center
+-- Run once AFTER migration_v10_admin_learning.sql.
+
+create or replace function public.admin_list_users()
+returns table (
+  id uuid, email text, created_at timestamptz, last_sign_in_at timestamptz,
+  display_name text, avatar_url text, role text,
+  trades_count bigint, pnl numeric, win_rate numeric,
+  deposits numeric, withdrawals numeric, current_balance numeric,
+  lessons_completed bigint, last_trade_at timestamptz
+)
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  return query
+  select u.id, u.email::text, u.created_at, u.last_sign_in_at,
+    p.display_name, p.avatar_url, coalesce(ur.role,'user') as role,
+    coalesce(t.cnt,0), coalesce(t.pnl,0), coalesce(t.win_rate,0),
+    coalesce(b.deposits,0), coalesce(b.withdrawals,0),
+    coalesce(s.starting_balance,0)+coalesce(b.deposits,0)-coalesce(b.withdrawals,0)+coalesce(t.pnl,0),
+    coalesce(lp.completed,0), t.last_trade_at
+  from auth.users u
+  left join public.profiles p on p.id=u.id
+  left join public.user_roles ur on ur.user_id=u.id
+  left join lateral (
+    select count(*) cnt, coalesce(sum(x.pnl),0) pnl,
+      case when count(*) filter(where x.result in ('win','loss'))=0 then 0
+      else round(100.0*count(*) filter(where x.result='win')/count(*) filter(where x.result in ('win','loss')),2) end win_rate,
+      max((x.trade_date::text||' '||coalesce(x.trade_time::text,'00:00'))::timestamptz) last_trade_at
+    from public.trades x where x.user_id=u.id and x.deleted_at is null
+  ) t on true
+  left join lateral (
+    select coalesce(sum(case when operation_type='deposit' then amount else 0 end),0) deposits,
+           coalesce(sum(case when operation_type='withdrawal' then amount else 0 end),0) withdrawals
+    from public.balance_operations bo where bo.user_id=u.id
+  ) b on true
+  left join public.settings s on s.user_id=u.id
+  left join lateral (select count(*) completed from public.learning_progress x where x.user_id=u.id and x.status='completed') lp on true
+  order by u.created_at desc;
+end;
+$$;
+grant execute on function public.admin_list_users() to authenticated;
+
+create or replace function public.admin_user_detail(target_user uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare result jsonb;
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  select jsonb_build_object(
+    'user', jsonb_build_object('id',u.id,'email',u.email,'created_at',u.created_at,'last_sign_in_at',u.last_sign_in_at,'display_name',p.display_name,'avatar_url',p.avatar_url,'role',coalesce(ur.role,'user')),
+    'summary', jsonb_build_object('trades',coalesce(t.cnt,0),'pnl',coalesce(t.pnl,0),'win_rate',coalesce(t.win_rate,0),'deposits',coalesce(b.deposits,0),'withdrawals',coalesce(b.withdrawals,0),'starting_balance',coalesce(s.starting_balance,0),'current_balance',coalesce(s.starting_balance,0)+coalesce(b.deposits,0)-coalesce(b.withdrawals,0)+coalesce(t.pnl,0),'lessons_completed',coalesce(lp.completed,0)),
+    'trades', coalesce((select jsonb_agg(jsonb_build_object('id',x.id,'date',x.trade_date,'time',x.trade_time,'instrument',x.instrument,'result',x.result,'pnl',x.pnl,'stake',x.stake) order by x.trade_date desc,x.trade_time desc) from (select * from public.trades where user_id=target_user and deleted_at is null order by trade_date desc,trade_time desc limit 20) x),'[]'::jsonb),
+    'operations', coalesce((select jsonb_agg(jsonb_build_object('id',bo.id,'date',bo.operation_date,'time',bo.operation_time,'type',bo.operation_type,'amount',bo.amount,'note',bo.note) order by bo.operation_date desc,bo.operation_time desc) from (select * from public.balance_operations where user_id=target_user order by operation_date desc,operation_time desc limit 20) bo),'[]'::jsonb)
+  ) into result
+  from auth.users u left join public.profiles p on p.id=u.id left join public.user_roles ur on ur.user_id=u.id
+  left join public.settings s on s.user_id=u.id
+  left join lateral (select count(*) cnt,coalesce(sum(x.pnl),0) pnl,case when count(*) filter(where x.result in('win','loss'))=0 then 0 else round(100.0*count(*) filter(where x.result='win')/count(*) filter(where x.result in('win','loss')),2) end win_rate from public.trades x where x.user_id=u.id and x.deleted_at is null) t on true
+  left join lateral (select coalesce(sum(case when operation_type='deposit' then amount else 0 end),0) deposits,coalesce(sum(case when operation_type='withdrawal' then amount else 0 end),0) withdrawals from public.balance_operations where user_id=u.id) b on true
+  left join lateral (select count(*) completed from public.learning_progress where user_id=u.id and status='completed') lp on true
+  where u.id=target_user;
+  return result;
+end;
+$$;
+grant execute on function public.admin_user_detail(uuid) to authenticated;
+
+create or replace function public.admin_set_user_role(target_user uuid, new_role text)
+returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  if target_user=auth.uid() then raise exception 'cannot change your own role'; end if;
+  if new_role not in ('user','admin') then raise exception 'invalid role'; end if;
+  insert into public.user_roles(user_id,role) values(target_user,new_role)
+  on conflict(user_id) do update set role=excluded.role;
+  return true;
+end; $$;
+grant execute on function public.admin_set_user_role(uuid,text) to authenticated;
+
+create or replace function public.admin_add_balance_operation(target_user uuid, op_type text, op_amount numeric, op_note text default '', op_date date default current_date, op_time time default current_time)
+returns uuid language plpgsql security definer set search_path=public as $$
+declare new_id uuid;
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  if op_type not in ('deposit','withdrawal') then raise exception 'invalid operation type'; end if;
+  if op_amount is null or op_amount<=0 then raise exception 'amount must be positive'; end if;
+  insert into public.balance_operations(user_id,operation_date,operation_time,amount,operation_type,note)
+  values(target_user,op_date,op_time,round(op_amount,2),op_type,coalesce(op_note,'')) returning id into new_id;
+  return new_id;
+end; $$;
+grant execute on function public.admin_add_balance_operation(uuid,text,numeric,text,date,time) to authenticated;
+
+notify pgrst,'reload schema';
