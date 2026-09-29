@@ -98,7 +98,7 @@ function disableMissingTradeColumn(column){
   }
   return false;
 }
-function cloudRowToTrade(r){const t={id:r.id,externalId:r.external_trade_id||'',date:r.trade_date,time:r.trade_time?String(r.trade_time).slice(0,5):'',instrument:r.instrument,type:r.direction,expiration:r.expiration||'',stake:Number(r.stake)||0,payout:Number(r.payout)||0,result:r.result||'draw',strategy:r.strategy||'Без стратегии',platform:r.account||'Manual',state:'calm',note:r.note||'',category:r.instrument_category||'Custom',closeDate:r.close_trade_date||'',closeTime:r.close_trade_time?String(r.close_trade_time).slice(0,8):'',openPrice:r.open_price==null?null:Number(r.open_price),closePrice:r.close_price==null?null:Number(r.close_price),currency:r.source_currency||''};t.pnl=calculatePnl(t);return t}
+function cloudRowToTrade(r){const t={id:r.id,syncKey:r.sync_key||'',externalId:r.external_trade_id||'',date:r.trade_date,time:r.trade_time?String(r.trade_time).slice(0,5):'',instrument:r.instrument,type:r.direction,expiration:r.expiration||'',stake:Number(r.stake)||0,payout:Number(r.payout)||0,result:r.result||'draw',strategy:r.strategy||'Без стратегии',platform:r.account||'Manual',state:'calm',note:r.note||'',category:r.instrument_category||'Custom',closeDate:r.close_trade_date||'',closeTime:r.close_trade_time?String(r.close_trade_time).slice(0,8):'',openPrice:r.open_price==null?null:Number(r.open_price),closePrice:r.close_price==null?null:Number(r.close_price),currency:r.source_currency||'',photoData:r.photo_data||''};t.pnl=calculatePnl(t);return t}
 function noteToCloudRow(n,userId){return{...(UUID_RE.test(String(n?.id||''))?{id:n.id}:{}),user_id:userId,note_date:n?.date||null,title:n?.title||'Наблюдение',content:n?.content??n?.text??'',tags:Array.isArray(n?.tags)?n.tags:[]}}
 function planToCloudRow(p,userId){return{...(UUID_RE.test(String(p?.id||''))?{id:p.id}:{}),user_id:userId,plan_date:p?.date||null,task:p?.task||'',done:!!p?.done}}
 function goalToCloudRow(g,userId){return{...(UUID_RE.test(String(g?.id||''))?{id:g.id}:{}),user_id:userId,period:g?.period||'',title:g?.title||'',target:Number(g?.target)||0,current_value:Number(g?.currentValue)||0}}
@@ -176,26 +176,68 @@ async function loadCloudTrades(userId,options={}){
 async function syncTradesToCloud(userId){
   if(!cloud()||!userId||cloudSyncBusy)return false;
   cloudSyncBusy=true;
+  let allOk=true;
   try{
     ensureTradeSyncKeys(state.trades);
     const batchSize=250;
-    for(let i=0;i<state.trades.length;i+=batchSize){
-      const batch=state.trades.slice(i,i+batchSize).map(t=>tradeToCloudRow(t,userId));
-      let result=await cloud().from('trades').upsert(batch,{onConflict:'user_id,sync_key'}).select('id,sync_key');
-      if(result.error){
-        const missingColumn=missingCloudColumn(result.error);
-        if(disableMissingTradeColumn(missingColumn)){
-          const retryBatch=batch.map(row=>{const x={...row};delete x[missingColumn];return x});
-          result=await cloud().from('trades').upsert(retryBatch,{onConflict:'user_id,sync_key'}).select('id,sync_key');
-        }
+    const coreKeys=['user_id','sync_key','trade_date','trade_time','instrument','instrument_category','direction','expiration','stake','payout','result','strategy','account','note'];
+    const coreRow=row=>{const x={};for(const k of coreKeys)if(Object.prototype.hasOwnProperty.call(row,k))x[k]=row[k];return x};
+
+    async function pushBatch(batchRows){
+      let result=await cloud().from('trades').upsert(batchRows,{onConflict:'user_id,sync_key'}).select('id,sync_key');
+      if(!result.error)return result;
+
+      const missingColumn=missingCloudColumn(result.error);
+      if(disableMissingTradeColumn(missingColumn)){
+        const retry=batchRows.map(row=>{const x={...row};delete x[missingColumn];return x});
+        result=await cloud().from('trades').upsert(retry,{onConflict:'user_id,sync_key'}).select('id,sync_key');
+        if(!result.error)return result;
       }
-      if(result.error)throw result.error;
-      const byKey=new Map((result.data||[]).map(r=>[String(r.sync_key),r.id]));
-      for(const t of state.trades){const id=byKey.get(String(t.syncKey));if(id)t.id=id;}
+
+      // If one row or one optional field is bad, do not block the other trades.
+      // Retry rows individually and finally with the required core columns only.
+      const returned=[];
+      for(const row of batchRows){
+        let one=await cloud().from('trades').upsert([row],{onConflict:'user_id,sync_key'}).select('id,sync_key');
+        if(one.error){
+          const missing=missingCloudColumn(one.error);
+          if(disableMissingTradeColumn(missing)){
+            const retry={...row};delete retry[missing];
+            one=await cloud().from('trades').upsert([retry],{onConflict:'user_id,sync_key'}).select('id,sync_key');
+          }
+        }
+        if(one.error){
+          const core=coreRow(row);
+          one=await cloud().from('trades').upsert([core],{onConflict:'user_id,sync_key'}).select('id,sync_key');
+        }
+        if(one.error){
+          allOk=false;
+          reportCloudSyncError('trades',one.error);
+          console.error('Trading Diary V20: trade row sync failed',{
+            syncKey:row.sync_key,
+            code:one.error.code||'',
+            message:one.error.message||'',
+            details:one.error.details||'',
+            hint:one.error.hint||''
+          });
+          continue;
+        }
+        returned.push(...(one.data||[]));
+      }
+      return {data:returned,error:null};
     }
+
+    for(let i=0;i<state.trades.length;i+=batchSize){
+      const batchTrades=state.trades.slice(i,i+batchSize);
+      const batch=batchTrades.map(t=>tradeToCloudRow(t,userId));
+      const result=await pushBatch(batch);
+      const byKey=new Map((result.data||[]).map(r=>[String(r.sync_key),r.id]));
+      for(const t of batchTrades){const id=byKey.get(String(t.syncKey));if(id)t.id=id;}
+    }
+
     saveLocalOnly();
-    localStorage.removeItem('tradingDiary_cloudTradesDirty');
-    return true;
+    if(allOk)localStorage.removeItem('tradingDiary_cloudTradesDirty');
+    return allOk;
   }catch(error){
     reportCloudSyncError('trades',error);
     return false;
