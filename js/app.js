@@ -249,13 +249,79 @@ function openTradePhoto(data){
   if(!data)return;
   const box=document.getElementById('modalContent');
   if(!box)return;
-  box.innerHTML=`<div class="photo-viewer"><div class="photo-viewer-head"><div><div class="eyebrow">TRADE MATERIAL</div><h2>Фото сделки</h2><div class="sub">Скриншот хранится вместе со сделкой и не открывает новую вкладку.</div></div><button type="button" class="secondary-btn" id="photoViewerClose">Закрыть</button></div><div class="photo-viewer-stage"><img src="${escapeAttr(data)}" alt="Фото сделки" id="tradePhotoViewerImg"><div class="photo-viewer-empty" id="photoViewerEmpty">Не удалось загрузить изображение.</div></div></div>`;
+  box.innerHTML=`<div class="photo-viewer">
+    <div class="photo-viewer-head">
+      <div><div class="eyebrow">TRADE MATERIAL</div><h2>Фото сделки</h2><div class="sub">Разметка поверх фото для быстрого мини-анализа. Она не изменяет и не сохраняет оригинал.</div></div>
+    </div>
+    <div class="photo-tools" role="toolbar" aria-label="Инструменты разметки">
+      <button type="button" class="photo-tool active" data-photo-tool="brush">Кисть</button>
+      <button type="button" class="photo-tool" data-photo-tool="line">Линия</button>
+      <button type="button" class="photo-tool" data-photo-tool="arrow">Стрелка</button>
+      <button type="button" class="photo-tool" data-photo-tool="eraser">Ластик</button>
+      <button type="button" class="photo-tool" id="photoUndo">↶ Отменить</button>
+      <button type="button" class="photo-tool danger" id="photoClear">Очистить</button>
+      <label class="photo-size">Толщина <input id="photoBrushSize" type="range" min="1" max="12" step="1" value="3"></label>
+    </div>
+    <div class="photo-viewer-stage" id="photoViewerStage">
+      <div class="photo-canvas-wrap" id="photoCanvasWrap">
+        <img src="${escapeAttr(data)}" alt="Фото сделки" id="tradePhotoViewerImg">
+        <canvas id="tradePhotoDraw" aria-label="Временная разметка фото"></canvas>
+      </div>
+      <div class="photo-viewer-empty" id="photoViewerEmpty">Не удалось загрузить изображение.</div>
+    </div>
+    <div class="photo-viewer-hint">Кисть — свободная разметка · Линия — уровень/тренд · Стрелка — точка входа или выхода. После закрытия всё нарисованное стирается.</div>
+  </div>`;
   document.getElementById('modal')?.classList.add('photo-viewer-modal');
   openModal();
-  const img=document.getElementById('tradePhotoViewerImg'),empty=document.getElementById('photoViewerEmpty');
-  img?.addEventListener('error',()=>{img.style.display='none';if(empty)empty.style.display='grid'});
-  document.getElementById('photoViewerClose')?.addEventListener('click',closeModal);
+
+  const img=document.getElementById('tradePhotoViewerImg'),empty=document.getElementById('photoViewerEmpty'),canvas=document.getElementById('tradePhotoDraw'),wrap=document.getElementById('photoCanvasWrap');
+  const ctx=canvas?.getContext('2d');
+  if(!img||!canvas||!wrap||!ctx)return;
+  let tool='brush',drawing=false,startX=0,startY=0,snapshot=null;
+  const history=[];
+
+  const setCanvasSize=()=>{
+    const rect=img.getBoundingClientRect();
+    if(!rect.width||!rect.height)return;
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=Math.max(1,Math.round(rect.width*dpr));canvas.height=Math.max(1,Math.round(rect.height*dpr));
+    canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineCap='round';ctx.lineJoin='round';
+  };
+  const point=e=>{const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
+  const capture=()=>{try{history.push(ctx.getImageData(0,0,canvas.width,canvas.height));if(history.length>20)history.shift()}catch{}};
+  const restore=imgData=>{if(!imgData)return;const dpr=window.devicePixelRatio||1;ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.putImageData(imgData,0,0);ctx.restore();ctx.setTransform(dpr,0,0,dpr,0,0)};
+  const drawArrow=(x1,y1,x2,y2)=>{const a=Math.atan2(y2-y1,x2-x1),head=12;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-head*Math.cos(a-Math.PI/6),y2-head*Math.sin(a-Math.PI/6));ctx.moveTo(x2,y2);ctx.lineTo(x2-head*Math.cos(a+Math.PI/6),y2-head*Math.sin(a+Math.PI/6));ctx.stroke()};
+  const setTool=t=>{tool=t;document.querySelectorAll('[data-photo-tool]').forEach(b=>b.classList.toggle('active',b.dataset.photoTool===t))};
+  document.querySelectorAll('[data-photo-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.photoTool)));
+  document.getElementById('photoBrushSize')?.addEventListener('input',e=>{ctx.lineWidth=Number(e.target.value)||3});
+  document.getElementById('photoUndo')?.addEventListener('click',()=>{const prev=history.pop();if(prev)restore(prev);});
+  document.getElementById('photoClear')?.addEventListener('click',()=>{capture();ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight)});
+
+  canvas.addEventListener('pointerdown',e=>{
+    e.preventDefault();canvas.setPointerCapture?.(e.pointerId);const p=point(e);drawing=true;startX=p.x;startY=p.y;
+    capture();snapshot=ctx.getImageData(0,0,canvas.width,canvas.height);ctx.lineWidth=Number(document.getElementById('photoBrushSize')?.value)||3;ctx.strokeStyle='#ffcf33';ctx.globalCompositeOperation=tool==='eraser'?'destination-out':'source-over';
+    if(tool==='brush'||tool==='eraser'){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+.1,p.y+.1);ctx.stroke()}
+  });
+  canvas.addEventListener('pointermove',e=>{
+    if(!drawing)return;e.preventDefault();const p=point(e);
+    if(tool==='brush'||tool==='eraser'){ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(p.x,p.y);ctx.stroke();startX=p.x;startY=p.y;return}
+    restore(snapshot);ctx.globalCompositeOperation='source-over';ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(p.x,p.y);ctx.stroke();if(tool==='arrow')drawArrow(startX,startY,p.x,p.y);
+  });
+  const finish=e=>{if(!drawing)return;drawing=false;canvas.releasePointerCapture?.(e.pointerId);ctx.globalCompositeOperation='source-over';snapshot=null};
+  canvas.addEventListener('pointerup',finish);canvas.addEventListener('pointercancel',finish);
+
+  const cleanup=()=>{window.removeEventListener('resize',resize);document.getElementById('modalClose')?.removeEventListener('click',cleanup);document.getElementById('modalBackdrop')?.removeEventListener('click',backdropCleanup)};
+  const resize=()=>{setCanvasSize()};
+  const backdropCleanup=e=>{if(e.target.id==='modalBackdrop')cleanup()};
+  window.addEventListener('resize',resize);
+  document.getElementById('modalClose')?.addEventListener('click',cleanup);
+  document.getElementById('modalBackdrop')?.addEventListener('click',backdropCleanup);
+  img.addEventListener('error',()=>{img.style.display='none';if(empty)empty.style.display='grid';canvas.style.display='none';wrap.style.display='none';cleanup()});
+  img.addEventListener('load',()=>{setCanvasSize();ctx.lineWidth=3;ctx.strokeStyle='#ffcf33';ctx.globalCompositeOperation='source-over'});
+  if(img.complete)img.dispatchEvent(new Event('load'));
 }
+
 function openTradeModal(id){
   const t=id?state.trades.find(x=>x.id===id):null;
   const instOptions=state.instruments.reduce((o,i)=>{(o[i.category]??=[]).push(i);return o},{});
