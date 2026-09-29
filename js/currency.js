@@ -1,0 +1,10 @@
+const currencyState={rates:{USD:1},loadedAt:0,loading:false};
+const FALLBACK_USD_RATES={USD:1,EUR:.92,GBP:.78,RUB:90,JPY:150,CHF:.88,CAD:1.36,AUD:1.52,NZD:1.66,CNY:7.2,HKD:7.8,SGD:1.34,SEK:10.5,NOK:10.7,DKK:6.86,ISK:136,PLN:4.0,CZK:23.0,HUF:360,RON:4.58,BGN:1.8,TRY:34,UAH:41,GEL:2.7,KZT:480,UZS:12600,AZN:1.7,AMD:390,BYN:3.3,MDL:17.5,AED:3.67,SAR:3.75,QAR:3.64,KWD:.307,BHD:.376,OMR:.385,ILS:3.7,INR:84,PKR:280,BDT:120,THB:34,VND:24500,MYR:4.7,IDR:15500,PHP:56,KRW:1340,TWD:32,ZAR:18,BRL:5.5,MXN:20,ARS:1200,CLP:950,COP:4100,PEN:3.75,UYU:40,EGP:48,MAD:9.9,NGN:1600,KES:130,TZS:2600,GHS:16,XAU:0.00043,XAG:.03};
+function currencySymbol(code){return (DEFAULT_DATA.currencies.find(c=>c[0]===code)||[code,code])[1]}
+function currencyRateToUSD(code){const c=String(code||'USD').toUpperCase();return Number(currencyState.rates[c]||FALLBACK_USD_RATES[c]||1)}
+function convertCurrency(amount,from,to){const n=Number(amount)||0;const f=String(from||'USD').toUpperCase(),t=String(to||'USD').toUpperCase();if(f===t)return n;const rf=currencyRateToUSD(f),rt=currencyRateToUSD(t);return rf&&rt?n/ rf*rt:n}
+function moneyInAccount(amount,currency){return convertCurrency(amount,currency,state.settings.currency)}
+function formatCurrencyValue(amount,currency,sign=false){const n=Number(amount)||0;const prefix=sign&&n>=0?'+':'';return `${prefix}${currencySymbol(currency)}${new Intl.NumberFormat('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)}`}
+function formatAccountMoney(amount,sign=false){return formatCurrencyValue(amount,state.settings.currency,sign)}
+async function loadCurrencyRates(){if(currencyState.loading)return;currencyState.loading=true;try{const r=await fetch('https://open.er-api.com/v6/latest/USD',{cache:'no-store'});const j=await r.json();if(j&&j.rates)currencyState.rates={...FALLBACK_USD_RATES,...j.rates,USD:1};}catch{currencyState.rates={...FALLBACK_USD_RATES,...currencyState.rates}}finally{currencyState.loading=false;currencyState.loadedAt=Date.now();}}
+function ensureOperationCurrency(d){return d.currency||d.currencyCode||state.settings.balanceCurrency||state.settings.currency||'USD'}

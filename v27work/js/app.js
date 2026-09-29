@@ -409,9 +409,8 @@ function openBalanceOperationModal(type,existing=null){
     state.deposits=state.deposits||[];
     const amount=Math.round(Math.max(0,Number(String(f.amount||'').replace(',','.'))||0)*100)/100;
     if(!amount){toast('Введите сумму больше 0',true);return}
-    const currency=f.currency||state.settings.currency;
     const row=existing||{id:uid()};
-    row.date=f.date||localDateKey();row.time=f.time||'00:00';row.amount=amount;row.currency=currency;row.baseAmount=round(convertCurrency(amount,currency,state.settings.currency));row.baseCurrency=state.settings.currency;row.note=f.note||'';row.operationType=type;
+    row.date=f.date||localDateKey();row.time=f.time||'00:00';row.amount=amount;row.note=f.note||'';row.operationType=type;
     if(!existing)state.deposits.push(row);
     state.deposits.sort((x,y)=>(x.date+' '+x.time).localeCompare(y.date+' '+y.time));
     saveState();renderAll();toast(existing?(isWithdrawal?'Вывод изменён':'Пополнение изменено'):(isWithdrawal?'Вывод добавлен':'Пополнение добавлено'));
@@ -419,8 +418,7 @@ function openBalanceOperationModal(type,existing=null){
   openSimpleModal(title,sub,submit,[
     {name:'date',label:'Дата',type:'date',value:existing?.date||localDateKey()},
     {name:'time',label:'Время',type:'time',value:existing?.time||'00:00'},
-    {name:'amount',label:'Сумма',type:'number',step:'0.01',min:'0.01',required:true,value:existing?Number(existing.amount||0).toFixed(2):'',placeholder:'100.00'},
-    {name:'currency',label:'Валюта операции',type:'select',value:existing?.currency||state.settings.currency,options:DEFAULT_DATA.currencies.map(x=>x[0])},
+    {name:'amount',label:`Сумма (${state.settings.currency})`,type:'number',step:'0.01',min:'0.01',required:true,value:existing?Number(existing.amount||0).toFixed(2):'',placeholder:'100.00'},
     {name:'note',label:'Комментарий',type:'text',value:existing?.note||'',placeholder:isWithdrawal?'Вывод на карту / из платформы':'Пополнение с карты / платформы'}
   ]);
 }

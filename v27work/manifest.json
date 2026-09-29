@@ -1,0 +1,11 @@
+{
+  "name": "Trading Diary — Торговый дневник",
+  "short_name": "Trading Diary",
+  "description": "Персональный торговый дневник, статистика и аналитика.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0a1020",
+  "theme_color": "#0f1724",
+  "lang": "ru",
+  "icons": [{"src":"assets/logo.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

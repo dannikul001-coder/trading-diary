@@ -66,11 +66,3 @@ Recommended clean start: sign in with the intended account, clear the workspace 
 
 ## V27 compatibility fix
 If your existing `balance_operations` table was created before `operation_type` existed, run `supabase/migration_v12_admin_balance_compat.sql` once. It only adds/backfills the operation type and index; it does not delete trades or balance records.
-
-
-## V28 currency handling
-Account currency changes convert the starting balance, balance operations, and existing trade monetary values into the selected account currency using current exchange rates. Balance operations keep their operation currency plus a base amount in the account currency. Admin user tables display each user's currency next to balances. Quotes rotate automatically every 60 seconds and no manual next button is used.
-
-
-### V28 setup
-Run `supabase/migration_v13_currency_admin.sql` once. It adds operation currency/base amount fields and updates admin RPCs. Existing trades and balance operations are preserved.
