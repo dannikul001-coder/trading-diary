@@ -100,12 +100,12 @@ function disableMissingTradeColumn(column){
 }
 function cloudRowToTrade(r){const t={id:r.id,syncKey:r.sync_key||'',externalId:r.external_trade_id||'',date:r.trade_date,time:r.trade_time?String(r.trade_time).slice(0,5):'',instrument:r.instrument,type:r.direction,expiration:r.expiration||'',stake:Number(r.stake)||0,payout:Number(r.payout)||0,result:r.result||'draw',strategy:r.strategy||'Без стратегии',platform:r.account||'Manual',state:'calm',note:r.note||'',category:r.instrument_category||'Custom',closeDate:r.close_trade_date||'',closeTime:r.close_trade_time?String(r.close_trade_time).slice(0,8):'',openPrice:r.open_price==null?null:Number(r.open_price),closePrice:r.close_price==null?null:Number(r.close_price),currency:r.source_currency||'',photoData:r.photo_data||''};t.pnl=calculatePnl(t);return t}
 function noteToCloudRow(n,userId){return{...(UUID_RE.test(String(n?.id||''))?{id:n.id}:{}),user_id:userId,note_date:n?.date||null,title:n?.title||'Наблюдение',content:n?.content??n?.text??'',tags:Array.isArray(n?.tags)?n.tags:[]}}
-function planToCloudRow(p,userId){return{...(UUID_RE.test(String(p?.id||''))?{id:p.id}:{}),user_id:userId,plan_date:p?.date||null,task:p?.task||'',done:!!p?.done}}
+function planToCloudRow(p,userId){return{...(UUID_RE.test(String(p?.id||''))?{id:p.id}:{}),user_id:userId,plan_date:p?.date||null,period:p?.period||'today',task:p?.task||'',done:!!p?.done}}
 function goalToCloudRow(g,userId){return{...(UUID_RE.test(String(g?.id||''))?{id:g.id}:{}),user_id:userId,period:g?.period||'',title:g?.title||'',target:Number(g?.target)||0,current_value:Number(g?.currentValue)||0}}
 function instrumentToCloudRow(i,userId){return{...(UUID_RE.test(String(i?.id||''))?{id:i.id}:{}),user_id:userId,name:i?.name||'',symbol:i?.symbol||'',category:i?.category||'Custom'}}
 function strategyToCloudRow(s,userId){return{...(UUID_RE.test(String(s?.id||''))?{id:s.id}:{}),user_id:userId,name:s?.name||'',description:s?.description||''}}
 function cloudRowToNote(r){return{id:r.id,date:r.note_date||'',title:r.title||'Наблюдение',text:r.content||'',content:r.content||'',tags:Array.isArray(r.tags)?r.tags:(r.tags?String(r.tags).split(',').map(x=>x.trim()).filter(Boolean):[])}}
-function cloudRowToPlan(r){return{id:r.id,date:r.plan_date||'',task:r.task||'',done:!!r.done}}
+function cloudRowToPlan(r){return{id:r.id,date:r.plan_date||'',period:r.period||'today',task:r.task||'',done:!!r.done}}
 function cloudRowToGoal(r){return{id:r.id,period:r.period||'',title:r.title||'',target:Number(r.target)||0,currentValue:Number(r.current_value)||0}}
 function cloudRowToInstrument(r){return{id:r.id,name:r.name||'',symbol:r.symbol||'',category:r.category||'Custom',custom:true}}
 function cloudRowToStrategy(r){return{id:r.id,name:r.name||'',description:r.description||'',custom:true}}
@@ -113,12 +113,13 @@ function depositToCloudRow(d,userId){return{...(UUID_RE.test(String(d?.id||''))?
 function cloudRowToDeposit(r){return{id:r.id,date:r.operation_date||'',time:r.operation_time?String(r.operation_time).slice(0,5):'00:00',amount:Number(r.amount)||0,operationType:r.operation_type==='withdrawal'?'withdrawal':'deposit',currency:r.currency||'',baseAmount:r.base_amount==null?Number(r.amount)||0:Number(r.base_amount)||0,baseCurrency:r.base_currency||r.currency||'',note:r.note||''}}
 function cloudRowToProfile(r){return{displayName:r?.display_name||'',avatarUrl:r?.avatar_url||''}}
 
-async function cloudSelectAll(table, userId, columns='*', orderBy='created_at', ascending=true){
+async function cloudSelectAll(table, userId, columns='*', orderBy='created_at', ascending=true, activeOnly=false){
   if(!cloud()||!userId)return [];
   const pageSize=1000;
   const all=[];
   for(let from=0;;from+=pageSize){
     let q=cloud().from(table).select(columns).eq('user_id',userId);
+    if(activeOnly)q=q.is('deleted_at',null);
     if(orderBy)q=q.order(orderBy,{ascending});
     const {data,error}=await q.range(from,from+pageSize-1);
     if(error)throw error;
@@ -132,7 +133,7 @@ async function cloudSelectAll(table, userId, columns='*', orderBy='created_at', 
 async function loadCloudTrades(userId,options={}){
   if(!cloud()||!userId)return false;
   try{
-    const rows=await cloudSelectAll('trades',userId,'*','trade_date',false);
+    const rows=await cloudSelectAll('trades',userId,'*','trade_date',false,true);
     cloudKnown.trades=new Set(rows.map(r=>r.id));
     const dirty=localStorage.getItem('tradingDiary_cloudTradesDirty')==='1';
 
@@ -141,7 +142,7 @@ async function loadCloudTrades(userId,options={}){
     if(dirty && !options.skipMigration && state.trades.length>rows.length){
       const ok=await syncTradesToCloud(userId);
       if(ok){
-        const refreshed=await cloudSelectAll('trades',userId,'*','trade_date',false);
+        const refreshed=await cloudSelectAll('trades',userId,'*','trade_date',false,true);
         cloudKnown.trades=new Set(refreshed.map(r=>r.id));
         state.trades=refreshed.map(cloudRowToTrade);
         notifyState();
@@ -161,7 +162,7 @@ async function loadCloudTrades(userId,options={}){
 
     const ok=await syncTradesToCloud(userId);
     if(ok){
-      const refreshed=await cloudSelectAll('trades',userId,'*','trade_date',false);
+      const refreshed=await cloudSelectAll('trades',userId,'*','trade_date',false,true);
       state.trades=refreshed.map(cloudRowToTrade);
       notifyState();
     }
@@ -333,8 +334,8 @@ async function loadCloudWorkspace(userId){
     }
   }
   const [cloudNotes,cloudPlans,cloudGoals,settings,mainGoal,cloudInstruments,cloudStrategies,cloudJournals,profileRow,cloudDeposits]=await Promise.all([
-    cloudSelectAll('notes',userId,'*','created_at',false),
-    cloudSelectAll('plans',userId,'*','plan_date',false),
+    cloudSelectAll('notes',userId,'*','created_at',false,true),
+    cloudSelectAll('plans',userId,'*','plan_date',false,true),
     cloudSelectAll('goals',userId,'*','created_at',false),
     cloud().from('settings').select('*').eq('user_id',userId).maybeSingle(),
     cloud().from('main_goals').select('*').eq('user_id',userId).maybeSingle(),

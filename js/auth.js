@@ -308,11 +308,23 @@ function openProfileModal(){
     closeModal();
     toast('Профиль сохранён');
   };
-  document.getElementById('profileLogout').onclick=async()=>{
+  document.getElementById('profileLogout').onclick=()=>{
     closeModal();
-    openAuthModal();
-    setTimeout(()=>document.getElementById('logoutBtn')?.click(),0);
+    if(confirm('Вы действительно хотите выйти из аккаунта?')) performLogout();
   };
+}
+
+async function performLogout(){
+  const {error}=await supabaseClient.auth.signOut({scope:'local'});
+  if(error){toast(error.message||'Не удалось выйти',true);return;}
+  currentUser=null;
+  window.currentUser=null;
+  window.cloudDataReady=false;
+  clearCloudLocalState();
+  updateProfileUI();
+  closeModal();
+  toast('Вы вышли из аккаунта');
+  document.dispatchEvent(new CustomEvent('state:changed'));
 }
 
 function openAuthModal(){
@@ -327,17 +339,8 @@ function openAuthModal(){
   openModal();
 
   if(currentUser){
-    document.getElementById('logoutBtn').onclick=async()=>{
-      const {error}=await supabaseClient.auth.signOut({scope:'local'});
-      if(error){toast(error.message||'Не удалось выйти',true);return;}
-      currentUser=null;
-      window.currentUser=null;
-      window.cloudDataReady=false;
-      clearCloudLocalState();
-      updateProfileUI();
-      closeModal();
-      toast('Вы вышли из аккаунта');
-      document.dispatchEvent(new CustomEvent('state:changed'));
+    document.getElementById('logoutBtn').onclick=()=>{
+      if(confirm('Вы действительно хотите выйти из аккаунта?')) performLogout();
     };
     document.getElementById('closeAuth').onclick=closeModal;
     return;

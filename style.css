@@ -794,3 +794,30 @@ body[class*="theme-paper"] .card,body[class*="theme-ivory"] .card,body[class*="t
 .currency-chip{display:inline-flex;align-items:center;justify-content:center;padding:4px 7px;border:1px solid var(--site-secondary-line);border-radius:999px;font:700 9px var(--mono);letter-spacing:.04em;background:var(--site-secondary)}
 .quote-auto-badge{margin-left:auto;padding:7px 10px;border:1px solid var(--site-secondary-line);border-radius:999px;font:600 8px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--site-secondary-muted);white-space:nowrap}
 @media(max-width:700px){.quote-auto-badge{margin-left:0}}
+
+/* V29 Learning Lab */
+.lesson-header-row{display:flex;justify-content:space-between;align-items:center;gap:12px}.lesson-progress-pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;font:700 8px var(--mono);color:var(--accent)}.lesson-video-frame{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#000;margin:16px 0;border:1px solid var(--line)}.lesson-video-frame iframe{width:100%;height:100%;border:0}.lesson-flow{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.lesson-flow span{padding:7px 9px;border:1px solid var(--line);border-radius:999px;font:700 7px var(--mono);color:var(--muted)}.lesson-quiz fieldset{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}.quiz-question legend{padding:0 5px;font-weight:700}.quiz-question label{display:flex;gap:8px;align-items:flex-start;padding:7px 0;color:var(--muted);cursor:pointer}.quiz-result{margin-top:10px;font-weight:700;color:var(--accent)}.lesson-notes{width:100%;min-height:120px;resize:vertical}.admin-learning-hint{font-size:9px;color:var(--muted);line-height:1.5;margin-top:4px}@media(max-width:700px){.lesson-flow{gap:5px}.lesson-flow span{font-size:6px}.training-lesson-modal{width:100%}}
+
+
+/* V29.1 stability: trade filters, pagination and audit */
+.trade-date-summary{display:none;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel-soft);color:var(--muted)}
+.trade-date-summary.show{display:flex}
+.trade-date-summary b{color:var(--text)}
+.trade-pagination{display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 2px 2px;color:var(--muted);font-size:12px}
+.trade-pagination.show{display:flex}
+.trade-pages{display:flex;align-items:center;gap:5px}
+.trade-pages .mini-btn.active{border-color:var(--accent);color:var(--text);background:var(--panel-soft)}
+.audit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}
+.audit-grid>div{padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel-soft)}
+.audit-grid b{display:block;font-size:20px;color:var(--text)}
+.audit-grid span{display:block;margin-top:4px;color:var(--muted);font-size:12px}
+.audit-section{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel-soft)}
+.audit-section h3{margin:0 0 8px;font-size:14px}
+.audit-section ul{margin:0;padding-left:18px;max-height:220px;overflow:auto;color:var(--muted)}
+.audit-section li{margin:4px 0}
+.audit-ok{margin-top:16px;padding:14px;border-radius:14px;background:var(--panel-soft);color:var(--text)}
+.audit-warning{margin-top:16px;padding:14px;border-radius:14px;background:var(--panel-soft);color:var(--text)}
+@media(max-width:700px){
+  .audit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .trade-pagination{align-items:flex-start}
+}

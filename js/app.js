@@ -1,4 +1,4 @@
-let activeView='dashboard',tradeFilter='all',tradeSearch='',tradeSort='date-desc',planPeriodFilter='all';
+let activeView='dashboard',tradeFilter='all',tradeSearch='',tradeSort='date-desc',tradeDateFilter='',tradePage=1,tradePageSize=50,planPeriodFilter='all';
 const viewNames={dashboard:'Обзор',trades:'Сделки',calendar:'Календарь',statistics:'Аналитика',charts:'Графики',playbook:'Playbook',psychology:'Психология',goal:'Главная цель',plan:'План',notes:'Заметки',journal:'Журнал',goals:'Цели',import:'Import Center',settings:'Настройки',training:'Обучение'};
 let calendarCursor=new Date();
 document.addEventListener('DOMContentLoaded',()=>{bindNavigation();bindGlobal();renderAll();updateClock();setInterval(updateClock,1000);if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});});
@@ -37,15 +37,16 @@ function bindGlobal(){
   document.getElementById('modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal()});
   document.getElementById('themeBtn').onclick=()=>{const themes=['midnight','carbon','forest','ocean','plum','copper','paper','ivory','mist','sand','sage','lavender','navycoral','indigolime','slateorange','tealrose','auberginecyan','inkgold'];const p=state.settings.appearance?.preset||'midnight';const i=Math.max(0,themes.indexOf(p));applyAppearancePreset(themes[(i+1)%themes.length])};
   applyAppearance();
-  document.getElementById('tradeSearch').addEventListener('input',e=>{tradeSearch=e.target.value.toLowerCase();renderTrades()});
-  document.getElementById('tradeSort').addEventListener('change',e=>{tradeSort=e.target.value;renderTrades()});
-  document.querySelectorAll('#tradeFilters button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#tradeFilters button').forEach(x=>x.classList.remove('active'));b.classList.add('active');tradeFilter=b.dataset.filter;renderTrades()}));
+  document.getElementById('tradeSearch').addEventListener('input',e=>{tradeSearch=e.target.value.toLowerCase();tradePage=1;renderTrades()});
+  document.getElementById('tradeSort').addEventListener('change',e=>{tradeSort=e.target.value;tradePage=1;renderTrades()});
+  document.querySelectorAll('#tradeFilters button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#tradeFilters button').forEach(x=>x.classList.remove('active'));b.classList.add('active');tradeFilter=b.dataset.filter;tradeDateFilter='';tradePage=1;renderTrades()}));
   document.querySelectorAll('#dashboardChartRange button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#dashboardChartRange button').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderBalanceChart(b.dataset.range==='all'?'all':Number(b.dataset.range))}));
   document.querySelectorAll('#mainChartType button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#mainChartType button').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderMainChart(b.dataset.type)}));
   document.querySelectorAll('#planPeriodTabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#planPeriodTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');planPeriodFilter=b.dataset.planPeriod;renderPlans()}));
   document.getElementById('saveGeneral').onclick=saveGeneralSettings;
   document.querySelectorAll('[data-appearance-preset]').forEach(b=>b.addEventListener('click',()=>applyAppearancePreset(b.dataset.appearancePreset)));
-  document.getElementById('deleteAllTrades')?.addEventListener('click',deleteAllTrades);
+  document.getElementById('auditTrades')?.addEventListener('click',auditTradesIntegrity);
+document.getElementById('deleteAllTrades')?.addEventListener('click',deleteAllTrades);
   document.getElementById('resetWorkspace')?.addEventListener('click',resetWorkspace);
   document.getElementById('trainingSearch')?.addEventListener('input',filterTrainingLessons);
   document.getElementById('exportJson').onclick=exportJson;
@@ -55,7 +56,7 @@ function bindGlobal(){
   // Settings controls are delegated so they keep working after renderSettings() replaces their DOM.
 
   const gs=document.getElementById('globalSearch');
-  gs?.addEventListener('keydown',e=>{if(e.key==='Enter'){const q=gs.value.trim().toLowerCase();if(!q)return;showView('trades');document.getElementById('tradeSearch').value=q;tradeSearch=q;renderTrades()}});
+  gs?.addEventListener('keydown',e=>{if(e.key==='Enter'){const q=gs.value.trim().toLowerCase();if(!q)return;showView('trades');tradeDateFilter='';document.getElementById('tradeSearch').value=q;tradeSearch=q;tradePage=1;renderTrades()}});
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();gs?.focus()}});
   document.addEventListener('click',handleDelegated);
   document.addEventListener('submit',handleDelegatedSubmit);
@@ -77,9 +78,9 @@ function handleDelegated(e){
   if(!t)return;
   if(t.id==='calendarPrev'){calendarCursor.setMonth(calendarCursor.getMonth()-1);renderCalendar();return;}
   if(t.id==='calendarNext'){calendarCursor.setMonth(calendarCursor.getMonth()+1);renderCalendar();return;}
-  if(t.dataset.calendarDate){showView('trades');const q=document.getElementById('tradeSearch');if(q)q.value=t.dataset.calendarDate;tradeSearch=t.dataset.calendarDate;tradeFilter='all';renderTrades();return;}
-  if(t.dataset.trainingCategory){document.querySelectorAll('[data-training-category]').forEach(x=>x.classList.toggle('active',x===t));filterTrainingLessons();return;}
-  if(t.dataset.trainingOpen){showTrainingExample(t.dataset.trainingOpen);return;}
+  if(t.dataset.calendarDate){showView('trades');const q=document.getElementById('tradeSearch');if(q)q.value='';tradeSearch='';tradeFilter='all';tradeDateFilter=t.dataset.calendarDate;tradePage=1;renderTrades();return;}
+  if(t.dataset.clearTradeDate){tradeDateFilter='';tradePage=1;renderTrades();return;} if(t.dataset.tradePage){tradePage=Math.max(1,Number(t.dataset.tradePage)||1);renderTrades();return;} if(t.dataset.trainingCategory){document.querySelectorAll('[data-training-category]').forEach(x=>x.classList.toggle('active',x===t));filterTrainingLessons();return;}
+  if(t.dataset.trainingOpen){if(typeof openTrainingLesson==='function'){openTrainingLesson(t.dataset.trainingOpen)}else{showTrainingExample(t.dataset.trainingOpen)}return;}
   if(t.dataset.trainingLocked){toast('Раздел «Обучение» временно закрыт: технические работы.');return;}
   if(t.dataset.view){showView(t.dataset.view);return;}
   if(t.dataset.viewTarget){showView(t.dataset.viewTarget);return;}
@@ -216,7 +217,49 @@ function renderPeriodStats(){
     </article>`;
   }).join('');
 }
-function renderTrades(){const body=document.getElementById('tradesBody'),empty=document.getElementById('tradesEmpty');let arr=state.trades.filter(t=>inRange(t,tradeFilter)).filter(t=>{const s=[t.instrument,t.strategy,t.note,t.category].join(' ').toLowerCase();return !tradeSearch||s.includes(tradeSearch)});arr.sort((a,b)=>tradeSort==='date-desc'?tradeDate(b)-tradeDate(a):tradeSort==='date-asc'?tradeDate(a)-tradeDate(b):tradeSort==='pnl-desc'?b.pnl-a.pnl:a.pnl-b.pnl);body.innerHTML=arr.map(t=>`<tr><td>${formatDate(t.date)}<div class="trade-sub">${t.time||'—'}</div></td><td><div class="trade-instrument">${escapeHtml(t.instrument)}</div><div class="trade-sub">${escapeHtml(t.category||'Custom')}</div></td><td><span class="type-pill ${t.type==='CALL'?'call':'put'}">${t.type}</span></td><td>${formatMoneyPlain(t.stake)}</td><td>${Number(t.payout||0).toFixed(2)}%</td><td><span class="status-pill ${t.result==='win'?'call':t.result==='loss'?'put':'draw'}">● ${t.result==='win'?'В плюсе':t.result==='loss'?'В минусе':'В нуле'}</span></td><td class="${t.pnl>0?'positive':t.pnl<0?'negative':'neutral'}">${formatMoney(t.pnl)}</td><td>${escapeHtml(t.strategy||'—')}</td><td>${t.photoData?`<button type="button" class="trade-photo-link" data-photo-trade="${t.id}" title="Открыть фото">▣</button>`:'—'}</td><td><div class="row-actions"><button class="mini-btn" data-edit-trade="${t.id}">Изм.</button><button class="mini-btn" data-delete-trade="${t.id}">×</button></div></td></tr>`).join('');empty.classList.toggle('show',state.trades.length===0);if(state.trades.length&&arr.length===0)body.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:35px">По текущему фильтру ничего не найдено.</td></tr>`}
+function renderTrades(){
+  const body=document.getElementById('tradesBody'),empty=document.getElementById('tradesEmpty');
+  if(!body)return;
+  let arr=state.trades.filter(t=>inRange(t,tradeFilter));
+  if(tradeDateFilter)arr=arr.filter(t=>String(t.date||'')===tradeDateFilter);
+  arr=arr.filter(t=>{const s=[t.instrument,t.strategy,t.note,t.category,t.platform].join(' ').toLowerCase();return !tradeSearch||s.includes(tradeSearch)});
+  arr.sort((a,b)=>tradeSort==='date-desc'?tradeDate(b)-tradeDate(a):tradeSort==='date-asc'?tradeDate(a)-tradeDate(b):tradeSort==='pnl-desc'?b.pnl-a.pnl:a.pnl-b.pnl);
+  const total=arr.length;
+  const pages=Math.max(1,Math.ceil(total/tradePageSize));
+  if(tradePage>pages)tradePage=pages;
+  const from=(tradePage-1)*tradePageSize;
+  const visible=arr.slice(from,from+tradePageSize);
+  const summary=document.getElementById('tradeDateSummary');
+  if(summary){
+    if(tradeDateFilter){
+      const s=stats(arr);
+      summary.innerHTML=`<span>Фильтр по дню: <b>${formatDate(tradeDateFilter)}</b></span><span>${s.trades} сделок · ${s.winRate.toFixed(1)}% win rate · <b class="${s.pnl>0?'positive':s.pnl<0?'negative':''}">${formatMoney(s.pnl)}</b></span><button type="button" class="mini-btn" data-clear-trade-date>Сбросить</button>`;
+      summary.classList.add('show');
+    }else{
+      summary.classList.remove('show');summary.innerHTML='';
+    }
+  }
+  body.innerHTML=visible.map(t=>`<tr><td>${formatDate(t.date)}<div class="trade-sub">${t.time||'—'}</div></td><td><div class="trade-instrument">${escapeHtml(t.instrument)}</div><div class="trade-sub">${escapeHtml(t.category||'Custom')}</div></td><td><span class="type-pill ${t.type==='CALL'?'call':'put'}">${t.type}</span></td><td>${formatMoneyPlain(t.stake)}</td><td>${Number(t.payout||0).toFixed(2)}%</td><td><span class="status-pill ${t.result==='win'?'call':t.result==='loss'?'put':'draw'}">● ${t.result==='win'?'В плюсе':t.result==='loss'?'В минусе':'В нуле'}</span></td><td class="${t.pnl>0?'positive':t.pnl<0?'negative':'neutral'}">${formatMoney(t.pnl)}</td><td>${escapeHtml(t.strategy||'—')}</td><td>${t.photoData?`<button type="button" class="trade-photo-link" data-photo-trade="${t.id}" title="Открыть фото">▣</button>`:'—'}</td><td><div class="row-actions"><button class="mini-btn" data-edit-trade="${t.id}">Изм.</button><button class="mini-btn" data-delete-trade="${t.id}">×</button></div></td></tr>`).join('');
+  empty.classList.toggle('show',state.trades.length===0);
+  const pager=document.getElementById('tradePagination');
+  if(pager){
+    if(total>tradePageSize){
+      const startRow=from+1,endRow=Math.min(from+tradePageSize,total);
+      let buttons='';
+      const windowStart=Math.max(1,tradePage-2),windowEnd=Math.min(pages,tradePage+2);
+      if(tradePage>1)buttons+=`<button class="mini-btn" data-trade-page="${tradePage-1}">‹</button>`;
+      if(windowStart>1)buttons+=`<button class="mini-btn" data-trade-page="1">1</button>${windowStart>2?'<span>…</span>':''}`;
+      for(let p=windowStart;p<=windowEnd;p++)buttons+=`<button class="mini-btn ${p===tradePage?'active':''}" data-trade-page="${p}">${p}</button>`;
+      if(windowEnd<pages)buttons+=`${windowEnd<pages-1?'<span>…</span>':''}<button class="mini-btn" data-trade-page="${pages}">${pages}</button>`;
+      if(tradePage<pages)buttons+=`<button class="mini-btn" data-trade-page="${tradePage+1}">›</button>`;
+      pager.innerHTML=`<span>Показываются ${startRow}–${endRow} из ${total}</span><div class="trade-pages">${buttons}</div>`;
+      pager.classList.add('show');
+    }else{
+      pager.classList.remove('show');pager.innerHTML='';
+    }
+  }
+  if(state.trades.length&&arr.length===0)body.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:35px">По текущему фильтру ничего не найдено.</td></tr>`;
+}
 function renderPsychology(){const s=state.trades;const discipline=s.length?Math.min(100,Math.round(s.filter(t=>t.state==='calm'||t.state==='focused').length/s.length*100)):0;const calm=s.length?Math.round(s.filter(t=>t.state==='calm').length/s.length*100):0;const fatigue=s.length?Math.round(s.filter(t=>t.state==='tired'||t.state==='fear').length/s.length*100):0;const revenge=s.length?Math.round(s.filter(t=>t.state==='revenge'||t.state==='greed').length/s.length*100):0;document.getElementById('psychology').innerHTML=[['Дисциплина',discipline],['Спокойствие',calm],['Страх / усталость',fatigue],['Азарт / реванш',revenge]].map(([n,v])=>`<div class="psych-row"><div class="psych-top"><span>${n}</span><b>${v}%</b></div><div class="bar"><i style="width:${v}%"></i></div></div>`).join('')+`<div class="psych-caption">Показатели появляются из поля «Состояние» в сделках. Ничего не выдумывается: при отсутствии данных значения остаются нулевыми.</div>`}
 function renderJournal(){const key=localDateKey();const j=state.journal[key]||{};const preview=document.getElementById('journalPreview');if(preview)preview.innerHTML=`<div class="journal-preview-main"><span class="journal-preview-label">СЕГОДНЯ · ${formatDate(key)}</span><h4>${j.text?escapeHtml(j.text.slice(0,180)):'Запись за сегодня ещё не заполнена'}</h4><div class="journal-preview-grid"><span><b>${j.worked?'✓':'—'}</b> Что сработало</span><span><b>${j.failed?'✓':'—'}</b> Что не сработало</span><span><b>${j.lesson?'✓':'—'}</b> Урок</span></div></div>`;}
 function renderDashboardPlan(){
@@ -387,6 +430,66 @@ function openTradeModal(id){
   form.onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(form));const obj={id:t?.id||uid(),syncKey:t?.syncKey||('local:'+crypto.randomUUID()),date:f.date,time:f.time,instrument:f.instrument,type:f.type,expiration:f.expiration,stake:Number(f.stake)||0,payout:Math.min(100,Math.max(0,Number(f.payout)||0)),result:f.result,pnl:0,strategy:f.strategy,platform:'Manual',state:f.state,note:f.note,category:findInstrument(f.instrument)?.category||'Custom',photoData};obj.pnl=calculatePnl(obj);if(t)state.trades=state.trades.map(x=>x.id===t.id?obj:x);else state.trades.push(obj);saveState();closeModal();toast(t?'Сделка обновлена':'Сделка добавлена')};
   document.getElementById('cancelModal').onclick=closeModal;update();
 }
+async function auditTradesIntegrity(){
+  const local=[...(state.trades||[])];
+  const issues=[];
+  const seenIds=new Set(),seenKeys=new Set();
+  const keyFields=['date','time','instrument','category','type','expiration','stake','payout','result','strategy','platform','note','closeDate','closeTime','openPrice','closePrice','currency'];
+  for(const t of local){
+    if(t.id&&seenIds.has(String(t.id)))issues.push(`Дублирующийся локальный ID: ${t.id}`);
+    if(t.id)seenIds.add(String(t.id));
+    if(t.syncKey&&seenKeys.has(String(t.syncKey)))issues.push(`Дублирующийся sync_key: ${t.syncKey}`);
+    if(t.syncKey)seenKeys.add(String(t.syncKey));
+    const expected=calculatePnl(t);
+    if(Math.abs(Number(t.pnl||0)-Number(expected||0))>0.001)issues.push(`Неверный P&L: ${t.date||'?'} ${t.time||'?'} ${t.instrument||'?'} — сохранено ${t.pnl}, должно быть ${expected}`);
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(t.date||'')))issues.push(`Некорректная дата: ${t.date||'(пусто)'}`);
+    if(t.time&&!/^\\d{2}:\\d{2}/.test(String(t.time)))issues.push(`Некорректное время: ${t.date||'?'} ${t.time}`);
+    if(Number(t.payout)<0||Number(t.payout)>100)issues.push(`Некорректный payout: ${t.date||'?'} ${t.instrument||'?'} — ${t.payout}%`);
+    if(Number(t.stake)<=0)issues.push(`Некорректная ставка: ${t.date||'?'} ${t.instrument||'?'} — ${t.stake}`);
+    if(!['win','loss','draw'].includes(String(t.result||'')))issues.push(`Некорректный result: ${t.date||'?'} ${t.instrument||'?'} — ${t.result}`);
+  }
+  let cloudRows=null;
+  let cloudError='';
+  if(window.currentUser?.id&&window.supabaseClient){
+    try{cloudRows=await cloudSelectAll('trades',window.currentUser.id,'*','trade_date',false,true);}
+    catch(e){cloudError=e?.message||String(e);}
+  }
+  let cloudOnly=[],localOnly=[],mismatches=[];
+  if(cloudRows){
+    const byKey=new Map(cloudRows.filter(r=>r.sync_key).map(r=>[String(r.sync_key),r]));
+    const localKeys=new Set(local.filter(t=>t.syncKey).map(t=>String(t.syncKey)));
+    cloudOnly=cloudRows.filter(r=>r.sync_key&&!localKeys.has(String(r.sync_key)));
+    const localByKey=new Map(local.filter(t=>t.syncKey).map(t=>[String(t.syncKey),t]));
+    for(const [key,t] of localByKey){
+      const r=byKey.get(key);
+      if(!r){localOnly.push(t);continue;}
+      for(const f of keyFields){
+        const a=f==='date'?t.date:f==='time'?t.time:f==='instrument'?t.instrument:f==='category'?t.category:f==='type'?t.type:f==='expiration'?t.expiration:f==='stake'?Number(t.stake):f==='payout'?Number(t.payout):f==='result'?t.result:f==='strategy'?t.strategy:f==='platform'?t.platform:f==='note'?t.note:f==='closeDate'?t.closeDate:f==='closeTime'?t.closeTime:f==='openPrice'?t.openPrice:f==='closePrice'?t.closePrice:f==='currency'?t.currency:'';
+        const b=f==='date'?r.trade_date:f==='time'?String(r.trade_time||'').slice(0,5):f==='instrument'?r.instrument:f==='category'?r.instrument_category:f==='type'?r.direction:f==='expiration'?r.expiration:f==='stake'?Number(r.stake):f==='payout'?Number(r.payout):f==='result'?r.result:f==='strategy'?r.strategy:f==='platform'?r.account:f==='note'?r.note:f==='closeDate'?r.close_trade_date:f==='closeTime'?String(r.close_trade_time||'').slice(0,8):f==='openPrice'?(r.open_price==null?null:Number(r.open_price)):f==='closePrice'?(r.close_price==null?null:Number(r.close_price)):f==='currency'?r.source_currency:'';
+        if(String(a??'')!==String(b??'')){mismatches.push(`${t.date||'?'} ${t.time||'?'} ${t.instrument||'?'} — ${f}: local="${a??''}" / cloud="${b??''}"`);break;}
+      }
+    }
+  }
+  const html=`<h2>Проверка целостности сделок</h2><div class="sub">Проверены локальные данные и, если доступно, активные записи Supabase.</div>
+  <div class="audit-grid">
+    <div><b>${local.length}</b><span>локальных сделок</span></div>
+    <div><b>${cloudRows?cloudRows.length:'—'}</b><span>активных в облаке</span></div>
+    <div><b>${localOnly.length}</b><span>только локально</span></div>
+    <div><b>${cloudOnly.length}</b><span>только в облаке</span></div>
+    <div><b>${mismatches.length}</b><span>расхождений параметров</span></div>
+    <div><b>${issues.length}</b><span>локальных ошибок</span></div>
+  </div>
+  ${cloudError?`<div class="audit-warning">Не удалось проверить Supabase: ${escapeHtml(cloudError)}</div>`:''}
+  ${issues.length?`<div class="audit-section"><h3>Ошибки данных</h3><ul>${issues.slice(0,20).map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul></div>`:'<div class="audit-ok">Локальные проверки параметров не нашли ошибок.</div>'}
+  ${localOnly.length?`<div class="audit-section"><h3>Есть локально, но не найдено в облаке</h3><ul>${localOnly.slice(0,10).map(t=>`<li>${escapeHtml(`${t.date||'?'} ${t.time||'?'} ${t.instrument||'?'} ${t.type||''} ${t.stake||''}`)}</li>`).join('')}</ul></div>`:''}
+  ${cloudOnly.length?`<div class="audit-section"><h3>Есть в облаке, но не найдено локально</h3><ul>${cloudOnly.slice(0,10).map(t=>`<li>${escapeHtml(`${t.trade_date||'?'} ${String(t.trade_time||'').slice(0,5)} ${t.instrument||'?'} ${t.direction||''} ${t.stake||''}`)}</li>`).join('')}</ul></div>`:''}
+  ${mismatches.length?`<div class="audit-section"><h3>Расхождения параметров</h3><ul>${mismatches.slice(0,20).map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul></div>`:''}
+  <div class="modal-actions"><button type="button" class="primary-btn" id="auditClose">Закрыть</button></div>`;
+  document.getElementById('modal').classList.add('simple-modal');
+  document.getElementById('modalContent').innerHTML=html;
+  openModal();
+  document.getElementById('auditClose').onclick=closeModal;
+}
 async function deleteTrade(id){
   if(!confirm('Удалить сделку?'))return;
   if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
@@ -429,8 +532,30 @@ function editBalanceOperation(id,type){const d=(state.deposits||[]).find(x=>Stri
 function deleteBalanceOperation(id){const d=(state.deposits||[]).find(x=>String(x.id)===String(id));if(!d)return;const isWithdrawal=d.operationType==='withdrawal';if(!confirm(`${isWithdrawal?'Удалить этот вывод':'Удалить это пополнение'}?`))return;if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady&&window.cloudBalanceSupported!==false){window.supabaseClient.from('balance_operations').delete().eq('user_id',window.currentUser.id).eq('id',id).then(({error})=>{if(error){toast('Не удалось удалить операцию из облака',true);return;}finishDeleteBalanceOperation(id,isWithdrawal)});return;}finishDeleteBalanceOperation(id,isWithdrawal)}
 function finishDeleteBalanceOperation(id,isWithdrawal){state.deposits=(state.deposits||[]).filter(x=>String(x.id)!==String(id));saveLocalOnly();localStorage.setItem('tradingDiary_cloudWorkspaceDirty','1');renderAll();toast(isWithdrawal?'Вывод удалён':'Пополнение удалено')}
 function togglePlan(id){const p=state.plans.find(x=>x.id===id);if(p){p.done=!p.done;saveState()}}
-function deletePlan(id){state.plans=state.plans.filter(x=>x.id!==id);saveState()}
-function deleteNote(id){state.notes=state.notes.filter(x=>x.id!==id);saveState()}
+async function deletePlan(id){
+  if(!confirm('Удалить задачу плана?'))return;
+  if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
+    const {error}=await window.supabaseClient.from('plans').update({deleted_at:new Date().toISOString()}).eq('user_id',window.currentUser.id).eq('id',id);
+    if(error){toast('Не удалось удалить задачу из облака',true);return;}
+  }
+  state.plans=state.plans.filter(x=>x.id!==id);
+  saveLocalOnly();
+  localStorage.setItem('tradingDiary_cloudWorkspaceDirty','1');
+  renderAll();
+  toast('Задача удалена');
+}
+async function deleteNote(id){
+  if(!confirm('Удалить заметку?'))return;
+  if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
+    const {error}=await window.supabaseClient.from('notes').update({deleted_at:new Date().toISOString()}).eq('user_id',window.currentUser.id).eq('id',id);
+    if(error){toast('Не удалось удалить заметку из облака',true);return;}
+  }
+  state.notes=state.notes.filter(x=>x.id!==id);
+  saveLocalOnly();
+  localStorage.setItem('tradingDiary_cloudWorkspaceDirty','1');
+  renderAll();
+  toast('Заметка удалена');
+}
 function deleteGoal(id){state.goals=state.goals.filter(x=>x.id!==id);saveState()}
 function openSimpleModal(title,sub,submit,fields){document.getElementById('modal').classList.add('simple-modal');document.getElementById('modalContent').innerHTML=`<h2>${title}</h2><div class="sub">${sub}</div><form id="simpleForm"><div class="modal-form">${fields.map(f=>`<label class="${f.type==='textarea'?'full':''}">${f.label}${f.type==='select'?`<select name="${f.name}">${f.options.map(o=>`<option ${String(f.value??'')===String(o)?'selected':''}>${escapeHtml(o)}</option>`).join('')}</select>`:f.type==='textarea'?`<textarea name="${f.name}" placeholder="${escapeAttr(f.placeholder||'')}">${escapeHtml(f.value||'')}</textarea>`:`<input name="${f.name}" type="${f.type||'text'}" value="${escapeAttr(f.value??'')}" placeholder="${escapeAttr(f.placeholder||'')}" ${f.required?'required':''} ${f.step!=null?`step="${escapeAttr(f.step)}"`:''} ${f.min!=null?`min="${escapeAttr(f.min)}"`:''} ${f.max!=null?`max="${escapeAttr(f.max)}"`:''}>`}</label>`).join('')}</div><div class="modal-actions"><button type="button" class="secondary-btn" id="cancelModal">Отмена</button><button class="primary-btn">Сохранить</button></div></form>`;openModal();document.getElementById('cancelModal').onclick=closeModal;document.getElementById('simpleForm').onsubmit=e=>{e.preventDefault();submit(Object.fromEntries(new FormData(e.target)));closeModal()}}
 function openModal(){const el=document.getElementById('modalBackdrop');if(!el)return;el.classList.add('open');el.classList.remove('show')};function closeModal(){const el=document.getElementById('modalBackdrop');if(!el)return;el.classList.remove('open','show');document.getElementById('modal')?.classList.remove('simple-modal','photo-viewer-modal')}
