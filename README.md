@@ -21,21 +21,6 @@ Use a JSON array in the lesson editor, for example:
 ]
 
 ## Supabase migration
-Run `supabase/migration_v14_learning_progress.sql` and, for V29.1 stability, `supabase/migration_v15_v29_1_stability.sql` once in Supabase SQL Editor.
+Run `supabase/migration_v14_learning_progress.sql` once in Supabase SQL Editor.
 
 Do not expose Supabase service-role/secret keys in the browser or repository.
-
-
-## V29.1 stability patch
-- Offline-safe delete tombstones for trades, plans and notes.
-- Trade sync processes pending deletes before row-count reconciliation.
-- Calendar exact-date filtering and 50-row trade pagination are retained.
-- Psychology view includes result reactions, streaks, time concentration and state breakdown.
-- Logout uses explicit Cancel / Logout actions instead of browser confirmation.
-
-**Data safety:** do not use workspace reset/delete-all for testing against the real journal.
-
-
-## V29.2 — Learning UI Stabilization
-
-V29.2 preserves the existing Learning structure and adds a learner-facing status filter (all / not started / in progress / completed), clearer continuation behavior, per-lesson progress bars, category completion in the roadmap, and improved next-lesson selection. No learning tables are replaced or reset.

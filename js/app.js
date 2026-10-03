@@ -46,7 +46,6 @@ function bindGlobal(){
   document.getElementById('saveGeneral').onclick=saveGeneralSettings;
   document.querySelectorAll('[data-appearance-preset]').forEach(b=>b.addEventListener('click',()=>applyAppearancePreset(b.dataset.appearancePreset)));
   document.getElementById('auditTrades')?.addEventListener('click',auditTradesIntegrity);
-  document.getElementById('checkCloudConnection')?.addEventListener('click',checkCloudConnection);
 document.getElementById('deleteAllTrades')?.addEventListener('click',deleteAllTrades);
   document.getElementById('resetWorkspace')?.addEventListener('click',resetWorkspace);
   document.getElementById('trainingSearch')?.addEventListener('input',filterTrainingLessons);
@@ -244,22 +243,22 @@ function renderTrades(){
   empty.classList.toggle('show',state.trades.length===0);
   const pager=document.getElementById('tradePagination');
   if(pager){
-    if(total>0){
+    if(total>tradePageSize){
       const startRow=from+1,endRow=Math.min(from+tradePageSize,total);
-      const prevDisabled=tradePage<=1?'disabled':'';
-      const nextDisabled=tradePage>=pages?'disabled':'';
-      let buttons=`<button type="button" class="pager-btn" data-trade-page="${tradePage-1}" ${prevDisabled} aria-label="Предыдущая страница">‹ Предыдущая</button>`;
+      let buttons='';
       const windowStart=Math.max(1,tradePage-2),windowEnd=Math.min(pages,tradePage+2);
-      if(windowStart>1)buttons+=`<button type="button" class="pager-number" data-trade-page="1">1</button>${windowStart>2?'<span class="pager-ellipsis">…</span>':''}`;
-      for(let p=windowStart;p<=windowEnd;p++)buttons+=`<button type="button" class="pager-number ${p===tradePage?'active':''}" data-trade-page="${p}" aria-current="${p===tradePage?'page':'false'}">${p}</button>`;
-      if(windowEnd<pages)buttons+=`${windowEnd<pages-1?'<span class="pager-ellipsis">…</span>':''}<button type="button" class="pager-number" data-trade-page="${pages}">${pages}</button>`;
-      buttons+=`<button type="button" class="pager-btn" data-trade-page="${tradePage+1}" ${nextDisabled} aria-label="Следующая страница">Следующая ›</button>`;
-      pager.innerHTML=`<span class="pager-summary">Показываются <b>${startRow}–${endRow}</b> из <b>${total}</b> · страница <b>${tradePage}</b> из <b>${pages}</b></span><div class="trade-pages">${buttons}</div>`;
+      if(tradePage>1)buttons+=`<button class="mini-btn" data-trade-page="${tradePage-1}">‹</button>`;
+      if(windowStart>1)buttons+=`<button class="mini-btn" data-trade-page="1">1</button>${windowStart>2?'<span>…</span>':''}`;
+      for(let p=windowStart;p<=windowEnd;p++)buttons+=`<button class="mini-btn ${p===tradePage?'active':''}" data-trade-page="${p}">${p}</button>`;
+      if(windowEnd<pages)buttons+=`${windowEnd<pages-1?'<span>…</span>':''}<button class="mini-btn" data-trade-page="${pages}">${pages}</button>`;
+      if(tradePage<pages)buttons+=`<button class="mini-btn" data-trade-page="${tradePage+1}">›</button>`;
+      pager.innerHTML=`<span>Показываются ${startRow}–${endRow} из ${total}</span><div class="trade-pages">${buttons}</div>`;
       pager.classList.add('show');
     }else{
       pager.classList.remove('show');pager.innerHTML='';
     }
   }
+  if(state.trades.length&&arr.length===0)body.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:35px">По текущему фильтру ничего не найдено.</td></tr>`;
 }
 function renderPsychology(){const s=state.trades;const discipline=s.length?Math.min(100,Math.round(s.filter(t=>t.state==='calm'||t.state==='focused').length/s.length*100)):0;const calm=s.length?Math.round(s.filter(t=>t.state==='calm').length/s.length*100):0;const fatigue=s.length?Math.round(s.filter(t=>t.state==='tired'||t.state==='fear').length/s.length*100):0;const revenge=s.length?Math.round(s.filter(t=>t.state==='revenge'||t.state==='greed').length/s.length*100):0;document.getElementById('psychology').innerHTML=[['Дисциплина',discipline],['Спокойствие',calm],['Страх / усталость',fatigue],['Азарт / реванш',revenge]].map(([n,v])=>`<div class="psych-row"><div class="psych-top"><span>${n}</span><b>${v}%</b></div><div class="bar"><i style="width:${v}%"></i></div></div>`).join('')+`<div class="psych-caption">Показатели появляются из поля «Состояние» в сделках. Ничего не выдумывается: при отсутствии данных значения остаются нулевыми.</div>`}
 function renderJournal(){const key=localDateKey();const j=state.journal[key]||{};const preview=document.getElementById('journalPreview');if(preview)preview.innerHTML=`<div class="journal-preview-main"><span class="journal-preview-label">СЕГОДНЯ · ${formatDate(key)}</span><h4>${j.text?escapeHtml(j.text.slice(0,180)):'Запись за сегодня ещё не заполнена'}</h4><div class="journal-preview-grid"><span><b>${j.worked?'✓':'—'}</b> Что сработало</span><span><b>${j.failed?'✓':'—'}</b> Что не сработало</span><span><b>${j.lesson?'✓':'—'}</b> Урок</span></div></div>`;}
@@ -431,34 +430,6 @@ function openTradeModal(id){
   form.onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(form));const obj={id:t?.id||uid(),syncKey:t?.syncKey||('local:'+crypto.randomUUID()),date:f.date,time:f.time,instrument:f.instrument,type:f.type,expiration:f.expiration,stake:Number(f.stake)||0,payout:Math.min(100,Math.max(0,Number(f.payout)||0)),result:f.result,pnl:0,strategy:f.strategy,platform:'Manual',state:f.state,note:f.note,category:findInstrument(f.instrument)?.category||'Custom',photoData};obj.pnl=calculatePnl(obj);if(t)state.trades=state.trades.map(x=>x.id===t.id?obj:x);else state.trades.push(obj);saveState();closeModal();toast(t?'Сделка обновлена':'Сделка добавлена')};
   document.getElementById('cancelModal').onclick=closeModal;update();
 }
-async function checkCloudConnection(){
-  const status=document.getElementById('cloudCheckStatus');
-  const button=document.getElementById('checkCloudConnection');
-  if(status)status.textContent='Проверяем соединение…';
-  if(button)button.disabled=true;
-  try{
-    if(!window.supabaseClient){
-      if(status)status.textContent='✕ Supabase client не инициализирован';
-      return;
-    }
-    const {data:{session}={data:null},error:sessionError}=await window.supabaseClient.auth.getSession();
-    if(sessionError)throw sessionError;
-    if(!session?.user){
-      if(status)status.textContent='⚠ Supabase доступен, но пользователь не авторизован';
-      return;
-    }
-    const {count,error}=await window.supabaseClient.from('trades').select('id',{count:'exact',head:true}).eq('user_id',session.user.id).is('deleted_at',null);
-    if(error)throw error;
-    if(status)status.textContent=`✓ Связь работает · пользователь авторизован · активных сделок в облаке: ${Number(count||0)}`;
-  }catch(error){
-    console.error('Cloud connection check:',error);
-    if(status)status.textContent=`✕ Ошибка связи: ${cloudErrorTextSafe(error)}`;
-  }finally{
-    if(button)button.disabled=false;
-  }
-}
-function cloudErrorTextSafe(error){return [error?.code,error?.message,error?.details,error?.hint].filter(Boolean).join(' · ')||'неизвестная ошибка';}
-
 async function auditTradesIntegrity(){
   const local=[...(state.trades||[])];
   const issues=[];
@@ -471,8 +442,8 @@ async function auditTradesIntegrity(){
     if(t.syncKey)seenKeys.add(String(t.syncKey));
     const expected=calculatePnl(t);
     if(Math.abs(Number(t.pnl||0)-Number(expected||0))>0.001)issues.push(`Неверный P&L: ${t.date||'?'} ${t.time||'?'} ${t.instrument||'?'} — сохранено ${t.pnl}, должно быть ${expected}`);
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(t.date||'')))issues.push(`Некорректная дата: ${t.date||'(пусто)'}`);
-    if(t.time&&!/^\d{2}:\d{2}/.test(String(t.time)))issues.push(`Некорректное время: ${t.date||'?'} ${t.time}`);
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(t.date||'')))issues.push(`Некорректная дата: ${t.date||'(пусто)'}`);
+    if(t.time&&!/^\\d{2}:\\d{2}/.test(String(t.time)))issues.push(`Некорректное время: ${t.date||'?'} ${t.time}`);
     if(Number(t.payout)<0||Number(t.payout)>100)issues.push(`Некорректный payout: ${t.date||'?'} ${t.instrument||'?'} — ${t.payout}%`);
     if(Number(t.stake)<=0)issues.push(`Некорректная ставка: ${t.date||'?'} ${t.instrument||'?'} — ${t.stake}`);
     if(!['win','loss','draw'].includes(String(t.result||'')))issues.push(`Некорректный result: ${t.date||'?'} ${t.instrument||'?'} — ${t.result}`);
@@ -518,42 +489,20 @@ async function auditTradesIntegrity(){
   document.getElementById('modalContent').innerHTML=html;
   openModal();
   document.getElementById('auditClose').onclick=closeModal;
-  const status=document.getElementById('cloudCheckStatus');
-  if(status){
-    status.textContent=cloudError?'⚠ Целостность проверена частично: есть ошибка связи с облаком':(issues.length||localOnly.length||cloudOnly.length||mismatches.length?'⚠ Проверка завершена: найдены расхождения':'✓ Целостность локальных и облачных данных подтверждена по доступным проверкам');
-  }
 }
 async function deleteTrade(id){
   if(!confirm('Удалить сделку?'))return;
-  const trade=state.trades.find(t=>String(t.id)===String(id));
-  if(!trade)return;
-  // Queue the tombstone first so an offline delete can never be resurrected
-  // by the next login/sync. The cloud layer removes the tombstone only after
-  // the update succeeds.
-  if(window.queuePendingDelete)window.queuePendingDelete('trades',{id:trade.id,syncKey:trade.syncKey||''});
   if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
-    const q=window.supabaseClient.from('trades').update({deleted_at:new Date().toISOString()}).eq('user_id',window.currentUser.id);
-    const {error}=await (trade.syncKey?q.eq('sync_key',trade.syncKey):q.eq('id',id));
-    if(error){toast('Не удалось удалить сделку из облака — удаление сохранено для повторной синхронизации',true);}
-    else if(window.removePendingDelete)window.removePendingDelete('trades',x=>String(x.id)===String(trade.id)||String(x.syncKey)===String(trade.syncKey||''));
+    const {error}=await window.supabaseClient.from('trades').update({deleted_at:new Date().toISOString()}).eq('user_id',window.currentUser.id).eq('id',id);
+    if(error){toast('Не удалось удалить сделку из облака',true);return;}
   }
-  state.trades=state.trades.filter(t=>String(t.id)!==String(id));
+  state.trades=state.trades.filter(t=>t.id!==id);
   saveLocalOnly();
-  localStorage.setItem('tradingDiary_cloudTradesDirty','1');
+  localStorage.removeItem('tradingDiary_cloudTradesDirty');
   renderAll();
   toast('Сделка удалена');
 }
-async function deleteAllTrades(){
-  if(!state.trades.length){toast('Сделок уже нет');return}
-  if(!confirm(`Удалить ВСЕ ${state.trades.length} сделок? Это действие нельзя отменить.`))return;
-  if(window.queuePendingDelete){for(const trade of state.trades)window.queuePendingDelete('trades',{id:trade.id,syncKey:trade.syncKey||''});}
-  if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
-    const {error}=await window.supabaseClient.from('trades').update({deleted_at:new Date().toISOString()}).eq('user_id',window.currentUser.id);
-    if(error){toast('Не удалось удалить сделки из облака — удаления сохранены для повторной синхронизации',true);}
-    else if(window.removePendingDelete){for(const trade of state.trades)window.removePendingDelete('trades',x=>String(x.id)===String(trade.id)||String(x.syncKey)===String(trade.syncKey||''));}
-  }
-  state.trades=[];saveLocalOnly();localStorage.setItem('tradingDiary_cloudTradesDirty','1');renderAll();toast('Все сделки удалены');
-}
+async function deleteAllTrades(){if(!state.trades.length){toast('Сделок уже нет');return}if(!confirm(`Удалить ВСЕ ${state.trades.length} сделок? Это действие нельзя отменить.`))return;if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){const {error}=await window.supabaseClient.from('trades').delete().eq('user_id',window.currentUser.id);if(error){toast('Не удалось удалить сделки из облака',true);return}}state.trades=[];saveLocalOnly();localStorage.removeItem('tradingDiary_cloudTradesDirty');renderAll();toast('Все сделки удалены')}
 async function resetWorkspace(){if(!confirm('Стереть все данные рабочего пространства? Будут удалены сделки, заметки, планы, цели, журнал, стратегии, инструменты и пополнения. Настройки и главная цель вернутся к исходным значениям.'))return;if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){const uid=window.currentUser.id;for(const table of ['trades','notes','plans','goals','journals','instruments','strategies','balance_operations','main_goals','settings']){const {error}=await window.supabaseClient.from(table).delete().eq('user_id',uid);if(error&&!(table==='balance_operations'&&['42P01','PGRST205'].includes(error.code))){toast(`Не удалось очистить ${table}`,true);return}}}state=clone(DEFAULT_DATA);state.deposits=[];saveLocalOnly();localStorage.removeItem('tradingDiary_cloudTradesDirty');localStorage.removeItem('tradingDiary_cloudWorkspaceDirty');renderAll();toast('Рабочее пространство очищено')}
 function openBalanceOperationModal(type,existing=null){
   const isWithdrawal=type==='withdrawal';
@@ -585,13 +534,11 @@ function finishDeleteBalanceOperation(id,isWithdrawal){state.deposits=(state.dep
 function togglePlan(id){const p=state.plans.find(x=>x.id===id);if(p){p.done=!p.done;saveState()}}
 async function deletePlan(id){
   if(!confirm('Удалить задачу плана?'))return;
-  if(window.queuePendingDelete)window.queuePendingDelete('plans',{id});
   if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
     const {error}=await window.supabaseClient.from('plans').update({deleted_at:new Date().toISOString()}).eq('user_id',window.currentUser.id).eq('id',id);
-    if(error)toast('Удаление сохранено для повторной синхронизации',true);
-    else if(window.removePendingDelete)window.removePendingDelete('plans',x=>String(x.id)===String(id));
+    if(error){toast('Не удалось удалить задачу из облака',true);return;}
   }
-  state.plans=state.plans.filter(x=>String(x.id)!==String(id));
+  state.plans=state.plans.filter(x=>x.id!==id);
   saveLocalOnly();
   localStorage.setItem('tradingDiary_cloudWorkspaceDirty','1');
   renderAll();
@@ -599,13 +546,11 @@ async function deletePlan(id){
 }
 async function deleteNote(id){
   if(!confirm('Удалить заметку?'))return;
-  if(window.queuePendingDelete)window.queuePendingDelete('notes',{id});
   if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
     const {error}=await window.supabaseClient.from('notes').update({deleted_at:new Date().toISOString()}).eq('user_id',window.currentUser.id).eq('id',id);
-    if(error)toast('Удаление сохранено для повторной синхронизации',true);
-    else if(window.removePendingDelete)window.removePendingDelete('notes',x=>String(x.id)===String(id));
+    if(error){toast('Не удалось удалить заметку из облака',true);return;}
   }
-  state.notes=state.notes.filter(x=>String(x.id)!==String(id));
+  state.notes=state.notes.filter(x=>x.id!==id);
   saveLocalOnly();
   localStorage.setItem('tradingDiary_cloudWorkspaceDirty','1');
   renderAll();
@@ -663,26 +608,6 @@ function renderCalendar(){
 function renderPlaybook(){const box=document.getElementById('playbookGrid');if(!box)return;const all=state.trades;box.innerHTML=state.strategies.map((raw,i)=>{const name=typeof raw==='string'?raw:(raw.name||'');const description=typeof raw==='string'?'':(raw.description||'');const ts=all.filter(t=>(t.strategy||'Без стратегии')===name);const s=stats(ts);const avgStake=ts.length?ts.reduce((a,t)=>a+Number(t.stake||0),0)/ts.length:0;return `<article class="card playbook-card"><div class="playbook-top"><div class="playbook-icon">◈</div><span class="strategy-index">${String(i+1).padStart(2,'0')}</span></div><div class="playbook-title"><div><h3>${escapeHtml(name)}</h3><p>${escapeHtml(description||'Добавьте правило стратегии в настройках, затем проверяйте его на фактических сделках.')}</p></div><span class="strategy-rate">${s.winRate.toFixed(1)}%</span></div><div class="playbook-metrics"><div><span>Сделки</span><b>${s.trades}</b></div><div><span>P&amp;L</span><b class="${s.pnl>0?'positive':s.pnl<0?'negative':''}">${formatMoney(s.pnl)}</b></div><div><span>Средний</span><b>${formatMoney(s.avg)}</b></div><div><span>Средняя ставка</span><b>${formatMoneyPlain(avgStake)}</b></div></div><div class="playbook-progress"><div><span>Win rate</span><b>${s.winRate.toFixed(1)}%</b></div><i><em style="width:${Math.min(100,s.winRate)}%"></em></i></div></article>`}).join('')||'<div class="empty-inline">Добавьте первую стратегию, чтобы построить Playbook.</div>'}
 
 function renderPsychologyFull(){
-  const box=document.getElementById('psychologyFull');if(!box)return;
-  const trades=[...(state.trades||[])].filter(t=>t&&t.date).sort((a,b)=>tradeDate(a)-tradeDate(b));
-  if(!trades.length){box.innerHTML='<div class="empty-inline">Добавьте сделки и укажите состояние, чтобы построить психологический профиль.</div>';return;}
-  const labels={calm:'Спокойствие',focused:'Фокус',fear:'Страх',tired:'Усталость',greed:'Азарт',revenge:'Реванш',neutral:'Не указано'};
-  const stateMap=new Map();let totalStake=0,totalPnl=0,wins=0;
-  let maxLossStreak=0,currentLossStreak=0,maxWinStreak=0,currentWinStreak=0;
-  let stakeIncreaseAfterLoss=0,stakeIncreaseAfterWin=0,lossTransitions=0,winTransitions=0;const hourMap=new Map();
-  for(let i=0;i<trades.length;i++){
-    const t=trades[i],key=t.state||'neutral',stake=Number(t.stake)||0,pnl=Number(t.pnl)||0;totalStake+=stake;totalPnl+=pnl;
-    if(t.result==='win'){wins++;currentWinStreak++;currentLossStreak=0;maxWinStreak=Math.max(maxWinStreak,currentWinStreak);}
-    else if(t.result==='loss'){currentLossStreak++;currentWinStreak=0;maxLossStreak=Math.max(maxLossStreak,currentLossStreak);}
-    else{currentWinStreak=0;currentLossStreak=0;}
-    if(i>0){const prev=trades[i-1];if(prev.result==='loss'){lossTransitions++;if(stake>Number(prev.stake||0))stakeIncreaseAfterLoss++;}if(prev.result==='win'){winTransitions++;if(stake>Number(prev.stake||0))stakeIncreaseAfterWin++;}}
-    const bucket=stateMap.get(key)||{trades:0,wins:0,pnl:0,stake:0};bucket.trades++;bucket.wins+=t.result==='win'?1:0;bucket.pnl+=pnl;bucket.stake+=stake;stateMap.set(key,bucket);
-    const h=String(t.time||'').slice(0,2);if(/^\d{2}$/.test(h))hourMap.set(h,(hourMap.get(h)||0)+1);
-  }
-  const winRate=trades.length?wins/trades.length*100:0,avgStake=totalStake/trades.length,avgPnl=totalPnl/trades.length;
-  const lossReaction=lossTransitions?stakeIncreaseAfterLoss/lossTransitions*100:0,winReaction=winTransitions?stakeIncreaseAfterWin/winTransitions*100:0;
-  const topHour=[...hourMap.entries()].sort((a,b)=>b[1]-a[1])[0];
-  const stateCards=[...stateMap.entries()].sort((a,b)=>b[1].trades-a[1].trades).map(([key,v])=>{const rate=v.trades?v.wins/v.trades*100:0;return `<article class="card psychology-full-card"><div class="psychology-state"><span>●</span><h3>${escapeHtml(labels[key]||key)}</h3></div><div class="psychology-score">${rate.toFixed(1)}<small>% win rate</small></div><div class="playbook-metrics"><div><span>Сделки</span><b>${v.trades}</b></div><div><span>P&L</span><b class="${v.pnl>0?'positive':v.pnl<0?'negative':''}">${formatMoney(v.pnl)}</b></div><div><span>Средняя ставка</span><b>${formatMoneyPlain(v.trades?v.stake/v.trades:0)}</b></div></div></article>`}).join('');
-  box.innerHTML=`<article class="card psychology-full-card"><div class="psychology-state"><span>◈</span><h3>Состояние системы</h3></div><div class="psychology-score">${winRate.toFixed(1)}<small>% общий win rate</small></div><div class="playbook-metrics"><div><span>Сделки</span><b>${trades.length}</b></div><div><span>Средний P&L</span><b class="${avgPnl>0?'positive':avgPnl<0?'negative':''}">${formatMoney(avgPnl)}</b></div><div><span>Средняя ставка</span><b>${formatMoneyPlain(avgStake)}</b></div></div></article><article class="card psychology-full-card"><div class="psychology-state"><span>↗</span><h3>Реакция на результат</h3></div><div class="playbook-metrics"><div><span>После LOSS ставка выше</span><b>${lossReaction.toFixed(1)}%</b></div><div><span>После WIN ставка выше</span><b>${winReaction.toFixed(1)}%</b></div><div><span>Макс. серия LOSS</span><b>${maxLossStreak}</b></div><div><span>Макс. серия WIN</span><b>${maxWinStreak}</b></div></div><p class="psych-caption">Показатель сравнивает каждую сделку со следующей по журналу и не делает выводов о причинах изменения ставки.</p></article><article class="card psychology-full-card"><div class="psychology-state"><span>◌</span><h3>Время и концентрация</h3></div><div class="playbook-metrics"><div><span>Самый частый час</span><b>${topHour?`${topHour[0]}:00`:'—'}</b></div><div><span>Сделок в этот час</span><b>${topHour?topHour[1]:0}</b></div><div><span>Итоговый P&L</span><b class="${totalPnl>0?'positive':totalPnl<0?'negative':''}">${formatMoney(totalPnl)}</b></div></div><p class="psych-caption">Час берётся из сохранённого времени сделки. Часовой пояс не угадывается.</p></article><div class="psychology-state-grid">${stateCards}</div>`;
+  const box=document.getElementById('psychologyFull');if(!box)return;const groups={};state.trades.forEach(t=>{const k=t.state||'neutral';(groups[k]??=[]).push(t)});const labels={calm:'Спокойствие',focused:'Фокус',fear:'Страх',tired:'Усталость',greed:'Азарт',revenge:'Реванш',neutral:'Не указано'};
+  box.innerHTML=Object.entries(groups).sort((a,b)=>b[1].length-a[1].length).map(([k,ts])=>{const s=stats(ts);return `<article class="card psychology-full-card"><div class="psychology-state"><span>●</span><h3>${labels[k]||k}</h3></div><div class="psychology-score">${s.winRate.toFixed(1)}<small>% win rate</small></div><div class="playbook-metrics"><div><span>Сделки</span><b>${s.trades}</b></div><div><span>P&L</span><b class="${s.pnl>0?'positive':s.pnl<0?'negative':''}">${formatMoney(s.pnl)}</b></div><div><span>Средний P&L</span><b>${formatMoney(s.avg)}</b></div></div></article>`}).join('')||'<div class="empty-inline">Заполните состояние в сделках, чтобы увидеть психологический профиль.</div>';
 }
-
