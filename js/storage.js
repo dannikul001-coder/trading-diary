@@ -175,8 +175,8 @@ async function loadCloudTrades(userId,options={}){
 
 const PENDING_DELETES_KEY='tradingDiary_pendingDeletes_v1';
 function loadPendingDeletes(){
-  try{const raw=JSON.parse(localStorage.getItem(PENDING_DELETES_KEY)||'{}');return {trades:Array.isArray(raw.trades)?raw.trades:[],notes:Array.isArray(raw.notes)?raw.notes:[],plans:Array.isArray(raw.plans)?raw.plans:[],goals:Array.isArray(raw.goals)?raw.goals:[]};}
-  catch{return {trades:[],notes:[],plans:[],goals:[]};}
+  try{const raw=JSON.parse(localStorage.getItem(PENDING_DELETES_KEY)||'{}');return {trades:Array.isArray(raw.trades)?raw.trades:[],notes:Array.isArray(raw.notes)?raw.notes:[],plans:Array.isArray(raw.plans)?raw.plans:[]};}
+  catch{return {trades:[],notes:[],plans:[]};}
 }
 function savePendingDeletes(v){localStorage.setItem(PENDING_DELETES_KEY,JSON.stringify(v));}
 function queuePendingDelete(type,payload){
@@ -207,12 +207,6 @@ async function syncPendingDeletes(userId){
       if(error)throw error;
       removePendingDelete(type,x=>JSON.stringify(x)===JSON.stringify(item));
     }
-  }
-  for(const item of [...q.goals]){
-    if(!item.id){removePendingDelete('goals',x=>JSON.stringify(x)===JSON.stringify(item));continue;}
-    const {error}=await cloud().from('goals').delete().eq('user_id',userId).eq('id',item.id);
-    if(error)throw error;
-    removePendingDelete('goals',x=>JSON.stringify(x)===JSON.stringify(item));
   }
 }
 
