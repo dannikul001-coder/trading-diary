@@ -7,7 +7,7 @@ function bindNavigation(){
   document.getElementById('menuBtn')?.addEventListener('click',()=>document.getElementById('sidebar')?.classList.toggle('open'));
   document.getElementById('drawerClose')?.addEventListener('click',()=>document.getElementById('sidebar')?.classList.remove('open'));
 }
-function showView(v){activeView=v;document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.getElementById('view-'+v)?.classList.add('active');document.querySelectorAll('.nav-item,.nav-chip').forEach(x=>x.classList.toggle('active',x.dataset.view===v));const section=document.getElementById('currentSection');if(section)section.textContent=viewNames[v]||v;document.getElementById('sidebar')?.classList.remove('open');if(v==='charts'){renderMainChart(document.querySelector('#mainChartType .active')?.dataset.type||'balance');renderSecondaryCharts();}if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='playbook')renderPlaybook();if(v==='psychology')renderPsychologyFull();if(v==='import'){renderImportView();renderImportHistory()}if(v==='training'&&typeof loadTrainingView==='function')loadTrainingView();if(v==='admin'&&typeof loadAdminUsers==='function')loadAdminUsers();}
+function showView(v){if(typeof isTabHidden==='function'&&isTabHidden(v)){toast('Эта вкладка скрыта администратором.');return;}activeView=v;document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.getElementById('view-'+v)?.classList.add('active');document.querySelectorAll('.nav-item,.nav-chip').forEach(x=>x.classList.toggle('active',x.dataset.view===v));const section=document.getElementById('currentSection');if(section)section.textContent=viewNames[v]||v;document.getElementById('sidebar')?.classList.remove('open');if(v==='charts'){renderMainChart(document.querySelector('#mainChartType .active')?.dataset.type||'balance');renderSecondaryCharts();}if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='playbook')renderPlaybook();if(v==='psychology')renderPsychologyFull();if(v==='import'){renderImportView();renderImportHistory()}if(v==='training'&&typeof loadTrainingView==='function')loadTrainingView();if(v==='admin'&&typeof loadAdminUsers==='function')loadAdminUsers();}
 function hexToRgb(hex){const m=String(hex||'').trim().replace('#','').match(/^[0-9a-f]{6}$/i);if(!m)return null;return{r:parseInt(m[0].slice(0,2),16),g:parseInt(m[0].slice(2,4),16),b:parseInt(m[0].slice(4,6),16)}}
 function colorLuma(hex){const c=hexToRgb(hex);if(!c)return .2;const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(c.r)+.7152*f(c.g)+.0722*f(c.b)}
 function readableText(hex){return colorLuma(hex)>.46?'#11161b':'#f3f7f8'}
@@ -611,7 +611,20 @@ async function deleteNote(id){
   renderAll();
   toast('Заметка удалена');
 }
-function deleteGoal(id){state.goals=state.goals.filter(x=>x.id!==id);saveState()}
+async function deleteGoal(id){
+  if(!confirm('Удалить эту цель?'))return;
+  if(window.queuePendingDelete)window.queuePendingDelete('goals',{id});
+  if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
+    const {error}=await window.supabaseClient.from('goals').delete().eq('user_id',window.currentUser.id).eq('id',id);
+    if(error)toast('Удаление сохранено для повторной синхронизации',true);
+    else if(window.removePendingDelete)window.removePendingDelete('goals',x=>String(x.id)===String(id));
+  }
+  state.goals=state.goals.filter(x=>String(x.id)!==String(id));
+  saveLocalOnly();
+  localStorage.setItem('tradingDiary_cloudWorkspaceDirty','1');
+  renderAll();
+  toast('Цель удалена');
+}
 function openSimpleModal(title,sub,submit,fields){document.getElementById('modal').classList.add('simple-modal');document.getElementById('modalContent').innerHTML=`<h2>${title}</h2><div class="sub">${sub}</div><form id="simpleForm"><div class="modal-form">${fields.map(f=>`<label class="${f.type==='textarea'?'full':''}">${f.label}${f.type==='select'?`<select name="${f.name}">${f.options.map(o=>`<option ${String(f.value??'')===String(o)?'selected':''}>${escapeHtml(o)}</option>`).join('')}</select>`:f.type==='textarea'?`<textarea name="${f.name}" placeholder="${escapeAttr(f.placeholder||'')}">${escapeHtml(f.value||'')}</textarea>`:`<input name="${f.name}" type="${f.type||'text'}" value="${escapeAttr(f.value??'')}" placeholder="${escapeAttr(f.placeholder||'')}" ${f.required?'required':''} ${f.step!=null?`step="${escapeAttr(f.step)}"`:''} ${f.min!=null?`min="${escapeAttr(f.min)}"`:''} ${f.max!=null?`max="${escapeAttr(f.max)}"`:''}>`}</label>`).join('')}</div><div class="modal-actions"><button type="button" class="secondary-btn" id="cancelModal">Отмена</button><button class="primary-btn">Сохранить</button></div></form>`;openModal();document.getElementById('cancelModal').onclick=closeModal;document.getElementById('simpleForm').onsubmit=e=>{e.preventDefault();submit(Object.fromEntries(new FormData(e.target)));closeModal()}}
 function openModal(){const el=document.getElementById('modalBackdrop');if(!el)return;el.classList.add('open');el.classList.remove('show')};function closeModal(){const el=document.getElementById('modalBackdrop');if(!el)return;el.classList.remove('open','show');document.getElementById('modal')?.classList.remove('simple-modal','photo-viewer-modal')}
 function updateClock(){const p=localParts();document.getElementById('liveDate').textContent=new Intl.DateTimeFormat('ru-RU',{timeZone:state.settings.timezone,day:'2-digit',month:'long',year:'numeric'}).format(new Date());document.getElementById('liveTime').textContent=`${p.hour}:${p.minute}:${p.second}`;document.getElementById('liveZone').textContent=state.settings.timezone}

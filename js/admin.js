@@ -1,4 +1,32 @@
 let adminState={isAdmin:false,users:[],categories:[],lessons:[],category:'all',search:'',selectedUser:null,trainingProgress:[]};
+const TAB_VISIBILITY_DEFAULTS={dashboard:'Обзор',trades:'Сделки',calendar:'Календарь',statistics:'Аналитика',charts:'Графики',plan:'План',playbook:'Playbook',goal:'Главная цель',goals:'Цели',journal:'Журнал',notes:'Заметки',psychology:'Психология',import:'Import Center',settings:'Настройки',training:'Обучение'};
+let tabVisibility={hidden:[]};
+function isTabHidden(key){return !adminState.isAdmin && tabVisibility.hidden.includes(key);}
+function applyTabVisibility(){
+ document.querySelectorAll('[data-view]').forEach(el=>{const key=el.dataset.view;if(TAB_VISIBILITY_DEFAULTS[key])el.hidden=(!adminState.isAdmin&&tabVisibility.hidden.includes(key));});
+ Object.keys(TAB_VISIBILITY_DEFAULTS).forEach(key=>{const view=document.getElementById('view-'+key);if(view)view.hidden=(!adminState.isAdmin&&tabVisibility.hidden.includes(key));});
+ if(!adminState.isAdmin&&typeof activeView!=='undefined'&&isTabHidden(activeView)&&typeof showView==='function')showView('dashboard');
+}
+async function loadTabVisibility(){
+ if(!window.supabaseClient||!window.currentUser)return;
+ const {data,error}=await window.supabaseClient.from('app_visibility').select('hidden_tabs').eq('id',1).maybeSingle();
+ if(error){console.warn('Tab visibility load:',error);return;}
+ tabVisibility={hidden:Array.isArray(data?.hidden_tabs)?data.hidden_tabs:[]};
+ applyTabVisibility();
+ renderAdminTabVisibility();
+}
+function renderAdminTabVisibility(){
+ const box=document.getElementById('adminTabVisibility');if(!box)return;
+ box.innerHTML=Object.entries(TAB_VISIBILITY_DEFAULTS).map(([key,label])=>{const hidden=tabVisibility.hidden.includes(key);return `<article class=\"admin-visibility-card\"><div><b>${escapeHtml(label)}</b><small>${hidden?'Скрыта у пользователей':'Видна пользователям'}</small></div><button class=\"${hidden?'primary-btn':'secondary-btn'}\" data-tab-visibility=\"${key}\" data-hidden=\"${hidden?'false':'true'}\">${hidden?'Включить':'Скрыть'}</button></article>`}).join('');
+}
+async function setTabVisibility(key,hidden){
+ if(!adminState.isAdmin||!window.supabaseClient)return;
+ const {data,error}=await window.supabaseClient.rpc('admin_set_tab_visibility',{tab_key:key,is_hidden:hidden});
+ if(error){toast(error.message,true);return;}
+ tabVisibility={hidden:Array.isArray(data?.hidden_tabs)?data.hidden_tabs:[]};
+ applyTabVisibility();renderAdminTabVisibility();toast(hidden?'Вкладка скрыта у пользователей':'Вкладка снова видна пользователям');
+}
+
 let trainingState={categories:[],lessons:[],category:'all',search:'',status:'all',progress:[]};
 function trainingDone(id){return trainingState.progress.some(p=>p.lesson_id===id&&p.status==='completed')}
 function trainingProgressRow(id){return trainingState.progress.find(p=>p.lesson_id===id)||null}
@@ -7,28 +35,28 @@ function youtubeEmbedUrl(url){const m=String(url||'').match(/(?:youtu\.be\/|yout
 
 document.addEventListener('DOMContentLoaded',()=>{bindAdminUI();refreshAdminAccess();bindTrainingUI();});
 document.addEventListener('auth:ready',refreshAdminAccess);
-document.addEventListener('cloud:data-ready',()=>{if(adminState.isAdmin){loadAdminUsers();loadAdminLearning();}loadTrainingView();});
+document.addEventListener('cloud:data-ready',()=>{loadTabVisibility();if(adminState.isAdmin){loadAdminUsers();loadAdminLearning();}loadTrainingView();});
 function startQuoteRotation(){const q=DEFAULT_DATA.quotes||[];if(!q.length)return;let idx=Math.floor(Math.random()*q.length);renderQuote(idx);window.setInterval(()=>{let n=Math.floor(Math.random()*q.length);if(q.length>1&&n===idx)n=(n+1)%q.length;idx=n;renderQuote(idx)},60000)}
 document.addEventListener('DOMContentLoaded',()=>{window.setTimeout(startQuoteRotation,300)});
 
 async function refreshAdminAccess(){
  const client=window.supabaseClient,user=window.currentUser;
- if(!client||!user){setAdminVisibility(false);return;}
+ if(!client||!user){tabVisibility={hidden:[]};setAdminVisibility(false);return;}
  const {data,error}=await client.from('user_roles').select('role').eq('user_id',user.id).maybeSingle();
- adminState.isAdmin=!error&&data?.role==='admin'; setAdminVisibility(adminState.isAdmin);
+ adminState.isAdmin=!error&&data?.role==='admin'; setAdminVisibility(adminState.isAdmin); await loadTabVisibility();
  if(adminState.isAdmin){loadAdminUsers();loadAdminLearning();}
  loadTrainingView();
 }
 function setAdminVisibility(ok){
  document.querySelectorAll('.admin-only').forEach(x=>x.hidden=!ok);
  const view=document.getElementById('view-admin');if(view)view.hidden=!ok;
- const training=document.querySelectorAll('[data-view="training"]');training.forEach(x=>x.hidden=false);
- const tv=document.getElementById('view-training');if(tv)tv.hidden=false;
+ applyTabVisibility();
  if(!ok&&typeof activeView!=='undefined'&&activeView==='admin'&&typeof showView==='function')showView('dashboard');
 }
 function bindAdminUI(){
  document.addEventListener('click',e=>{
-  const tab=e.target.closest('[data-admin-tab]');if(tab){document.querySelectorAll('[data-admin-tab]').forEach(x=>x.classList.toggle('active',x===tab));document.querySelectorAll('[data-admin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.adminPanel===tab.dataset.adminTab));if(tab.dataset.adminTab==='learning')loadAdminLearning();if(tab.dataset.adminTab==='users')loadAdminUsers();return;}
+  const tab=e.target.closest('[data-admin-tab]');if(tab){document.querySelectorAll('[data-admin-tab]').forEach(x=>x.classList.toggle('active',x===tab));document.querySelectorAll('[data-admin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.adminPanel===tab.dataset.adminTab));if(tab.dataset.adminTab==='learning')loadAdminLearning();if(tab.dataset.adminTab==='users')loadAdminUsers();if(tab.dataset.adminTab==='visibility')loadTabVisibility();return;}
+  const vis=e.target.closest('[data-tab-visibility]');if(vis){setTabVisibility(vis.dataset.tabVisibility,vis.dataset.hidden==='true');return;}
   const act=e.target.closest('[data-admin-action]');if(act){handleAdminAction(act.dataset.adminAction,act.dataset.userId||'');return;}
   const cat=e.target.closest('[data-admin-category]');if(cat){adminState.category=cat.dataset.adminCategory;renderAdminLearning();return;}
   const edit=e.target.closest('[data-admin-edit]');if(edit){adminLessonModal(edit.dataset.adminEdit);return;}
@@ -42,6 +70,7 @@ function bindAdminUI(){
  });
  document.getElementById('adminRefreshUsers')?.addEventListener('click',loadAdminUsers);
  document.getElementById('adminRefreshLearning')?.addEventListener('click',loadAdminLearning);
+ document.getElementById('adminRefreshVisibility')?.addEventListener('click',loadTabVisibility);
  document.getElementById('adminAddLesson')?.addEventListener('click',()=>adminLessonModal());
  document.getElementById('adminAddCategory')?.addEventListener('click',adminCategoryModal);
  document.getElementById('adminUserSearch')?.addEventListener('input',e=>{adminState.search=e.target.value.toLowerCase();renderAdminUsers();});
