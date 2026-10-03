@@ -34,3 +34,8 @@ Do not expose Supabase service-role/secret keys in the browser or repository.
 - Logout uses explicit Cancel / Logout actions instead of browser confirmation.
 
 **Data safety:** do not use workspace reset/delete-all for testing against the real journal.
+
+
+## V29.2 — Learning UI Stabilization
+
+V29.2 preserves the existing Learning structure and adds a learner-facing status filter (all / not started / in progress / completed), clearer continuation behavior, per-lesson progress bars, category completion in the roadmap, and improved next-lesson selection. No learning tables are replaced or reset.
