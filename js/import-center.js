@@ -32,6 +32,15 @@ function parseImportNumber(v){
   const s=String(v).trim().replace(/\s/g,'').replace(',', '.').replace(/[^0-9.+-]/g,'');
   const n=Number(s);return Number.isFinite(n)?n:null;
 }
+let importTimeShiftHours=(()=>{try{const raw=localStorage.getItem('tradingDiary_importShiftHours');if(raw===null)return 1;const v=Number(raw);return Number.isFinite(v)?v:1}catch{return 1}})();
+// Wall-clock shift (hours) for files whose times are in another timezone than the
+// trading platform screen. Pure arithmetic on the written date/time, no Date zones.
+function shiftImportParts(p,hours=importTimeShiftHours){
+  if(!p||!p.date||!p.time||!hours)return p;
+  const [y,mo,d]=p.date.split('-').map(Number);const [H,M,S]=p.time.split(':').map(Number);
+  const t=new Date(Date.UTC(y,mo-1,d,H,M,S||0)+Math.round(hours*3600000));
+  return {date:`${t.getUTCFullYear()}-${pad2(t.getUTCMonth()+1)}-${pad2(t.getUTCDate())}`,time:`${pad2(t.getUTCHours())}:${pad2(t.getUTCMinutes())}:${pad2(t.getUTCSeconds())}`};
+}
 function pad2(n){return String(n).padStart(2,'0')}
 // Wall-clock time exactly as written in the file. No Date()/timezone math: an
 // Excel serial or text like "2026-10-03 15:32:05" must stay 15:32:05.
@@ -72,7 +81,7 @@ function importResultFrom(row,pnl){
 function normalizeDirection(v){return String(v??'').trim().toUpperCase().includes('PUT')?'PUT':'CALL'}
 function buildImportedTrade(raw,mapping,headers){
   const val=k=>mapping[k]===undefined?'':raw[mapping[k]];
-  const open=parseImportDateTime(val('openTime')); const close=parseImportDateTime(val('closeTime'));
+  const open=shiftImportParts(parseImportDateTime(val('openTime'))); const close=shiftImportParts(parseImportDateTime(val('closeTime')));
   const stake=parseImportNumber(val('stake'))??0;
   const pnl=parseImportNumber(val('pnl'))??0;
   let payout=parseImportNumber(val('payout'));
@@ -135,14 +144,17 @@ function valuesDiffer(a,b,key){
   if(['stake','payout','pnl','openPrice','closePrice'].includes(key))return Math.abs((Number(a)||0)-(Number(b)||0))>0.000001;
   return String(a).trim().toLowerCase()!==String(b).trim().toLowerCase();
 }
-function mergeImportedTrades(files){
-  const map=new Map(state.trades.map(t=>[tradeIdentity(t),t]));
+function mergeImportedTrades(files,base=state.trades){
+  const map=new Map(base.map(t=>[tradeIdentity(t),t]));
+  const bySyncKey=new Map(base.filter(t=>t.syncKey).map(t=>[String(t.syncKey),t]));
   const added=[]; const merged=[]; const conflicts=[]; let rows=0;
   const fillable=['date','time','closeDate','closeTime','instrument','type','expiration','stake','payout','result','pnl','strategy','platform','state','note','category','openPrice','closePrice','currency','externalId'];
   for(const source of files){
     for(const incoming of source.rows){
       rows++;
-      const key=tradeIdentity(incoming); const existing=map.get(key);
+      const key=tradeIdentity(incoming); let existing=map.get(key);
+      // Fallback: the stored trade may have lost its external id but keeps sync_key "ext:<id>".
+      if(!existing&&incoming.externalId){const e=bySyncKey.get('ext:'+incoming.externalId);if(e){existing=e;if(!e.externalId)e.externalId=incoming.externalId}}
       if(!existing){map.set(key,incoming);added.push(incoming);continue}
       let changed=false; const conflictFields=[];
       // The file is authoritative for WHEN a trade happened (close time). Matched by
@@ -171,18 +183,31 @@ function renderImportView(){
   const conflictHtml=r.conflicts.length ? '<h4>Конфликты <small>(существующее значение будет сохранено)</small></h4>'+r.conflicts.slice(0,30).map(c=>`<div class="conflict-row"><b>${escapeHtml(c.externalId||c.identity)}</b><span>${c.fields.map(escapeHtml).join(', ')}</span></div>`).join('')+(r.conflicts.length>30?'<p class="muted">Показаны первые 30 конфликтов.</p>':'') : '<div class="success-line">✓ Конфликтов нет. Данные можно объединить безопасно.</div>';
   box.innerHTML=`<div class="import-summary-grid"><div><b>${r.rows}</b><span>строк прочитано</span></div><div><b class="positive">${r.added.length}</b><span>новых сделок</span></div><div><b>${r.merged.length}</b><span>дополнено</span></div><div><b class="negative">${r.conflicts.length}</b><span>конфликтов</span></div></div>
   <div class="import-preview-head"><div><h3>Готово к импорту</h3><p>По умолчанию сохраняем уже заполненные значения и добавляем только отсутствующие.</p></div><div class="button-row"><button class="secondary-btn" id="cancelImport">Отмена</button><button class="primary-btn" id="commitImport">Импортировать</button></div></div>
+  <div class="import-shift" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0"><label style="display:flex;gap:8px;align-items:center">Поправка времени, часов <input id="importShift" type="number" step="0.5" min="-14" max="14" value="${importTimeShiftHours}" style="width:80px"></label><span class="muted">Время в журнале = время закрытия из файла + поправка. Файл выгрузки платформы идёт на 1 час позади сайта, поэтому по умолчанию +1. Сверьте образец с сайтом.</span></div>
+  <div class="import-sample">${importPending.files.flatMap(f=>f.rows).slice(0,5).map(t=>`<div class="conflict-row"><b>${escapeHtml(t.instrument)}</b><span>закрытие в журнале: ${escapeHtml(t.date)} ${escapeHtml(t.closeTime||t.time||'')}</span></div>`).join('')}</div>
   <div class="import-files">${importPending.files.map(f=>`<span>${escapeHtml(f.file)} · ${f.rows.length}</span>`).join('')}</div>
   <div class="import-conflicts">${conflictHtml}</div>`;
   document.getElementById('cancelImport').onclick=()=>{importPending=null;renderImportView()};
   document.getElementById('commitImport').onclick=commitImport;
+  document.getElementById('importShift').onchange=async e=>{
+    const v=Number(String(e.target.value).replace(',','.'));
+    importTimeShiftHours=Number.isFinite(v)?Math.max(-14,Math.min(14,v)):0;
+    try{localStorage.setItem('tradingDiary_importShiftHours',String(importTimeShiftHours))}catch{}
+    await parseImportFiles(importPending.fileObjects||[]);
+  };
 }
 async function handleImportFiles(e){
   const files=[...e.target.files]; if(!files.length)return;
+  await parseImportFiles(files);
+}
+async function parseImportFiles(files){
+  if(!files.length)return;
   const status=document.getElementById('importStatus'); status.innerHTML='<div class="loading-state">Читаем файлы…</div>';
   try{
     const parsed=[]; for(const file of files)parsed.push(await readImportFile(file));
-    const result=mergeImportedTrades(parsed);
-    importPending={files:parsed,result}; renderImportView();
+    // Preview works on a copy: it must never mutate the real journal before commit.
+    const result=mergeImportedTrades(parsed,JSON.parse(JSON.stringify(state.trades)));
+    importPending={files:parsed,result,fileObjects:files}; renderImportView();
   }catch(err){console.error('Import Center:',err);toast('Не удалось прочитать один из файлов',true);importPending=null;renderImportView()}
 }
 async function commitImport(){
