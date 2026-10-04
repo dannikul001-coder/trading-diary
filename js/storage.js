@@ -163,7 +163,9 @@ async function loadCloudTrades(userId,options={}){
     const knownKeys=loadKnownTradeKeys(userId);
     if(knownKeys&&knownKeys.size&&rows.length){
       const expected=await countCloudTrades(userId);
-      if(expected===rows.length){
+      const cloudKeysPre=new Set(rows.map(r=>String(r.sync_key)));
+      const missingCount=state.trades.filter(t=>t.syncKey&&knownKeys.has(String(t.syncKey))&&!cloudKeysPre.has(String(t.syncKey))).length;
+      if(expected===rows.length&&!tooManyRemoteDeletes(missingCount,state.trades.length)){
         ensureTradeSyncKeys(state.trades);
         const cloudKeys=new Set(rows.map(r=>String(r.sync_key)));
         const localNew=state.trades.filter(t=>!cloudKeys.has(String(t.syncKey))&&!knownKeys.has(String(t.syncKey)));
@@ -224,6 +226,9 @@ async function countCloudTrades(userId){
   const {count,error}=await cloud().from('trades').select('id',{count:'exact',head:true}).eq('user_id',userId).is('deleted_at',null);
   return error?null:count;
 }
+// Many trades "deleted remotely" at once is far more likely a cloud accident than a
+// user action. Never auto-drop local trades in bulk; keep them and let them re-upload.
+function tooManyRemoteDeletes(count,total){return count>Math.max(10,Math.floor(total*0.01))}
 async function reconcileRemoteTradeDeletes(userId){
   ensureTradeSyncKeys(state.trades);
   const known=loadKnownTradeKeys(userId);
@@ -234,6 +239,8 @@ async function reconcileRemoteTradeDeletes(userId){
   // trusted (expired session / RLS would look identical to "everything deleted").
   if(expected===null||rows.length!==expected||rows.length===0)return 0;
   const cloudKeys=new Set(rows.map(r=>String(r.sync_key)));
+  const candidates=state.trades.filter(t=>{const k=String(t.syncKey||'');return k&&known.has(k)&&!cloudKeys.has(k)});
+  if(tooManyRemoteDeletes(candidates.length,state.trades.length)){console.warn('Remote-delete guard: refusing to drop',candidates.length,'trades');return 0}
   const gone=[];
   state.trades=state.trades.filter(t=>{
     const k=String(t.syncKey||'');
@@ -267,15 +274,27 @@ function removePendingDelete(type,predicate){
 }
 async function syncPendingDeletes(userId){
   const q=loadPendingDeletes();
-  for(const item of [...q.trades]){
-    let query=cloud().from('trades').delete().eq('user_id',userId);
-    if(item.syncKey) query=query.eq('sync_key',item.syncKey);
-    else if(item.id) query=query.eq('id',item.id);
-    else {removePendingDelete('trades',x=>JSON.stringify(x)===JSON.stringify(item));continue;}
-    const {error}=await query;
+  // A pending delete is STALE when that trade exists locally again (re-imported or
+  // re-added after the delete). Sending it would erase live data from the cloud.
+  const liveKeys=new Set(state.trades.map(t=>String(t.syncKey||'')).filter(Boolean));
+  const liveIds=new Set(state.trades.map(t=>String(t.id)));
+  const isStale=item=>item.syncKey?liveKeys.has(String(item.syncKey)):(item.id&&liveIds.has(String(item.id)));
+  const real=q.trades.filter(i=>(i.syncKey||i.id)&&!isStale(i));
+  const keys=[...new Set(real.filter(i=>i.syncKey).map(i=>String(i.syncKey)))];
+  const ids=[...new Set(real.filter(i=>!i.syncKey&&i.id).map(i=>String(i.id)))];
+  const CHUNK=50; // few requests instead of one per trade
+  for(let n=0;n<keys.length;n+=CHUNK){
+    const {error}=await cloud().from('trades').delete().eq('user_id',userId).in('sync_key',keys.slice(n,n+CHUNK));
     if(error)throw error;
-    removePendingDelete('trades',x=>JSON.stringify(x)===JSON.stringify(item));
   }
+  for(let n=0;n<ids.length;n+=CHUNK){
+    const {error}=await cloud().from('trades').delete().eq('user_id',userId).in('id',ids.slice(n,n+CHUNK));
+    if(error)throw error;
+  }
+  // Everything in the snapshot is now handled (sent, stale or unusable): clear exactly
+  // those entries, keeping any delete queued while this sync was running.
+  const done=new Set(q.trades.map(x=>JSON.stringify(x)));
+  const cur=loadPendingDeletes();cur.trades=cur.trades.filter(x=>!done.has(JSON.stringify(x)));savePendingDeletes(cur);
   for(const type of ['notes','plans']){
     for(const item of [...q[type]]){
       if(!item.id){removePendingDelete(type,x=>JSON.stringify(x)===JSON.stringify(item));continue;}
