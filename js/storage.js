@@ -133,30 +133,29 @@ async function cloudSelectAll(table, userId, columns='*', orderBy='created_at', 
 async function loadCloudTrades(userId,options={}){
   if(!cloud()||!userId)return false;
   try{
-    const rows=await cloudSelectAll('trades',userId,'*','trade_date',false,true);
-    cloudKnown.trades=new Set(rows.map(r=>r.id));
     const dirty=localStorage.getItem('tradingDiary_cloudTradesDirty')==='1';
 
-    // Never let a stale/truncated local cache overwrite a larger cloud journal.
-    // This is especially important for the old 1000-row PostgREST limit.
-    if(dirty && !options.skipMigration && state.trades.length>rows.length){
+    // A dirty local journal contains intentional changes (including offline
+    // deletes). Sync those changes before comparing row counts, otherwise a
+    // cloud row could resurrect a trade that was just deleted locally.
+    if(dirty && !options.skipMigration){
       const ok=await syncTradesToCloud(userId);
-      if(ok){
-        const refreshed=await cloudSelectAll('trades',userId,'*','trade_date',false,true);
-        cloudKnown.trades=new Set(refreshed.map(r=>r.id));
-        state.trades=refreshed.map(cloudRowToTrade);
-        notifyState();
-        return true;
-      }
-      return false;
+      if(!ok)return false;
+      const refreshed=await cloudSelectAll('trades',userId,'*','trade_date',false,true);
+      cloudKnown.trades=new Set(refreshed.map(r=>r.id));
+      state.trades=refreshed.map(cloudRowToTrade);
+      notifyState();
+      return true;
     }
 
+    const rows=await cloudSelectAll('trades',userId,'*','trade_date',false,true);
+    cloudKnown.trades=new Set(rows.map(r=>r.id));
+
     // If cloud has more rows than the local cache, cloud is authoritative.
-    // This prevents accidental deletion of older trades on login.
-    if(rows.length>state.trades.length || !dirty || !state.trades.length){
+    // This protects the full journal from stale/truncated local caches.
+    if(rows.length>state.trades.length || !state.trades.length){
       state.trades=rows.map(cloudRowToTrade);
       notifyState();
-      localStorage.removeItem('tradingDiary_cloudTradesDirty');
       return true;
     }
 
@@ -174,11 +173,49 @@ async function loadCloudTrades(userId,options={}){
   }
 }
 
+const PENDING_DELETES_KEY='tradingDiary_pendingDeletes_v1';
+function loadPendingDeletes(){
+  try{const raw=JSON.parse(localStorage.getItem(PENDING_DELETES_KEY)||'{}');return {trades:Array.isArray(raw.trades)?raw.trades:[],notes:Array.isArray(raw.notes)?raw.notes:[],plans:Array.isArray(raw.plans)?raw.plans:[]};}
+  catch{return {trades:[],notes:[],plans:[]};}
+}
+function savePendingDeletes(v){localStorage.setItem(PENDING_DELETES_KEY,JSON.stringify(v));}
+function queuePendingDelete(type,payload){
+  const q=loadPendingDeletes();
+  const list=q[type]||[];
+  const sig=JSON.stringify(payload);
+  if(!list.some(x=>JSON.stringify(x)===sig))list.push(payload);
+  q[type]=list;savePendingDeletes(q);
+}
+function removePendingDelete(type,predicate){
+  const q=loadPendingDeletes();q[type]=(q[type]||[]).filter(x=>!predicate(x));savePendingDeletes(q);
+}
+async function syncPendingDeletes(userId){
+  const q=loadPendingDeletes();
+  for(const item of [...q.trades]){
+    let query=cloud().from('trades').update({deleted_at:new Date().toISOString()}).eq('user_id',userId);
+    if(item.syncKey) query=query.eq('sync_key',item.syncKey);
+    else if(item.id) query=query.eq('id',item.id);
+    else {removePendingDelete('trades',x=>JSON.stringify(x)===JSON.stringify(item));continue;}
+    const {error}=await query;
+    if(error)throw error;
+    removePendingDelete('trades',x=>JSON.stringify(x)===JSON.stringify(item));
+  }
+  for(const type of ['notes','plans']){
+    for(const item of [...q[type]]){
+      if(!item.id){removePendingDelete(type,x=>JSON.stringify(x)===JSON.stringify(item));continue;}
+      const {error}=await cloud().from(type).update({deleted_at:new Date().toISOString()}).eq('user_id',userId).eq('id',item.id);
+      if(error)throw error;
+      removePendingDelete(type,x=>JSON.stringify(x)===JSON.stringify(item));
+    }
+  }
+}
+
 async function syncTradesToCloud(userId){
   if(!cloud()||!userId||cloudSyncBusy)return false;
   cloudSyncBusy=true;
   let allOk=true;
   try{
+    await syncPendingDeletes(userId);
     ensureTradeSyncKeys(state.trades);
     const batchSize=250;
     const coreKeys=['user_id','sync_key','trade_date','trade_time','instrument','instrument_category','direction','expiration','stake','payout','result','strategy','account','note'];
@@ -373,6 +410,7 @@ async function syncWorkspace(userId=window.currentUser?.id,force=false){
   if(cloudSyncBusy)return false;
   cloudSyncBusy=true;
   try{
+    await syncPendingDeletes(userId);
     await syncRows('notes',state.notes,noteToCloudRow,'notes',userId);
     await syncRows('plans',state.plans,planToCloudRow,'plans',userId);
     await syncRows('goals',state.goals,goalToCloudRow,'goals',userId);
@@ -507,5 +545,7 @@ async function cloudSaveState(){
   },CLOUD_SYNC_DEBOUNCE_MS);
 }
 
+window.queuePendingDelete=queuePendingDelete;
+window.removePendingDelete=removePendingDelete;
 window.loadCloudWorkspace=loadCloudWorkspace;
 window.loadCloudTrades=loadCloudTrades;

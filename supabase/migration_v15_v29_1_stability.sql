@@ -19,6 +19,9 @@ create index if not exists notes_user_deleted_at_idx
 create index if not exists trades_user_date_time_idx
   on public.trades(user_id, trade_date, trade_time);
 
+create unique index if not exists trades_user_sync_key_uidx
+  on public.trades(user_id, sync_key);
+
 create index if not exists trades_user_sync_key_idx
   on public.trades(user_id, sync_key);
 

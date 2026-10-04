@@ -308,10 +308,18 @@ function openProfileModal(){
     closeModal();
     toast('Профиль сохранён');
   };
-  document.getElementById('profileLogout').onclick=()=>{
-    closeModal();
-    if(confirm('Вы действительно хотите выйти из аккаунта?')) performLogout();
-  };
+  document.getElementById('profileLogout').onclick=()=>openLogoutConfirm();
+}
+
+function openLogoutConfirm(){
+  const modal=document.getElementById('modal');
+  const content=document.getElementById('modalContent');
+  if(!modal||!content)return;
+  modal.classList.add('simple-modal');
+  content.innerHTML=`<h2>Выйти из аккаунта?</h2><div class="sub">Локальные данные на устройстве останутся. Синхронизация прекратится до следующего входа.</div><div class="modal-actions"><button type="button" class="secondary-btn" id="logoutCancel">Отмена</button><button type="button" class="danger-btn" id="logoutConfirm">Выйти</button></div>`;
+  openModal();
+  document.getElementById('logoutCancel').onclick=closeModal;
+  document.getElementById('logoutConfirm').onclick=async()=>{closeModal();await performLogout();};
 }
 
 async function performLogout(){
@@ -339,9 +347,7 @@ function openAuthModal(){
   openModal();
 
   if(currentUser){
-    document.getElementById('logoutBtn').onclick=()=>{
-      if(confirm('Вы действительно хотите выйти из аккаунта?')) performLogout();
-    };
+    document.getElementById('logoutBtn').onclick=()=>openLogoutConfirm();
     document.getElementById('closeAuth').onclick=closeModal;
     return;
   }
