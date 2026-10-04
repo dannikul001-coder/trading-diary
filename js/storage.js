@@ -217,15 +217,20 @@ async function syncTradesToCloud(userId){
   try{
     await syncPendingDeletes(userId);
     ensureTradeSyncKeys(state.trades);
-    const batchSize=250;
+    const batchSize=50;
+    const batchRetries=3;
     const coreKeys=['user_id','sync_key','trade_date','trade_time','instrument','instrument_category','direction','expiration','stake','payout','result','strategy','account','note'];
     const coreRow=row=>{const x={};for(const k of coreKeys)if(Object.prototype.hasOwnProperty.call(row,k))x[k]=row[k];return x};
 
     async function pushBatch(batchRows){
-      let result=await cloud().from('trades').upsert(batchRows,{onConflict:'user_id,sync_key'}).select('id,sync_key');
-      if(!result.error)return result;
+      let result=null;
+      for(let attempt=1;attempt<=batchRetries;attempt++){
+        result=await cloud().from('trades').upsert(batchRows,{onConflict:'user_id,sync_key'}).select('id,sync_key');
+        if(!result.error)return result;
+        if(attempt<batchRetries)await new Promise(r=>setTimeout(r,700*attempt));
+      }
 
-      const missingColumn=missingCloudColumn(result.error);
+      const missingColumn=missingCloudColumn(result?.error);
       if(disableMissingTradeColumn(missingColumn)){
         const retry=batchRows.map(row=>{const x={...row};delete x[missingColumn];return x});
         result=await cloud().from('trades').upsert(retry,{onConflict:'user_id,sync_key'}).select('id,sync_key');

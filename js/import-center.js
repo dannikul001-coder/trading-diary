@@ -180,8 +180,21 @@ async function commitImport(){
     document.dispatchEvent(new CustomEvent('state:changed'));
     if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady&&typeof syncTradesToCloud==='function'){
       const ok=await syncTradesToCloud(window.currentUser.id);
-      if(!ok){toast('Импорт сохранён локально, но облачная синхронизация не завершилась',true);return;}
+      if(!ok){
+        localStorage.setItem('tradingDiary_cloudTradesDirty','1');
+        renderAll();
+        toast('Импорт сохранён локально. Облако догрузит сделки автоматически — частичная загрузка не заменит журнал.',true);
+        importPending=null; renderImportView(); renderImportHistory();
+        return;
+      }
       const rows=await cloudSelectAll('trades',window.currentUser.id,'*','trade_date',false,true);
+      if(rows.length < state.trades.length){
+        localStorage.setItem('tradingDiary_cloudTradesDirty','1');
+        renderAll();
+        toast(`В облаке подтверждено ${rows.length} из ${state.trades.length}. Локальные сделки сохранены, догрузка продолжится автоматически.`,true);
+        importPending=null; renderImportView(); renderImportHistory();
+        return;
+      }
       state.trades=rows.map(cloudRowToTrade);
       ensureTradeSyncKeys(state.trades);
       saveLocalOnly();
