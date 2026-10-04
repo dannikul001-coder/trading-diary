@@ -121,11 +121,16 @@ async function cloudSelectAll(table, userId, columns='*', orderBy='created_at', 
     let q=cloud().from(table).select(columns).eq('user_id',userId);
     if(activeOnly)q=q.is('deleted_at',null);
     if(orderBy)q=q.order(orderBy,{ascending});
+    // Non-unique sort keys (e.g. trade_date) make range() pages unstable and can
+    // skip/duplicate rows. A unique tiebreaker keeps pagination deterministic.
+    if(orderBy!=='id')q=q.order('id',{ascending:true});
     const {data,error}=await q.range(from,from+pageSize-1);
     if(error)throw error;
     const rows=data||[];
     all.push(...rows);
-    if(rows.length<pageSize)break;
+    // Stop only on an empty page: a server-side max_rows lower than pageSize
+    // would otherwise silently truncate the result.
+    if(rows.length===0)break;
   }
   return all;
 }
@@ -151,10 +156,32 @@ async function loadCloudTrades(userId,options={}){
     const rows=await cloudSelectAll('trades',userId,'*','trade_date',false,true);
     cloudKnown.trades=new Set(rows.map(r=>r.id));
 
+    // Clean device (no unsent local changes) that has synced before: the cloud
+    // wins for every trade it already knew, so a stale phone can never overwrite
+    // corrected data (e.g. fixed times) with its old copy. Trades that are new on
+    // this device are kept and uploaded; trades deleted elsewhere are dropped.
+    const knownKeys=loadKnownTradeKeys(userId);
+    if(knownKeys&&knownKeys.size&&rows.length){
+      const expected=await countCloudTrades(userId);
+      if(expected===rows.length){
+        ensureTradeSyncKeys(state.trades);
+        const cloudKeys=new Set(rows.map(r=>String(r.sync_key)));
+        const localNew=state.trades.filter(t=>!cloudKeys.has(String(t.syncKey))&&!knownKeys.has(String(t.syncKey)));
+        const dropped=state.trades.filter(t=>!cloudKeys.has(String(t.syncKey))&&knownKeys.has(String(t.syncKey)));
+        if(dropped.length){try{localStorage.setItem(REMOTE_DELETED_BACKUP,JSON.stringify({at:new Date().toISOString(),trades:dropped}))}catch{}}
+        state.trades=[...rows.map(cloudRowToTrade),...localNew];
+        saveKnownTradeKeys(userId,cloudKeys);
+        notifyState();
+        if(localNew.length){localStorage.setItem('tradingDiary_cloudTradesDirty','1');return await syncTradesToCloud(userId)}
+        return true;
+      }
+    }
+
     // If cloud has more rows than the local cache, cloud is authoritative.
     // This protects the full journal from stale/truncated local caches.
     if(rows.length>state.trades.length || !state.trades.length){
       state.trades=rows.map(cloudRowToTrade);
+      saveKnownTradeKeys(userId,new Set(rows.map(r=>String(r.sync_key))));
       notifyState();
       return true;
     }
@@ -171,6 +198,55 @@ async function loadCloudTrades(userId,options={}){
     toast?.('Не удалось загрузить все сделки из облака',true);
     return false;
   }
+}
+
+// ---- Remote-delete detection (no DB migration) -------------------------
+// Trades are physically deleted in Supabase. Without a record of what the cloud
+// already confirmed, a second device that still holds the deleted trade would
+// upload it again. We persist the sync_keys of the last confirmed cloud state:
+// "known locally AND missing in cloud" = deleted elsewhere; "unknown AND missing
+// in cloud" = new local trade that must be uploaded.
+const KNOWN_KEYS_STORAGE='tradingDiary_knownCloudTradeKeys_v1';
+const REMOTE_DELETED_BACKUP='tradingDiary_remoteDeletedTradesBackup_v1';
+function loadKnownTradeKeys(userId){
+  try{const raw=JSON.parse(localStorage.getItem(KNOWN_KEYS_STORAGE)||'null');if(raw&&raw.userId===userId&&Array.isArray(raw.keys))return new Set(raw.keys)}catch{}
+  return null;
+}
+function saveKnownTradeKeys(userId,keys){
+  try{localStorage.setItem(KNOWN_KEYS_STORAGE,JSON.stringify({userId,keys:[...keys]}))}catch(e){console.error('known keys save:',e)}
+}
+function forgetKnownTradeKeys(userId,syncKeys){
+  const k=loadKnownTradeKeys(userId);if(!k)return;
+  for(const s of syncKeys||[])k.delete(String(s));
+  saveKnownTradeKeys(userId,k);
+}
+async function countCloudTrades(userId){
+  const {count,error}=await cloud().from('trades').select('id',{count:'exact',head:true}).eq('user_id',userId).is('deleted_at',null);
+  return error?null:count;
+}
+async function reconcileRemoteTradeDeletes(userId){
+  ensureTradeSyncKeys(state.trades);
+  const known=loadKnownTradeKeys(userId);
+  if(!known||!known.size)return 0;
+  const rows=await cloudSelectAll('trades',userId,'id,sync_key','id',true,true);
+  const expected=await countCloudTrades(userId);
+  // Act only on a verified, complete cloud listing. An empty listing is never
+  // trusted (expired session / RLS would look identical to "everything deleted").
+  if(expected===null||rows.length!==expected||rows.length===0)return 0;
+  const cloudKeys=new Set(rows.map(r=>String(r.sync_key)));
+  const gone=[];
+  state.trades=state.trades.filter(t=>{
+    const k=String(t.syncKey||'');
+    if(k&&known.has(k)&&!cloudKeys.has(k)){gone.push(t);return false}
+    return true;
+  });
+  if(gone.length){
+    try{localStorage.setItem(REMOTE_DELETED_BACKUP,JSON.stringify({at:new Date().toISOString(),trades:gone}))}catch{}
+    for(const t of gone)known.delete(String(t.syncKey));
+    saveKnownTradeKeys(userId,known);
+    notifyState();
+  }
+  return gone.length;
 }
 
 const PENDING_DELETES_KEY='tradingDiary_pendingDeletes_v1';
@@ -216,6 +292,7 @@ async function syncTradesToCloud(userId){
   let allOk=true;
   try{
     await syncPendingDeletes(userId);
+    await reconcileRemoteTradeDeletes(userId);
     ensureTradeSyncKeys(state.trades);
     const batchSize=50;
     const batchRetries=3;
@@ -279,7 +356,10 @@ async function syncTradesToCloud(userId){
     }
 
     saveLocalOnly();
-    if(allOk)localStorage.removeItem('tradingDiary_cloudTradesDirty');
+    if(allOk){
+      localStorage.removeItem('tradingDiary_cloudTradesDirty');
+      saveKnownTradeKeys(userId,new Set(state.trades.map(t=>String(t.syncKey))));
+    }
     return allOk;
   }catch(error){
     reportCloudSyncError('trades',error);
@@ -554,3 +634,5 @@ window.queuePendingDelete=queuePendingDelete;
 window.removePendingDelete=removePendingDelete;
 window.loadCloudWorkspace=loadCloudWorkspace;
 window.loadCloudTrades=loadCloudTrades;
+window.forgetKnownTradeKeys=forgetKnownTradeKeys;
+window.saveKnownTradeKeys=saveKnownTradeKeys;

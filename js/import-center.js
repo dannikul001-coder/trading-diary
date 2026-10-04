@@ -32,13 +32,35 @@ function parseImportNumber(v){
   const s=String(v).trim().replace(/\s/g,'').replace(',', '.').replace(/[^0-9.+-]/g,'');
   const n=Number(s);return Number.isFinite(n)?n:null;
 }
+function pad2(n){return String(n).padStart(2,'0')}
+// Wall-clock time exactly as written in the file. No Date()/timezone math: an
+// Excel serial or text like "2026-10-03 15:32:05" must stay 15:32:05.
+function excelSerialToParts(serial){
+  const ms=Math.round(Number(serial)*86400)*1000; // whole seconds
+  const d=new Date(Date.UTC(1899,11,30)+ms);       // read with UTC getters only
+  return {date:`${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())}`,time:`${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`};
+}
+function convertToAppZone(date,tz){
+  try{const z=state?.settings?.timezone;if(!z)return null;const f=new Intl.DateTimeFormat('en-CA',{timeZone:z,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(date);const g=t=>f.find(x=>x.type===t).value;return {date:`${g('year')}-${g('month')}-${g('day')}`,time:`${g('hour')}:${g('minute')}:${g('second')}`}}catch{return null}
+}
 function parseImportDateTime(v){
   if(v===null||v===undefined||v==='')return {date:'',time:''};
-  if(v instanceof Date&&!isNaN(v))return {date:v.toISOString().slice(0,10),time:v.toTimeString().slice(0,8)};
+  if(v instanceof Date){
+    if(isNaN(v))return {date:'',time:''};
+    // Local getters for both parts (never mix toISOString/UTC with local time).
+    return {date:`${v.getFullYear()}-${pad2(v.getMonth()+1)}-${pad2(v.getDate())}`,time:`${pad2(v.getHours())}:${pad2(v.getMinutes())}:${pad2(v.getSeconds())}`};
+  }
+  if(typeof v==='number'){return v>20000&&v<80000?excelSerialToParts(v):{date:'',time:''}}
   const s=String(v).trim();
-  const m=s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-  if(m)return {date:`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`,time:m[4]?`${String(m[4]).padStart(2,'0')}:${m[5]}:${m[6]||'00'}`:''};
-  const d=new Date(s); if(!isNaN(d))return {date:d.toISOString().slice(0,10),time:d.toTimeString().slice(0,8)};
+  if(/^\d+(\.\d+)?$/.test(s)&&Number(s)>20000&&Number(s)<80000)return excelSerialToParts(Number(s));
+  // Explicit UTC/offset marker (Z, +02:00): convert to the app timezone.
+  if(/(Z|[+-]\d{2}:?\d{2})$/.test(s)&&/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s)){
+    const d=new Date(s.replace(' ','T'));if(!isNaN(d)){const r=convertToAppZone(d);if(r)return r}
+  }
+  let m=s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m)return {date:`${m[1]}-${pad2(m[2])}-${pad2(m[3])}`,time:m[4]?`${pad2(m[4])}:${m[5]}:${m[6]||'00'}`:''};
+  m=s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/); // dd.mm.yyyy
+  if(m)return {date:`${m[3]}-${pad2(m[2])}-${pad2(m[1])}`,time:m[4]?`${pad2(m[4])}:${m[5]}:${m[6]||'00'}`:''};
   return {date:'',time:''};
 }
 function importResultFrom(row,pnl){
@@ -60,7 +82,7 @@ function buildImportedTrade(raw,mapping,headers){
   const instrument=String(val('instrument')||'').trim();
   if(!instrument)return null;
   return {
-    id:uid(), externalId:String(val('externalId')||'').trim(), date:open.date||localDateKey(), time:open.time?open.time.slice(0,5):'',
+    id:uid(), externalId:String(val('externalId')||'').trim(), date:(close.date||open.date||localDateKey()), time:((close.date?close.time:open.time)||'').slice(0,5),
     closeDate:close.date||'', closeTime:close.time?close.time.slice(0,8):'', instrument,
     type:normalizeDirection(val('type')), expiration:String(val('expiration')||'').trim(),
     stake:Math.max(0,stake), payout:Math.min(100,Math.max(0,payout)), result, pnl:round(pnl),
@@ -90,7 +112,7 @@ function readImportFile(file){
           const headers=parseLine(lines[0]); const mapping=detectImportMapping(headers); const rows=lines.slice(1).map(parseLine).map(r=>buildImportedTrade(r,mapping,headers)).filter(Boolean);
           resolve({file:file.name,rows:assignImportSyncKeys(rows),headers,mapping}); return;
         }
-        const wb=XLSX.read(reader.result,{type:'array',cellDates:true});
+        const wb=XLSX.read(reader.result,{type:'array',cellDates:false});
         const rows=[];
         wb.SheetNames.forEach(sheet=>{
           const data=XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,defval:'',raw:true});
@@ -123,6 +145,11 @@ function mergeImportedTrades(files){
       const key=tradeIdentity(incoming); const existing=map.get(key);
       if(!existing){map.set(key,incoming);added.push(incoming);continue}
       let changed=false; const conflictFields=[];
+      // The file is authoritative for WHEN a trade happened (close time). Matched by
+      // external id only, so re-importing the same file repairs earlier wrong times.
+      if(incoming.externalId&&existing.externalId===incoming.externalId&&incoming.closeDate){
+        for(const f of ['date','time','closeDate','closeTime']){if(incoming[f]&&existing[f]!==incoming[f]){existing[f]=incoming[f];changed=true}}
+      }
       for(const field of fillable){
         const old=existing[field], next=incoming[field];
         const payoutPlaceholder=field==='payout'&&Number(old)===0&&Number(next)>0;
@@ -197,6 +224,7 @@ async function commitImport(){
       }
       state.trades=rows.map(cloudRowToTrade);
       ensureTradeSyncKeys(state.trades);
+      window.saveKnownTradeKeys?.(window.currentUser.id,new Set(rows.map(r=>String(r.sync_key))));
       saveLocalOnly();
       localStorage.removeItem('tradingDiary_cloudTradesDirty');
     }

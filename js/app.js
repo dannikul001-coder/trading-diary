@@ -531,6 +531,7 @@ async function deleteTrade(id){
   // by the next login/sync. The cloud layer removes the tombstone only after
   // the update succeeds.
   if(window.queuePendingDelete)window.queuePendingDelete('trades',{id:trade.id,syncKey:trade.syncKey||''});
+  if(window.currentUser?.id&&window.forgetKnownTradeKeys)window.forgetKnownTradeKeys(window.currentUser.id,[trade.syncKey]);
   if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
     const q=window.supabaseClient.from('trades').delete().eq('user_id',window.currentUser.id);
     const {error}=await (trade.syncKey?q.eq('sync_key',trade.syncKey):q.eq('id',id));
@@ -547,6 +548,7 @@ async function deleteAllTrades(){
   if(!state.trades.length){toast('Сделок уже нет');return}
   if(!confirm(`Удалить ВСЕ ${state.trades.length} сделок? Это действие нельзя отменить.`))return;
   if(window.queuePendingDelete){for(const trade of state.trades)window.queuePendingDelete('trades',{id:trade.id,syncKey:trade.syncKey||''});}
+  if(window.currentUser?.id&&window.forgetKnownTradeKeys)window.forgetKnownTradeKeys(window.currentUser.id,state.trades.map(t=>t.syncKey));
   if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
     const {error}=await window.supabaseClient.from('trades').delete().eq('user_id',window.currentUser.id);
     if(error){toast('Не удалось удалить сделки из облака — удаления сохранены для повторной синхронизации',true);}
