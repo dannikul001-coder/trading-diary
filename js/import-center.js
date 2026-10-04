@@ -158,18 +158,42 @@ async function handleImportFiles(e){
     importPending={files:parsed,result}; renderImportView();
   }catch(err){console.error('Import Center:',err);toast('Не удалось прочитать один из файлов',true);importPending=null;renderImportView()}
 }
-function commitImport(){
+async function commitImport(){
   if(!importPending)return;
-  state.trades=importPending.result.all;
-  const now=new Date().toISOString();
-  state.importHistory=Array.isArray(state.importHistory)?state.importHistory:[];
-  state.importHistory.unshift({date:now,files:importPending.files.map(x=>x.file),rows:importPending.result.rows,added:importPending.result.added.length,merged:importPending.result.merged.length,conflicts:importPending.result.conflicts.length});
-  state.importHistory=state.importHistory.slice(0,20);
-  const missing=[...new Set(importPending.result.added.map(t=>t.instrument))].filter(name=>!findInstrument(name));
-  missing.forEach(name=>state.instruments.push({id:uid(),category:'Custom',name,custom:true}));
-  saveState();
-  toast(`Импорт завершён: ${importPending.result.added.length} новых, ${importPending.result.merged.length} дополнено`);
-  importPending=null; renderImportView(); renderImportHistory();
+  const pending=importPending;
+  try{
+    if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady&&typeof loadCloudTrades==='function'){
+      await loadCloudTrades(window.currentUser.id,{skipMigration:true});
+    }
+    const incoming=[]; for(const file of pending.files)incoming.push(...file.rows);
+    const merged=mergeImportedTrades([{file:'import',rows:incoming}]);
+    state.trades=merged.all;
+    ensureTradeSyncKeys(state.trades);
+    const now=new Date().toISOString();
+    state.importHistory=Array.isArray(state.importHistory)?state.importHistory:[];
+    state.importHistory.unshift({date:now,files:pending.files.map(x=>x.file),rows:pending.result.rows,added:merged.added.length,merged:merged.merged.length,conflicts:merged.conflicts.length});
+    state.importHistory=state.importHistory.slice(0,20);
+    const missing=[...new Set(merged.added.map(t=>t.instrument))].filter(name=>!findInstrument(name));
+    missing.forEach(name=>state.instruments.push({id:uid(),category:'Custom',name,custom:true}));
+    saveLocalOnly();
+    localStorage.setItem('tradingDiary_cloudTradesDirty','1');
+    document.dispatchEvent(new CustomEvent('state:changed'));
+    if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady&&typeof syncTradesToCloud==='function'){
+      const ok=await syncTradesToCloud(window.currentUser.id);
+      if(!ok){toast('Импорт сохранён локально, но облачная синхронизация не завершилась',true);return;}
+      const rows=await cloudSelectAll('trades',window.currentUser.id,'*','trade_date',false,true);
+      state.trades=rows.map(cloudRowToTrade);
+      ensureTradeSyncKeys(state.trades);
+      saveLocalOnly();
+      localStorage.removeItem('tradingDiary_cloudTradesDirty');
+    }
+    renderAll();
+    toast(`Импорт завершён: ${merged.added.length} новых, ${merged.merged.length} дополнено`);
+    importPending=null; renderImportView(); renderImportHistory();
+  }catch(error){
+    console.error('Import commit:',error);
+    toast('Импорт сохранён локально, но облачная запись не подтверждена',true);
+  }
 }
 function renderImportHistory(){
   const box=document.getElementById('importHistory'); if(!box)return;

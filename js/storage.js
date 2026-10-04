@@ -192,7 +192,7 @@ function removePendingDelete(type,predicate){
 async function syncPendingDeletes(userId){
   const q=loadPendingDeletes();
   for(const item of [...q.trades]){
-    let query=cloud().from('trades').update({deleted_at:new Date().toISOString()}).eq('user_id',userId);
+    let query=cloud().from('trades').delete().eq('user_id',userId);
     if(item.syncKey) query=query.eq('sync_key',item.syncKey);
     else if(item.id) query=query.eq('id',item.id);
     else {removePendingDelete('trades',x=>JSON.stringify(x)===JSON.stringify(item));continue;}
@@ -203,7 +203,7 @@ async function syncPendingDeletes(userId){
   for(const type of ['notes','plans']){
     for(const item of [...q[type]]){
       if(!item.id){removePendingDelete(type,x=>JSON.stringify(x)===JSON.stringify(item));continue;}
-      const {error}=await cloud().from(type).update({deleted_at:new Date().toISOString()}).eq('user_id',userId).eq('id',item.id);
+      const {error}=await cloud().from(type).delete().eq('user_id',userId).eq('id',item.id);
       if(error)throw error;
       removePendingDelete(type,x=>JSON.stringify(x)===JSON.stringify(item));
     }

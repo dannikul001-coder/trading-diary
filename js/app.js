@@ -532,7 +532,7 @@ async function deleteTrade(id){
   // the update succeeds.
   if(window.queuePendingDelete)window.queuePendingDelete('trades',{id:trade.id,syncKey:trade.syncKey||''});
   if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
-    const q=window.supabaseClient.from('trades').update({deleted_at:new Date().toISOString()}).eq('user_id',window.currentUser.id);
+    const q=window.supabaseClient.from('trades').delete().eq('user_id',window.currentUser.id);
     const {error}=await (trade.syncKey?q.eq('sync_key',trade.syncKey):q.eq('id',id));
     if(error){toast('Не удалось удалить сделку из облака — удаление сохранено для повторной синхронизации',true);}
     else if(window.removePendingDelete)window.removePendingDelete('trades',x=>String(x.id)===String(trade.id)||String(x.syncKey)===String(trade.syncKey||''));
@@ -548,7 +548,7 @@ async function deleteAllTrades(){
   if(!confirm(`Удалить ВСЕ ${state.trades.length} сделок? Это действие нельзя отменить.`))return;
   if(window.queuePendingDelete){for(const trade of state.trades)window.queuePendingDelete('trades',{id:trade.id,syncKey:trade.syncKey||''});}
   if(window.currentUser?.id&&window.supabaseClient&&window.cloudDataReady){
-    const {error}=await window.supabaseClient.from('trades').update({deleted_at:new Date().toISOString()}).eq('user_id',window.currentUser.id);
+    const {error}=await window.supabaseClient.from('trades').delete().eq('user_id',window.currentUser.id);
     if(error){toast('Не удалось удалить сделки из облака — удаления сохранены для повторной синхронизации',true);}
     else if(window.removePendingDelete){for(const trade of state.trades)window.removePendingDelete('trades',x=>String(x.id)===String(trade.id)||String(x.syncKey)===String(trade.syncKey||''));}
   }

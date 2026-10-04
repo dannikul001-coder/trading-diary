@@ -1,4 +1,4 @@
-const CACHE='trading-diary-v21-balance-photo';
+const CACHE='trading-diary-v31-sync-fix-20261004';
 const ASSETS=['./','./index.html','./style.css','./js/data.js','./js/storage.js','./js/statistics.js','./js/charts.js','./js/settings.js','./js/auth.js','./js/supabase-config.js','./js/supabase.js','./js/import-center.js','./js/app.js','./manifest.json','./assets/logo.svg'];
 
 self.addEventListener('install',event=>event.waitUntil(
