@@ -142,20 +142,22 @@
     <div><span class="eyebrow">TRADING DIARY / LEARNING LAB</span><h2>Обучение</h2><p>От базовых принципов до практического разбора сделки — в одном маршруте.</p></div>
     <div class="learning-progress"><span>ПРОГРЕСС</span><strong id="trainingProgressLabel">0%</strong><div><i id="trainingProgressBar" style="width:0%"></i></div><small id="trainingProgressText">Начни с любого урока.</small></div>
   </div>
-  <div class="learning-progress-dashboard" id="trainingProgressDashboard"></div>
-  <div class="learning-category-rail" id="trainingCategoryTabs"></div>
-  <div class="learning-layout-v26">
-    <main class="learning-catalog">
-      <div class="learning-toolbar"><div><span class="eyebrow">КАТАЛОГ ЗНАНИЙ</span><h3>Материалы</h3></div><label class="learning-search"><span>⌕</span><input id="trainingSearch" placeholder="Поиск урока, темы или навыка..." autocomplete="off"></label></div>
-      <div class="learning-status-tabs" id="trainingStatusTabs" aria-label="Статус обучения"></div><div class="learning-mode-tabs" id="trainingModeTabs" aria-label="Тип материалов"></div>
-      <div class="learning-feature" id="trainingFeature"></div>
-      <div class="learning-section-label"><span id="trainingSectionLabel">ВСЕ МАТЕРИАЛЫ</span><small id="trainingResultCount">0 уроков</small></div>
-      <div class="training-grid training-grid-v26" id="trainingLessonGrid"></div>
-    </main>
-    <aside class="learning-sidebar-v26">
-      <article class="card learning-sidebar-card"><span class="eyebrow">ТВОЙ МАРШРУТ</span><h3>Учебная карта</h3><div id="trainingRoadmap" class="training-roadmap"></div></article>
-      <article class="card learning-sidebar-card learning-next-card"><span class="eyebrow">СЛЕДУЮЩИЙ ШАГ</span><div id="trainingNextLesson"><b>Выбери первый урок</b><span>После прохождения здесь появится следующий материал.</span></div></article>
+  <div class="learning-layout-v27">
+    <aside class="learning-program-sidebar">
+      <div class="program-sidebar-head"><span class="eyebrow">УЧЕБНЫЙ МАРШРУТ</span><h3>Академия</h3><p>Выбери направление и двигайся по модулям.</p></div>
+      <div id="trainingRoadmap" class="training-roadmap-v27"></div>
+      <article class="learning-next-card-v27"><span class="eyebrow">СЛЕДУЮЩИЙ ШАГ</span><div id="trainingNextLesson"><b>Выбери первый урок</b><span>После прохождения здесь появится следующий материал.</span></div></article>
     </aside>
+    <main class="learning-catalog learning-catalog-v27">
+      <div class="learning-toolbar learning-toolbar-v27"><div><span class="eyebrow">КАТАЛОГ ЗНАНИЙ</span><h3>Материалы курса</h3><small id="trainingSectionLabel">ВСЯ ПРОГРАММА</small></div><label class="learning-search"><span>⌕</span><input id="trainingSearch" placeholder="Поиск урока, темы или навыка..." autocomplete="off"></label></div>
+      <div class="learning-filterbar">
+        <div class="learning-status-tabs" id="trainingStatusTabs" aria-label="Статус обучения"></div>
+        <div class="learning-mode-tabs" id="trainingModeTabs" aria-label="Формат материалов"></div>
+      </div>
+      <div class="learning-feature learning-feature-v27" id="trainingFeature"></div>
+      <div class="learning-section-label learning-section-label-v27"><span>ПРОГРАММА</span><small id="trainingResultCount">0 уроков</small></div>
+      <div class="training-grid training-grid-v26 training-grid-v27" id="trainingLessonGrid"></div>
+    </main>
   </div>
 </div>
 </section>
