@@ -35,7 +35,7 @@ jsonb_build_object(
  'sourceTitle','Первый эфир (записанный)',
  'sourceDuration','50 минут 7 секунд',
  'sourceOrder',1
-), 'basics-first-live'
+)
 from public.learning_categories where slug='basics'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -52,7 +52,7 @@ jsonb_build_object(
  'sourceTitle','Третий эфир (записанный)',
  'sourceDuration','42 минуты 37 секунд',
  'sourceOrder',1
-), 'candles-third-live'
+)
 from public.learning_categories where slug='candles'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -69,7 +69,7 @@ jsonb_build_object(
  'sourceTitle','Второй эфир (записанный)',
  'sourceDuration','43 минуты 36 секунд',
  'sourceOrder',1
-), 'technical-horizontal-levels'
+)
 from public.learning_categories where slug='technical'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -86,7 +86,7 @@ jsonb_build_object(
  'sourceTitle','Четвёртый эфир (записанный)',
  'sourceDuration','49 минут 37 секунд',
  'sourceOrder',1
-), 'indicators-fourth-live'
+)
 from public.learning_categories where slug='indicators'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -103,7 +103,7 @@ jsonb_build_object(
  'sourceTitle','Стратегия торговли по пробоям',
  'sourceDuration','14 минут 3 секунды',
  'sourceOrder',1
-), 'strategies-breakouts'
+)
 from public.learning_categories where slug='strategies'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -120,7 +120,7 @@ jsonb_build_object(
  'sourceTitle','Шестой эфир (записанный)',
  'sourceDuration','59 минут 45 секунд',
  'sourceOrder',1
-), 'psychology-sixth-live'
+)
 from public.learning_categories where slug='psychology'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -137,7 +137,7 @@ jsonb_build_object(
  'sourceTitle','Психология трейдинга | Урок 1: главный принцип',
  'sourceDuration','Длительность в исходном списке не указана',
  'sourceOrder',2
-), 'psychology-main-principle'
+)
 from public.learning_categories where slug='psychology'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -154,7 +154,7 @@ jsonb_build_object(
  'sourceTitle','Инвестинг от А до Я — мой личный соус',
  'sourceDuration','19 минут 1 секунда',
  'sourceOrder',1
-), 'strategies-investing-a-to-z'
+)
 from public.learning_categories where slug='strategies'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -171,7 +171,7 @@ jsonb_build_object(
  'sourceTitle','Как подбирать время экспирации для сделки?',
  'sourceDuration','7 минут 57 секунд',
  'sourceOrder',1
-), 'timing-expiration'
+)
 from public.learning_categories where slug='timing'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -188,7 +188,7 @@ jsonb_build_object(
  'sourceTitle','Урок №3. Торговля по интуиции',
  'sourceDuration','11 минут 53 секунды',
  'sourceOrder',1
-), 'advanced-trading-intuition'
+)
 from public.learning_categories where slug='advanced'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -205,7 +205,7 @@ jsonb_build_object(
  'sourceTitle','Пятый эфир (записанный)',
  'sourceDuration','38 минут 57 секунд',
  'sourceOrder',1
-), 'trade-review-week-errors'
+)
 from public.learning_categories where slug='trade-review'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -222,7 +222,7 @@ jsonb_build_object(
  'sourceTitle','Важность долгосрочной прибыли',
  'sourceDuration','8 минут 59 секунд',
  'sourceOrder',1
-), 'money-long-term-profit'
+)
 from public.learning_categories where slug='money-management'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -239,7 +239,7 @@ jsonb_build_object(
  'sourceTitle','КОНЦЕПЦИЯ РАБОТЫ В AMIR FAMILY EXCLUSIVE',
  'sourceDuration','9 минут 30 секунд',
  'sourceOrder',2
-), 'basics-exclusive-concept'
+)
 from public.learning_categories where slug='basics'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -256,7 +256,7 @@ jsonb_build_object(
  'sourceTitle','как я анализирую рынок?',
  'sourceDuration','13 минут 58 секунд',
  'sourceOrder',1
-), 'market-analysis-how-i-analyze'
+)
 from public.learning_categories where slug='market-analysis'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -273,7 +273,7 @@ jsonb_build_object(
  'sourceTitle','как понять, когда не стоит торговать?',
  'sourceDuration','11 минут 31 секунда',
  'sourceOrder',2
-), 'money-when-not-to-trade'
+)
 from public.learning_categories where slug='money-management'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -290,7 +290,7 @@ jsonb_build_object(
  'sourceTitle','Как я постоянно выхожу в плюс?',
  'sourceDuration','4 минуты 39 секунд',
  'sourceOrder',3
-), 'money-how-to-stay-profitable'
+)
 from public.learning_categories where slug='money-management'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -307,7 +307,7 @@ jsonb_build_object(
  'sourceTitle','Курс: Трейдинг начинается в голове — Урок 1. Почему ты сливаешь депозит (и дело не в стратегии)',
  'sourceDuration','18 минут 29 секунд',
  'sourceOrder',3
-), 'psychology-trading-starts-in-head'
+)
 from public.learning_categories where slug='psychology'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -324,7 +324,7 @@ jsonb_build_object(
  'sourceTitle','КАК ЗАРАБАТЫВАТЬ МНОГО С МИНИМАЛЬНЫМИ РИСКАМИ?',
  'sourceDuration','20 минут 33 секунды',
  'sourceOrder',4
-), 'money-profit-with-minimal-risk'
+)
 from public.learning_categories where slug='money-management'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -341,7 +341,7 @@ jsonb_build_object(
  'sourceTitle','Как торгует Амир?',
  'sourceDuration','12 минут 6 секунд',
  'sourceOrder',1
-), 'advanced-how-amir-trades'
+)
 from public.learning_categories where slug='advanced'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -358,7 +358,7 @@ jsonb_build_object(
  'sourceTitle','КАК ТОРГУЕТ АМИР? — Часть 2',
  'sourceDuration','8 минут 50 секунд',
  'sourceOrder',2
-), 'advanced-how-amir-trades-2'
+)
 from public.learning_categories where slug='advanced'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
@@ -375,7 +375,7 @@ jsonb_build_object(
  'sourceTitle','ПИЛОТНЫЙ ВЫПУСК | РАЗБОР РЫНКА ОТ АМИРА',
  'sourceDuration','17 минут 5 секунд',
  'sourceOrder',1
-), 'market-review-pilot'
+)
 from public.learning_categories where slug='market-analysis'
 on conflict (slug) do update set title=excluded.title, excerpt=excluded.excerpt, lesson_type=excluded.lesson_type, duration_minutes=excluded.duration_minutes, sort_order=excluded.sort_order, status=excluded.status, category_id=excluded.category_id, content=excluded.content, updated_at=now();
 
