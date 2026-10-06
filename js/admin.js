@@ -1,4 +1,4 @@
-let adminState={isAdmin:false,users:[],categories:[],lessons:[],category:'all',search:'',selectedUser:null,trainingProgress:[]};
+let adminState={isAdmin:false,users:[],categories:[],lessons:[],category:'all',search:'',selectedUser:null,trainingProgress:[],navVisibility:{}};
 let trainingState={categories:[],lessons:[],category:'all',search:'',status:'all',mode:'all',progress:[]};
 function trainingDone(id){return trainingState.progress.some(p=>p.lesson_id===id&&p.status==='completed')}
 function trainingProgressRow(id){return trainingState.progress.find(p=>p.lesson_id===id)||null}
@@ -25,8 +25,31 @@ async function refreshAdminAccess(){
  if(!client||!user){setAdminVisibility(false);return;}
  const {data,error}=await client.from('user_roles').select('role').eq('user_id',user.id).maybeSingle();
  adminState.isAdmin=!error&&data?.role==='admin'; setAdminVisibility(adminState.isAdmin);
+ await loadNavigationVisibility();
  if(adminState.isAdmin){loadAdminUsers();loadAdminLearning();}
  loadTrainingView();
+}
+async function loadNavigationVisibility(){
+ if(!window.supabaseClient||!window.currentUser)return;
+ const {data,error}=await window.supabaseClient.from('app_navigation_visibility').select('*').order('sort_order');
+ if(error||!data)return;
+ adminState.navVisibility=Object.fromEntries(data.map(x=>[x.view_key,x.visible]));
+ document.querySelectorAll('[data-view]').forEach(el=>{const key=el.dataset.view;if(key&&Object.prototype.hasOwnProperty.call(adminState.navVisibility,key))el.hidden=adminState.navVisibility[key]===false;});
+ document.querySelectorAll('.view').forEach(el=>{const key=el.id.replace(/^view-/,'');if(Object.prototype.hasOwnProperty.call(adminState.navVisibility,key))el.hidden=adminState.navVisibility[key]===false;});
+ if(typeof activeView!=='undefined'&&adminState.navVisibility[activeView]===false&&typeof showView==='function')showView('dashboard');
+ if(adminState.isAdmin)renderNavigationVisibilityControls();
+}
+async function setNavigationVisibility(key,visible){
+ if(!adminState.isAdmin)return;
+ const {error}=await window.supabaseClient.from('app_navigation_visibility').update({visible}).eq('view_key',key);
+ if(error){toast(error.message,true);return;}
+ adminState.navVisibility[key]=visible;await loadNavigationVisibility();toast(visible?'Раздел показан':'Раздел скрыт');
+}
+function renderNavigationVisibilityControls(){
+ const host=document.getElementById('adminNavigationVisibility');if(!host)return;
+ const names={dashboard:'Обзор',trades:'Сделки',calendar:'Календарь',statistics:'Аналитика',charts:'Графики',plan:'План',playbook:'Playbook',goal:'Главная цель',goals:'Цели',journal:'Журнал',notes:'Заметки',psychology:'Психология',import:'Импорт',settings:'Настройки',training:'Обучение'};
+ host.innerHTML=Object.keys(names).map(k=>`<label class="admin-visibility-row"><span><b>${names[k]}</b><small>Показывать раздел пользователям</small></span><input type="checkbox" data-nav-visibility="${k}" ${adminState.navVisibility[k]!==false?'checked':''}></label>`).join('');
+ host.querySelectorAll('[data-nav-visibility]').forEach(x=>x.addEventListener('change',()=>setNavigationVisibility(x.dataset.navVisibility,x.checked)));
 }
 function setAdminVisibility(ok){
  document.querySelectorAll('.admin-only').forEach(x=>x.hidden=!ok);
@@ -98,7 +121,7 @@ function adminBalanceModal(userId,type){
  openSimpleModal(type==='deposit'?'Админ: пополнение':'Админ: вывод','Операция будет записана в баланс выбранного участника.',async f=>{const {error}=await window.supabaseClient.rpc('admin_add_balance_operation',{target_user:userId,op_type:type,op_amount:Number(f.amount),op_note:f.note||'',op_date:f.date||new Date().toISOString().slice(0,10),op_time:f.time||new Date().toTimeString().slice(0,5)});if(error){toast(error.message,true);return;}toast('Операция записана');openAdminUser(userId);loadAdminUsers();},[{name:'amount',label:'Сумма',type:'number',step:'0.01',required:true},{name:'date',label:'Дата',type:'date',value:new Date().toISOString().slice(0,10)},{name:'time',label:'Время',type:'time',value:new Date().toTimeString().slice(0,5)},{name:'note',label:'Комментарий',type:'text',value:''}]);
 }
 async function loadAdminLearning(){
- if(!adminState.isAdmin||!window.supabaseClient)return;const [c,l]=await Promise.all([window.supabaseClient.from('learning_categories').select('*').order('sort_order'),window.supabaseClient.from('learning_lessons').select('*').order('sort_order')]);if(c.error||l.error){toast((c.error||l.error)?.message||'Ошибка обучения',true);return;}adminState.categories=c.data||[];adminState.lessons=l.data||[];renderAdminLearning();loadTrainingView();
+ if(!adminState.isAdmin||!window.supabaseClient)return;const [c,l]=await Promise.all([window.supabaseClient.from('learning_categories').select('*').order('sort_order'),window.supabaseClient.from('learning_lessons').select('*').order('sort_order')]);if(c.error||l.error){toast((c.error||l.error)?.message||'Ошибка обучения',true);return;}adminState.categories=c.data||[];adminState.lessons=l.data||[];renderAdminLearning();renderNavigationVisibilityControls();loadTrainingView();
 }
 function renderAdminLearning(){
  const cats=document.getElementById('adminCategoryList'),lessons=document.getElementById('adminLessons');if(!cats||!lessons)return;
@@ -163,7 +186,7 @@ async function openTrainingLesson(id){
  showQuizCard();
  document.querySelectorAll('[data-quiz-hint]').forEach(btn=>btn.addEventListener('click',()=>{document.getElementById('quizHint-'+btn.dataset.quizHint)?.classList.toggle('open');}));
  const revealFeedback=(q,i,ok)=>{const card=cards[i];(q.options||[]).forEach(o=>{const el=card.querySelector(`.quiz-option-v27[data-value="${CSS.escape(String(o.value))}"]`);if(!el)return;const selected=!!el.querySelector('input')?.checked;const correct=(q.correctValues||[]).map(String).includes(String(o.value));el.classList.toggle('is-correct',correct);el.classList.toggle('is-wrong',selected&&!correct);const fb=el.querySelector('.quiz-feedback');if(fb)fb.textContent=selected?(o.feedback||''):'';});card.classList.add(ok?'answer-correct':'answer-wrong');};
- document.getElementById('checkQuizBtn')?.addEventListener('click',async()=>{const q=quiz[quizIndex];const selected=[...document.querySelectorAll(`input[name="quiz-${quizIndex}"]:checked`)].map(x=>String(x.value));if(!selected.length){toast('Выбери вариант ответа',true);return;}const key=(q.correctValues||[]).map(String).sort();const got=selected.sort();const ok=key.length===got.length&&key.every((v,j)=>v===got[j]);scores[quizIndex]=ok;checked[quizIndex]=true;revealFeedback(q,quizIndex,ok);const done=scores.filter(Boolean).length;const badge=document.getElementById('quizScoreBadge');if(badge)badge.textContent=`${done} / ${quiz.length}`;const result=document.getElementById('quizResult');if(result)result.innerHTML=`<strong>${ok?'Ответ верный':'Ответ требует повторной проверки'}</strong><span>${ok?'Отлично. Переходи к следующему вопросу.':'Посмотри подсветку вариантов и объяснение, затем попробуй ещё раз или переходи дальше.'}</span>`;showQuizCard();if(done===quiz.length){const score=Math.round(done/quiz.length*100);await window.supabaseClient.from('learning_progress').upsert({user_id:window.currentUser.id,lesson_id:l.id,status:score>=70?'completed':'started',progress:score>=70?100:Math.max(Number(row.progress||10),60),quiz_score:score,updated_at:new Date().toISOString()});loadTrainingView();}});
+ document.getElementById('checkQuizBtn')?.addEventListener('click',async()=>{const q=quiz[quizIndex];const selected=[...document.querySelectorAll(`input[name="quiz-${quizIndex}"]:checked`)].map(x=>String(x.value));if(!selected.length){toast('Выбери вариант ответа',true);return;}const key=(q.correctValues||[]).map(String).sort();const got=selected.sort();const ok=key.length===got.length&&key.every((v,j)=>v===got[j]);scores[quizIndex]=ok;checked[quizIndex]=true;revealFeedback(q,quizIndex,ok);const done=scores.filter(Boolean).length;const badge=document.getElementById('quizScoreBadge');if(badge)badge.textContent=`${done} / ${quiz.length}`;const result=document.getElementById('quizResult');if(result)result.innerHTML=`<strong>${ok?'Ответ верный':'Ответ требует повторной проверки'}</strong><span>${ok?'Отлично. Переходи к следующему вопросу.':'Посмотри подсветку вариантов и объяснение, затем попробуй ещё раз или переходи дальше.'}</span>`;showQuizCard();if(done===quiz.length){const score=Math.round(done/quiz.length*100);await window.supabaseClient.from('learning_progress').upsert({user_id:window.currentUser.id,lesson_id:l.id,status:row.status==='completed'?'completed':'started',progress:Math.max(Number(row.progress||10),score>=70?70:60),quiz_score:score,updated_at:new Date().toISOString()});loadTrainingView();}});
  document.getElementById('quizPrevBtn')?.addEventListener('click',()=>{if(quizIndex>0){quizIndex--;showQuizCard();}});
  document.getElementById('quizNextBtn')?.addEventListener('click',()=>{if(quizIndex<quiz.length-1){quizIndex++;showQuizCard();document.getElementById('quizResult').innerHTML='';}});
  document.getElementById('saveLessonNotesBtn')?.addEventListener('click',async()=>{const notes=document.getElementById('lessonNotes')?.value||'';const {error}=await window.supabaseClient.from('learning_progress').upsert({user_id:window.currentUser.id,lesson_id:l.id,status:row.status==='completed'?'completed':'started',progress:Math.max(Number(row.progress||10),30),notes,updated_at:new Date().toISOString()});if(error){toast(error.message,true);return;}toast('Конспект сохранён');loadTrainingView();});
