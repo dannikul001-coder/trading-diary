@@ -34,9 +34,15 @@ async function loadNavigationVisibility(){
  const {data,error}=await window.supabaseClient.from('app_navigation_visibility').select('*').order('sort_order');
  if(error||!data)return;
  adminState.navVisibility=Object.fromEntries(data.map(x=>[x.view_key,x.visible]));
- document.querySelectorAll('[data-view]').forEach(el=>{const key=el.dataset.view;if(key&&Object.prototype.hasOwnProperty.call(adminState.navVisibility,key))el.hidden=adminState.navVisibility[key]===false;});
- document.querySelectorAll('.view').forEach(el=>{const key=el.id.replace(/^view-/,'');if(Object.prototype.hasOwnProperty.call(adminState.navVisibility,key))el.hidden=adminState.navVisibility[key]===false;});
- if(typeof activeView!=='undefined'&&adminState.navVisibility[activeView]===false&&typeof showView==='function')showView('dashboard');
+ // Settings affect regular users only. Admins always see every application tab.
+ if(!adminState.isAdmin){
+  document.querySelectorAll('[data-view]').forEach(el=>{const key=el.dataset.view;if(key&&Object.prototype.hasOwnProperty.call(adminState.navVisibility,key))el.hidden=adminState.navVisibility[key]===false;});
+  document.querySelectorAll('.view').forEach(el=>{const key=el.id.replace(/^view-/,'');if(Object.prototype.hasOwnProperty.call(adminState.navVisibility,key))el.hidden=adminState.navVisibility[key]===false;});
+  if(typeof activeView!=='undefined'&&adminState.navVisibility[activeView]===false&&typeof showView==='function')showView('dashboard');
+ }else{
+  document.querySelectorAll('[data-view]').forEach(el=>{if(!el.classList.contains('admin-only'))el.hidden=false;});
+  document.querySelectorAll('.view').forEach(el=>{if(el.id!=='view-admin')el.hidden=false;});
+ }
  if(adminState.isAdmin)renderNavigationVisibilityControls();
 }
 async function setNavigationVisibility(key,visible){
@@ -54,8 +60,6 @@ function renderNavigationVisibilityControls(){
 function setAdminVisibility(ok){
  document.querySelectorAll('.admin-only').forEach(x=>x.hidden=!ok);
  const view=document.getElementById('view-admin');if(view)view.hidden=!ok;
- const training=document.querySelectorAll('[data-view="training"]');training.forEach(x=>x.hidden=false);
- const tv=document.getElementById('view-training');if(tv)tv.hidden=false;
  if(!ok&&typeof activeView!=='undefined'&&activeView==='admin'&&typeof showView==='function')showView('dashboard');
 }
 function bindAdminUI(){
@@ -190,7 +194,7 @@ async function openTrainingLesson(id){
  document.getElementById('quizPrevBtn')?.addEventListener('click',()=>{if(quizIndex>0){quizIndex--;showQuizCard();}});
  document.getElementById('quizNextBtn')?.addEventListener('click',()=>{if(quizIndex<quiz.length-1){quizIndex++;showQuizCard();document.getElementById('quizResult').innerHTML='';}});
  document.getElementById('saveLessonNotesBtn')?.addEventListener('click',async()=>{const notes=document.getElementById('lessonNotes')?.value||'';const {error}=await window.supabaseClient.from('learning_progress').upsert({user_id:window.currentUser.id,lesson_id:l.id,status:row.status==='completed'?'completed':'started',progress:Math.max(Number(row.progress||10),30),notes,updated_at:new Date().toISOString()});if(error){toast(error.message,true);return;}toast('Конспект сохранён');loadTrainingView();});
- document.getElementById('completeLessonBtn')?.addEventListener('click',async()=>{const notes=document.getElementById('lessonNotes')?.value||'';const {error}=await window.supabaseClient.from('learning_progress').upsert({user_id:window.currentUser.id,lesson_id:l.id,status:'completed',progress:100,notes,completed_at:new Date().toISOString(),updated_at:new Date().toISOString()});if(error){toast(error.message,true);return;}toast('Урок завершён');closeModal();loadTrainingView();});
+ document.getElementById('completeLessonBtn')?.addEventListener('click',async()=>{const notes=document.getElementById('lessonNotes')?.value||'';let payload={user_id:window.currentUser.id,lesson_id:l.id,status:'completed',progress:100,notes,completed_at:new Date().toISOString(),updated_at:new Date().toISOString()};let {error}=await window.supabaseClient.from('learning_progress').upsert(payload);if(error&&/completed_at/i.test(error.message||'')){delete payload.completed_at;({error}=await window.supabaseClient.from('learning_progress').upsert(payload));}if(error){toast(error.message,true);return;}toast('Урок завершён');closeModal();loadTrainingView();});
 }
 function bindTrainingUI(){
   const search=document.getElementById('trainingSearch');
