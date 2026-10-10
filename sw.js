@@ -1,4 +1,4 @@
-const CACHE='trading-diary-v37-audio-books-20261010';
+const CACHE='trading-diary-v39-lesson-layouts-20261010';
 const ASSETS=['./','./index.html','./style.css','./js/data.js','./js/storage.js','./js/statistics.js','./js/charts.js','./js/settings.js','./js/auth.js','./js/admin.js','./js/currency.js','./js/supabase-config.js','./js/supabase.js','./js/import-center.js','./js/app.js','./manifest.json','./assets/logo.svg'];
 
 self.addEventListener('install',event=>event.waitUntil(

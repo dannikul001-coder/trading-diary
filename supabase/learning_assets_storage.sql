@@ -1,4 +1,4 @@
--- Хранилище файлов для аудио и книг в конструкторе обучения.
+-- Хранилище файлов для аудио, книг и изображений постов в конструкторе обучения.
 -- Запустить один раз в Supabase SQL Editor от имени владельца проекта.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
@@ -10,7 +10,7 @@ values (
     'audio/mpeg','audio/mp3','audio/mp4','audio/x-m4a','audio/wav','audio/x-wav',
     'audio/ogg','audio/aac','audio/webm','application/pdf','application/epub+zip',
     'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/octet-stream'
+    'image/jpeg','image/png','image/webp','image/gif','image/avif','application/octet-stream'
   ]
 )
 on conflict (id) do update set
