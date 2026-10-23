@@ -39,3 +39,10 @@ Do not expose Supabase service-role/secret keys in the browser or repository.
 ## V29.2 — Learning UI Stabilization
 
 V29.2 preserves the existing Learning structure and adds a learner-facing status filter (all / not started / in progress / completed), clearer continuation behavior, per-lesson progress bars, category completion in the roadmap, and improved next-lesson selection. No learning tables are replaced or reset.
+
+
+## Automated Signals Diary (additive mode)
+
+The new automated-signals diary is a separate workspace available from the first-screen diary selector and the profile menu. It uses the same Supabase authentication but separate `automated_diary_*` tables protected by owner-only RLS policies. Existing main-diary tables and records are not modified by this feature.
+
+Before using the new mode with cloud persistence, apply `supabase/automated_diary_v1.sql` in the Supabase SQL Editor. Monetary trade values use `numeric(24,6)` and bonus values use `numeric(20,4)`. Browser notifications require permission and the page to remain open.

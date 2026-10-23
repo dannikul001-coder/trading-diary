@@ -276,7 +276,7 @@ function openProfileModal(){
       <div class="profile-avatar-editor"><div class="profile-avatar-preview" id="profileAvatarPreview">${avatarHtml}</div><div class="profile-avatar-actions"><input id="profileAvatarInput" type="file" accept="image/*" hidden><button type="button" class="secondary-btn" id="profileAvatarChoose">Изменить аватарку</button><button type="button" class="ghost-btn" id="profileAvatarRemove">Удалить фото</button><small>Изображение автоматически сжимается.</small></div></div>
       <label class="profile-field"><span>Никнейм</span><input id="profileDisplayName" maxlength="32" value="${escapeAttr(displayName)}" placeholder="Например, Danni"></label>
       <div class="profile-account-line"><span>Email</span><b>${escapeHtml(currentUser.email||'')}</b></div><div id="profileAchievements" class="profile-achievements"><div class="achievement-loading">Загрузка достижений…</div></div>
-      <div class="modal-actions"><button type="button" class="secondary-btn" id="profileClose">Закрыть</button><button type="button" class="primary-btn" id="profileSave">Сохранить профиль</button></div>
+      <div class="modal-actions"><button type="button" class="secondary-btn" id="profileSwitchDiary">Сменить дневник</button><button type="button" class="secondary-btn" id="profileClose">Закрыть</button><button type="button" class="primary-btn" id="profileSave">Сохранить профиль</button></div>
       <div class="profile-account-actions"><button type="button" class="danger-btn" id="profileLogout">Выйти из аккаунта</button></div>
     </div>`;
   openModal();
@@ -295,6 +295,7 @@ function openProfileModal(){
     preview.innerHTML=`<span>${escapeHtml((document.getElementById('profileDisplayName').value||currentUser.email||'U').charAt(0).toUpperCase())}</span>`;
   };
   document.getElementById('profileClose').onclick=closeModal;
+  document.getElementById('profileSwitchDiary').onclick=()=>{closeModal();window.showDiaryChooser?.()};
   document.getElementById('profileSave').onclick=async()=>{
     const btn=document.getElementById('profileSave');
     btn.disabled=true;

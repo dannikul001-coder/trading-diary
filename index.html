@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="automated-diary.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -209,6 +210,22 @@
 
   </div>
 </div>
+
+<div id="diaryChooser" class="diary-chooser" hidden>
+  <section class="diary-choice-panel"><div class="ad-brand">TD <span>TRADING DIARY</span></div><p class="ad-eyebrow">ВЫБОР РЕЖИМА</p><h1>Какой дневник открыть?</h1><p class="ad-lead">Один аккаунт. Два независимых пространства. История и баланс основного дневника не смешиваются с автоматическими сигналами.</p>
+    <button id="chooseMainDiary" class="diary-choice"><span class="choice-icon">◈</span><span><b>Основной дневник</b><small>Текущая структура и существующие данные без изменений</small></span><span>→</span></button>
+    <button id="chooseAutomatedDiary" class="diary-choice"><span class="choice-icon">◉</span><span><b>Trading Diary — сигналы</b><small>Баланс, сделки, мешочки, расписание и настройки</small></span><span>→</span></button>
+    <p class="ad-muted">Сменить режим можно в любой момент через профиль.</p>
+  </section>
+</div>
+<div id="automatedDiary" hidden>
+  <header class="ad-topbar"><div class="ad-brand">TD <span>TRADING DIARY <i>· СИГНАЛЫ</i></span></div><div class="ad-top-actions"><button id="adSwitchDiary" class="ad-secondary">Сменить дневник</button><button id="adProfile" class="ad-secondary" onclick="document.getElementById('profileBtn')?.click()">Профиль / вход</button></div></header>
+  <main class="ad-main">
+    <section id="adWizard" class="ad-card ad-wizard" hidden><p class="ad-eyebrow">ПЕРВЫЙ ЗАПУСК</p><h1>Настроим новый дневник</h1><p class="ad-muted">Это отдельный баланс и отдельная история. Основной дневник не изменяется.</p><form id="adWizardForm" class="ad-form"><label>Начальный баланс<input name="initial_balance" type="number" min="0" step="0.000001" required value="1000"></label><label>Валюта<select name="currency"><option>USDT</option><option>USD</option><option>EUR</option><option>BTC</option></select></label><label>Часовой пояс<select name="timezone"><option>Europe/Moscow</option><option>Europe/Stockholm</option><option>UTC</option><option>Europe/London</option><option>America/New_York</option><option>Asia/Dubai</option></select></label><label>Длительность сделки, сек.<input name="duration_seconds" type="number" min="1" step="1" required value="60"></label><label>Размер ставки, % баланса<input name="stake_percent" type="number" min="0.000001" step="0.000001" required value="2"></label><label>Прибыль от ставки, %<input name="profit_percent" type="number" min="0" step="0.000001" required value="40"></label><label class="ad-check"><input name="signals_enabled" type="checkbox" checked> Использовать расписание и уведомления сигналов</label><button class="ad-primary" type="submit">Создать дневник</button></form><p class="ad-muted">Для облачного хранения сначала примените SQL-файл <code>supabase/automated_diary_v1.sql</code> к своему проекту Supabase.</p></section>
+    <section id="adWorkspace" hidden><nav class="ad-nav"><button class="ad-tab active" data-tab="dashboard">Обзор</button><button class="ad-tab" data-tab="trades">Сделки</button><button class="ad-tab" data-tab="bonuses">Мешочки</button><button class="ad-tab" data-tab="schedule">Сигналы</button><button class="ad-tab" data-tab="settings">Настройки</button></nav><div id="adContent"></div></section>
+  </main><div id="adToast" class="ad-toast" role="status" aria-live="polite"></div>
+</div>
+
 <div class="modal-backdrop" id="modalBackdrop"><div class="modal" id="modal"><button class="modal-close" id="modalClose">×</button><div id="modalContent"></div></div></div>
 <div class="toast-container" id="toastContainer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -223,5 +240,6 @@
 <script src="js/import-center.js"></script>
 <script src="js/currency.js"></script>
 <script src="js/app.js"></script>
+<script src="js/automated-diary.js"></script>
 </body>
 </html>
