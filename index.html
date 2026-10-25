@@ -212,20 +212,77 @@
 </div>
 
 <div id="diaryChooser" class="diary-chooser" hidden>
-  <section class="diary-choice-panel"><div class="ad-brand">TD <span>TRADING DIARY</span></div><p class="ad-eyebrow">ВЫБОР РЕЖИМА</p><h1>Какой дневник открыть?</h1><p class="ad-lead">Один аккаунт. Два независимых пространства. История и баланс основного дневника не смешиваются с автоматическими сигналами.</p>
-    <button id="chooseMainDiary" class="diary-choice"><span class="choice-icon">◈</span><span><b>Основной дневник</b><small>Текущая структура и существующие данные без изменений</small></span><span>→</span></button>
-    <button id="chooseAutomatedDiary" class="diary-choice"><span class="choice-icon">◉</span><span><b>Trading Diary — сигналы</b><small>Баланс, сделки, мешочки, расписание и настройки</small></span><span>→</span></button>
-    <p class="ad-muted">Сменить режим можно в любой момент через профиль.</p>
+  <section class="diary-choice-panel" aria-labelledby="diaryChoiceTitle">
+    <div class="ad-choice-overline"><span class="ad-monogram">TD<span class="ad-monogram-dot">.</span></span><span class="ad-overline">TRADING DIARY / WORKSPACES</span></div>
+    <span class="ad-choice-kicker">ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО</span>
+    <h1 id="diaryChoiceTitle">Два дневника.<br><em>Одна система.</em></h1>
+    <p class="ad-choice-intro">Выберите пространство для работы. Ваши сделки и баланс в каждом дневнике хранятся независимо.</p>
+    <div class="ad-choice-list">
+      <button type="button" id="chooseMainDiary" class="diary-choice"><span class="choice-icon">01</span><span><b>Основной дневник</b><small>Ручные сделки, журнал, обучение и привычная аналитика</small></span><span class="choice-arrow" aria-hidden="true">↗</span></button>
+      <button type="button" id="chooseAutomatedDiary" class="diary-choice diary-choice-featured"><span class="choice-icon">02</span><span><b>Дневник сигналов</b><small>Автоматические сигналы, бонусы, баланс и расписание</small></span><span class="choice-arrow" aria-hidden="true">↗</span></button>
+    </div>
+    <p class="ad-choice-foot">◈ Данные разделены · Единый аккаунт · Без изменения существующей истории</p>
   </section>
 </div>
-<div id="automatedDiary" hidden>
-  <header class="ad-topbar"><div class="ad-brand">TD <span>TRADING DIARY <i>· СИГНАЛЫ</i></span></div><div class="ad-top-actions"><button id="adSwitchDiary" class="ad-secondary">Сменить дневник</button><button id="adProfile" class="ad-secondary" onclick="document.getElementById('profileBtn')?.click()">Профиль / вход</button></div></header>
-  <main class="ad-main">
-    <section id="adWizard" class="ad-card ad-wizard" hidden><p class="ad-eyebrow">ПЕРВЫЙ ЗАПУСК</p><h1>Настроим новый дневник</h1><p class="ad-muted">Это отдельный баланс и отдельная история. Основной дневник не изменяется.</p><form id="adWizardForm" class="ad-form"><label>Начальный баланс<input name="initial_balance" type="number" min="0" step="0.000001" required value="1000"></label><label>Валюта<select name="currency"><option>USDT</option><option>USD</option><option>EUR</option><option>BTC</option></select></label><label>Часовой пояс<select name="timezone"><option>Europe/Moscow</option><option>Europe/Stockholm</option><option>UTC</option><option>Europe/London</option><option>America/New_York</option><option>Asia/Dubai</option></select></label><label>Длительность сделки, сек.<input name="duration_seconds" type="number" min="1" step="1" required value="60"></label><label>Размер ставки, % баланса<input name="stake_percent" type="number" min="0.000001" step="0.000001" required value="2"></label><label>Прибыль от ставки, %<input name="profit_percent" type="number" min="0" step="0.000001" required value="40"></label><label class="ad-check"><input name="signals_enabled" type="checkbox" checked> Использовать расписание и уведомления сигналов</label><button class="ad-primary" type="submit">Создать дневник</button></form><p class="ad-muted">Для облачного хранения сначала примените SQL-файл <code>supabase/automated_diary_v1.sql</code> к своему проекту Supabase.</p></section>
-    <section id="adWorkspace" hidden><nav class="ad-nav"><button class="ad-tab active" data-tab="dashboard">Обзор</button><button class="ad-tab" data-tab="trades">Сделки</button><button class="ad-tab" data-tab="bonuses">Мешочки</button><button class="ad-tab" data-tab="schedule">Сигналы</button><button class="ad-tab" data-tab="settings">Настройки</button></nav><div id="adContent"></div></section>
-  </main><div id="adToast" class="ad-toast" role="status" aria-live="polite"></div>
+<div id="automatedDiary" data-ad-theme="obsidian" hidden>
+  <svg xmlns="http://www.w3.org/2000/svg" class="ad-sprite" aria-hidden="true">
+    <symbol id="ad-i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="8" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/></symbol>
+    <symbol id="ad-i-trades" viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9"/><path d="M15 6h5v5"/><path d="M4 4v16h16"/></symbol>
+    <symbol id="ad-i-bonuses" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 13h18M12 8C8 8 5 6 7 3c2-2 5 1 5 5Zm0 0c4 0 7-2 5-5-2-2-5 1-5 5Z"/></symbol>
+    <symbol id="ad-i-schedule" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 15h3"/></symbol>
+    <symbol id="ad-i-finance" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M16 15h2M8 15h4"/></symbol>
+    <symbol id="ad-i-settings" viewBox="0 0 24 24"><path d="M12 3l2 1 2-.5 2 3-1 2 1 2 2 1v4l-2 1-1 2 1 2-2 3-2-.5-2 1-2-1-2 .5-2-3 1-2-1-2-2-1v-4l2-1 1-2-1-2 2-3 2 .5z" transform="translate(0 -1.5) scale(1 .95)"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="ad-i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="ad-i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="ad-i-switch" viewBox="0 0 24 24"><path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/></symbol>
+    <symbol id="ad-i-filter" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></symbol>
+    <symbol id="ad-i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="ad-i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-9v1"/></symbol>
+  </svg>
+  <div class="ad-app">
+    <aside class="ad-sidebar">
+      <div class="ad-sidebar-head"><span class="ad-brand-mark">TD<span>.</span></span><div class="ad-sidebar-brand"><strong>TRADING DIARY</strong><small>AUTOMATED / 02</small></div></div>
+      <div class="ad-sidebar-section"><span class="ad-sidebar-label">РАБОЧЕЕ ПРОСТРАНСТВО</span>
+        <nav class="ad-nav" aria-label="Навигация дневника сигналов">
+          <button type="button" class="ad-tab active" data-tab="dashboard"><svg class="ad-icon"><use href="#ad-i-overview"/></svg><span>Обзор</span></button>
+          <button type="button" class="ad-tab" data-tab="trades"><svg class="ad-icon"><use href="#ad-i-trades"/></svg><span>Сделки</span></button>
+          <button type="button" class="ad-tab" data-tab="bonuses"><svg class="ad-icon"><use href="#ad-i-bonuses"/></svg><span>Бонусные мешочки</span></button>
+          <button type="button" class="ad-tab" data-tab="schedule"><svg class="ad-icon"><use href="#ad-i-schedule"/></svg><span>Расписание</span></button>
+          <button type="button" class="ad-tab" data-tab="finance"><svg class="ad-icon"><use href="#ad-i-finance"/></svg><span>Финансы</span></button>
+          <button type="button" class="ad-tab ad-mobile-settings" data-tab="settings"><svg class="ad-icon"><use href="#ad-i-settings"/></svg><span>Настройки</span></button>
+        </nav>
+      </div>
+      <div class="ad-sidebar-section ad-sidebar-system"><span class="ad-sidebar-label">СИСТЕМА</span>
+        <button type="button" class="ad-tab" data-tab="settings"><svg class="ad-icon"><use href="#ad-i-settings"/></svg><span>Настройки</span></button>
+      </div>
+      <div class="ad-sidebar-bottom">
+        <div class="ad-sidebar-status"><span class="ad-status-light"></span><div><strong>Личное пространство</strong><small>Данные этого дневника отдельно</small></div></div>
+        <span class="ad-sidebar-label">ТЕМА ИНТЕРФЕЙСА</span>
+        <div class="ad-theme-mini" role="group" aria-label="Выбор темы">
+          <button type="button" class="ad-theme-chip" data-ad-set-theme="obsidian" title="Obsidian"><span class="ad-swatch ad-swatch-obsidian"></span><span>Obsidian</span></button>
+          <button type="button" class="ad-theme-chip" data-ad-set-theme="ivory" title="Ivory"><span class="ad-swatch ad-swatch-ivory"></span><span>Ivory</span></button>
+          <button type="button" class="ad-theme-chip" data-ad-set-theme="neon" title="Neon"><span class="ad-swatch ad-swatch-neon"></span><span>Neon</span></button>
+        </div>
+      </div>
+    </aside>
+    <div class="ad-body">
+      <header class="ad-topbar"><div class="ad-topbar-location"><span class="ad-topbar-overline">РАБОЧЕЕ ПРОСТРАНСТВО / 02</span><strong id="adPageTitle">Обзор</strong></div>
+        <div class="ad-top-actions"><span class="ad-topbar-pill"><span class="ad-status-light"></span> SIGNAL JOURNAL</span><button type="button" id="adSwitchDiary" class="ad-secondary"><svg class="ad-icon"><use href="#ad-i-switch"/></svg><span>Сменить дневник</span></button><button type="button" id="adProfile" class="ad-avatar-btn" aria-label="Открыть профиль" onclick="document.getElementById('profileBtn')?.click()">TD</button></div>
+      </header>
+      <main class="ad-main">
+        <section id="adWizard" class="ad-wizard" hidden>
+          <div class="ad-wizard-intro"><span class="ad-kicker">НАСТРОЙКА / 01</span><h1>Всё готово к старту.<br><em>Осталось настроить детали.</em></h1><p>Новый дневник работает в вашем текущем аккаунте, но имеет собственные настройки, историю операций и баланс.</p><div class="ad-setup-points"><span><svg class="ad-icon"><use href="#ad-i-check"/></svg> Отдельный баланс</span><span><svg class="ad-icon"><use href="#ad-i-check"/></svg> Приватные данные</span><span><svg class="ad-icon"><use href="#ad-i-check"/></svg> Три оформления</span></div></div>
+          <div class="ad-card ad-wizard-card"><div class="ad-section-heading"><span class="ad-kicker">ПАРАМЕТРЫ ДНЕВНИКА</span><h2>Основные настройки</h2><p>Их можно изменить позже в настройках.</p></div>
+            <form id="adWizardForm" class="ad-form"><label>Начальный баланс<input name="initial_balance" type="number" min="0" step="0.000001" required value="1000"></label><label>Валюта<select name="currency"><option>USDT</option><option>USD</option><option>EUR</option><option>BTC</option></select></label><label>Часовой пояс<select name="timezone"><option>Europe/Moscow</option><option>Europe/Stockholm</option><option>UTC</option><option>Europe/London</option><option>America/New_York</option><option>Asia/Dubai</option></select></label><label>Длительность сделки, сек.<input name="duration_seconds" type="number" min="1" step="1" required value="60"></label><label>Размер ставки, % баланса<input name="stake_percent" type="number" min="0.000001" step="0.000001" required value="2"></label><label>Прибыль от ставки, %<input name="profit_percent" type="number" min="0" step="0.000001" required value="40"></label><label class="ad-check"><input name="signals_enabled" type="checkbox" checked> Использовать расписание и уведомления сигналов</label><button class="ad-primary ad-form-submit" type="submit">Создать дневник <svg class="ad-icon"><use href="#ad-i-arrow"/></svg></button></form>
+            <p class="ad-form-note">Облачное хранение требует применения <code>supabase/automated_diary_v1.sql</code> в Supabase. Миграция добавляет только таблицы нового дневника.</p>
+          </div>
+        </section>
+        <section id="adWorkspace" hidden><div id="adContent" aria-live="off"></div></section>
+      </main>
+    </div>
+  </div>
+  <div id="adToast" class="ad-toast" role="status" aria-live="polite"></div>
 </div>
-
 <div class="modal-backdrop" id="modalBackdrop"><div class="modal" id="modal"><button class="modal-close" id="modalClose">×</button><div id="modalContent"></div></div></div>
 <div class="toast-container" id="toastContainer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
