@@ -66,3 +66,53 @@
 #automatedDiary .ad-calendar-foot button{background:none;border:0;margin-left:auto;color:var(--ad-accent);font-size:10px;font-weight:700;padding:4px}
 @media(max-width:1300px){#automatedDiary .ad-layout-breakdown{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:750px){#automatedDiary .ad-layout-breakdown{grid-template-columns:1fr}#automatedDiary .ad-breakdown-bars{gap:7px}#automatedDiary .ad-breakdown-col strong{font-size:9px}}
+
+/* V3 — Profit-only automated signals, second-precise financial operations, daily agenda. */
+#automatedDiary .ad-row-ref{display:block;color:var(--ad-dim);font:500 10px 'DM Mono',monospace;margin-top:5px}
+#automatedDiary .ad-data-warning{border:1px solid color-mix(in srgb,var(--ad-warning) 40%,var(--ad-border));border-radius:13px;padding:18px 20px;margin:0 0 22px;background:color-mix(in srgb,var(--ad-warning) 6%,var(--ad-surface));color:var(--ad-text);font-size:12px}
+#automatedDiary .ad-data-warning strong{color:var(--ad-warning);font-size:13px}#automatedDiary .ad-data-warning ul{margin:8px 0;padding-left:22px;line-height:1.7}#automatedDiary .ad-data-warning .ad-secondary{margin-top:10px}
+#automatedDiary .ad-profit-summary{display:grid;gap:7px;padding:18px 0 20px;border-bottom:1px solid var(--ad-border)}
+#automatedDiary .ad-profit-summary>span{font-size:10px;letter-spacing:.13em;font-weight:700;color:var(--ad-dim)}
+#automatedDiary .ad-profit-summary strong{font-size:clamp(25px,2.3vw,36px);font-family:'DM Mono',monospace;letter-spacing:-.06em;line-height:1.3;overflow-wrap:anywhere}
+#automatedDiary .ad-profit-summary strong small{font-size:13px;color:var(--ad-muted)}
+#automatedDiary .ad-profit-rows{padding-top:13px;display:grid;gap:0}
+#automatedDiary .ad-profit-rows>div{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-bottom:1px dashed var(--ad-border);font-size:12px}
+#automatedDiary .ad-profit-rows span{color:var(--ad-muted)}#automatedDiary .ad-profit-rows b{color:var(--ad-text);text-align:right;font:600 12px 'DM Mono',monospace}
+#automatedDiary .ad-day-navigation{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:22px;margin-bottom:20px}
+#automatedDiary .ad-day-navigation h2{font-size:clamp(19px,2.3vw,26px);letter-spacing:-.04em;margin:7px 0 3px;text-transform:capitalize;color:var(--ad-text)}
+#automatedDiary .ad-day-navigation small{font-size:11px;color:var(--ad-muted)}
+#automatedDiary .ad-day-navigation-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#automatedDiary .ad-day-navigation-buttons button{min-height:39px}
+#automatedDiary .ad-day-navigation-buttons button[data-day-shift]{font-size:24px;padding:0 15px}
+#automatedDiary #adDaySelect{max-width:170px;min-height:39px;background:var(--ad-input);color:var(--ad-text);border:1px solid var(--ad-border);border-radius:8px;padding:7px 12px;color-scheme:inherit}
+#automatedDiary .ad-day-stats{margin-top:0;margin-bottom:19px}
+#automatedDiary .ad-day-hour-list{display:grid;gap:5px;padding-top:10px}
+#automatedDiary .ad-day-hour{display:grid;grid-template-columns:68px minmax(0,1fr);gap:17px;align-items:stretch}
+#automatedDiary .ad-day-hour-label{border-right:1px solid var(--ad-border);padding-top:17px;padding-right:15px;font:700 12px 'DM Mono',monospace;color:var(--ad-muted);text-align:right;position:relative}
+#automatedDiary .ad-day-hour-label::after{content:'';position:absolute;right:-4px;top:23px;border:4px solid var(--ad-accent);border-radius:50%;background:var(--ad-accent)}
+#automatedDiary .ad-day-hour-events{display:grid;gap:10px;padding:2px 0 17px}
+#automatedDiary .ad-day-event{display:flex;align-items:center;gap:18px;border:1px solid var(--ad-border);background:var(--ad-elevated);border-radius:12px;min-height:78px;padding:16px 17px;transition:border-color .15s,transform .15s}
+#automatedDiary .ad-day-event:hover{border-color:var(--ad-accent);transform:translateX(2px)}
+#automatedDiary .ad-day-event.muted{opacity:.65}
+#automatedDiary .ad-day-sequence{font:700 10px 'DM Mono',monospace;color:var(--ad-accent);border:1px solid var(--ad-border);background:var(--ad-accent-light);padding:7px 8px;border-radius:7px}
+#automatedDiary .ad-day-event-main{flex:1;min-width:0;display:grid;gap:5px}
+#automatedDiary .ad-day-event-main strong{font-size:14px;overflow-wrap:anywhere}
+#automatedDiary .ad-day-event-main small{font-size:11px;color:var(--ad-muted)}
+#automatedDiary .ad-day-event time{font:700 16px 'DM Mono',monospace;color:var(--ad-accent);white-space:nowrap}
+#automatedDiary .ad-notice-card p{color:var(--ad-muted);font-size:12px;max-width:680px;line-height:1.65;margin:0 0 17px}
+#automatedDiary .ad-form-hint{font-size:11px;color:var(--ad-muted);line-height:1.65;margin:3px 0 8px;grid-column:1 / -1}
+#automatedDiary .ad-ledger-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.25fr) minmax(130px,.26fr);gap:20px;padding:8px 15px 14px;color:var(--ad-dim);font:700 10px 'DM Sans',sans-serif;letter-spacing:.06em;border-bottom:1px solid var(--ad-border)}
+#automatedDiary .ad-ledger-head span:nth-child(n+2){text-align:right}
+#automatedDiary .ad-finance-item.ad-ledger-row{display:grid;grid-template-columns:44px minmax(0,1fr) minmax(110px,.25fr) minmax(130px,.26fr);gap:14px;align-items:center;padding:17px 14px}
+#automatedDiary .ad-ledger-row .ad-finance-item-label{min-width:0}
+#automatedDiary .ad-ledger-row>strong{font:700 12px 'DM Mono',monospace;text-align:right;overflow-wrap:anywhere}
+#automatedDiary .ad-ledger-after{color:var(--ad-text)}
+#automatedDiary input[type="datetime-local"]{min-width:0;color-scheme:inherit}
+@media(max-width:980px){#automatedDiary .ad-ledger-head{display:none}#automatedDiary .ad-finance-item.ad-ledger-row{grid-template-columns:40px minmax(0,1fr);row-gap:10px}#automatedDiary .ad-ledger-row>strong{grid-column:2;text-align:left}#automatedDiary .ad-ledger-row .ad-ledger-after{font-size:11px}#automatedDiary .ad-ledger-row .ad-ledger-after::before{content:'Остаток: ';color:var(--ad-muted)}}
+@media(max-width:680px){#automatedDiary .ad-day-navigation-buttons{width:100%}#automatedDiary .ad-day-navigation-buttons #adDaySelect{flex:1;max-width:none}#automatedDiary .ad-day-hour{grid-template-columns:42px minmax(0,1fr);gap:9px}#automatedDiary .ad-day-hour-label{font-size:10px;padding-right:8px}#automatedDiary .ad-day-event{flex-wrap:wrap;gap:10px;padding:12px}#automatedDiary .ad-day-event time{font-size:14px}#automatedDiary .ad-day-event .ad-status{margin-left:0}#automatedDiary .ad-day-event-main{min-width:150px}#automatedDiary .ad-profit-summary strong{font-size:25px}}
+/* Keep wide tables scrollable INSIDE their cards, not at document level. */
+#automatedDiary .ad-table-wrap{max-width:100%;min-width:0;contain:paint;overscroll-behavior-inline:contain}
+#automatedDiary .ad-ledger-edit-btn{display:inline-flex;margin-top:7px;border:1px solid var(--ad-border);padding:5px 9px;font-size:10px;color:var(--ad-accent);background:var(--ad-accent-light);border-radius:5px}
+#automatedDiary .ad-ledger-row .ad-negative{color:var(--ad-muted)}
+#automatedDiary .ad-revision{display:flex;gap:13px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--ad-border);padding:12px 0;color:var(--ad-muted);font-size:11px}
+#automatedDiary .ad-revision:last-child{border:0}#automatedDiary .ad-revision strong{color:var(--ad-text)}
