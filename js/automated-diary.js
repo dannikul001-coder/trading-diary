@@ -182,6 +182,7 @@
         return;
       }
       state.profile = profile.data;
+      if(!state.calendarDay && state.tab!=='calendar')state.calendarCursor=zonedDay(new Date()).slice(0,7);
       [state.trades,state.bonuses,state.signals,state.ledger,state.notes,state.plans,state.goals,state.tradeRevisions,state.bonusRevisions,state.profileRevisions,state.emailQueue] = await Promise.all([
         'automated_diary_trades','automated_diary_bonuses','automated_diary_signals','automated_diary_ledger',
         'automated_diary_notes','automated_diary_plans','automated_diary_goals',
@@ -339,7 +340,7 @@
   function tradeTable(rows, compact = false) {
     return `<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>Открытие · до секунды</th><th>Закрытие · до секунды</th><th>Ставка</th><th>Возврат</th><th>Заработано</th><th>Статус</th><th><span class="ad-sr-only">Действия</span></th></tr></thead><tbody>${rows.map(t=>{
       const closed=t.status==='closed',value=closed?profit(t):0n;
-      return `<tr><td><span class="ad-table-date">${humanDate(t.opened_at)}</span>${!compact&&t.note?`<small class="ad-table-note" title="${esc(t.note)}">${esc(t.note)}</small>`:''}<small class="ad-row-ref">№ ${esc(t.id.slice(0,8))}</small></td><td class="ad-table-date">${closed?humanDate(t.closed_at):'—'}</td><td class="ad-numeric">${money(t.stake)}</td><td class="ad-numeric">${closed?money(t.payout):'—'}</td><td class="ad-numeric ${closed?colorClass(value):'ad-neutral'}">${closed?signed(value):'—'}</td><td><span class="ad-status ${closed?'ad-status-closed':'ad-status-open'}"><span class="ad-status-dot"></span>${closed?'Завершена':'В резерве'}</span></td><td><div class="ad-row-actions"><button type="button" class="ad-mini" data-edit-trade="${esc(t.id)}">Править</button>${!closed?`<button class="ad-mini" data-close-trade="${esc(t.id)}">Закрыть</button>`:''}</div></td></tr>`;
+      return `<tr><td><span class="ad-table-date">${humanDate(t.opened_at)}</span>${!compact&&t.note?`<small class="ad-table-note" title="${esc(t.note)}">${esc(t.note)}</small>`:''}<small class="ad-row-ref">№ ${esc(t.id.slice(0,8))}</small></td><td class="ad-table-date">${closed?humanDate(t.closed_at):'—'}</td><td class="ad-numeric">${money(t.stake)}</td><td class="ad-numeric">${closed?money(t.payout):'—'}</td><td class="ad-numeric ${closed?colorClass(value):'ad-neutral'}">${closed?signed(value):'—'}</td><td><span class="ad-status ${closed?'ad-status-closed':'ad-status-open'}"><span class="ad-status-dot"></span>${closed?'Завершена':'В резерве'}</span></td><td><div class="ad-row-actions"><button type="button" class="ad-mini" data-ad-edit-trade="${esc(t.id)}">Править</button>${!closed?`<button class="ad-mini" data-close-trade="${esc(t.id)}">Закрыть</button>`:''}</div></td></tr>`;
     }).join('')||`<tr><td colspan="7" class="ad-table-empty">Сделок пока нет</td></tr>`}</tbody></table></div>`;
   }
   function hourInZone(date) {
@@ -363,13 +364,27 @@
   }
   function periodBreakdowns(){
     const closed=periodTrades();
-    const hours=Array(4).fill(0n),weekdays=Array(7).fill(0n);
-    for(const t of closed){
-      const date=t.closed_at, gain=profit(t);
-      hours[Math.min(3,Math.floor(hourInZone(date)/6))]+=gain;
-      weekdays[weekdayInZone(date)]+=gain;
+    const buckets=[
+      {title:'00:00–05:59',trades:[]},
+      {title:'06:00–11:59',trades:[]},
+      {title:'12:00–17:59',trades:[]},
+      {title:'18:00–23:59',trades:[]}
+    ];
+    const weekdays=['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'].map(title=>({title,trades:[]}));
+    for(const trade of closed){
+      // Group by the *closing* time in this diary's selected IANA time zone.
+      buckets[Math.floor(hourInZone(trade.closed_at)/6)].trades.push(trade);
+      weekdays[weekdayInZone(trade.closed_at)].trades.push(trade);
     }
-    return `<div class="ad-layout-2 ad-layout-breakdown"><section class="ad-card">${section('Доход по времени суток','Фактические поступления от закрытых сделок')}${breakdownChart(['00–06','06–12','12–18','18–24'],hours)}</section><section class="ad-card">${section('Доход по дням недели','Только завершённые сделки')}${breakdownChart(['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],weekdays)}</section></div>`;
+    function dataTable(groups){
+      if(!closed.length)return empty('Нет закрытых сделок за период','Выберите другой период или закройте первую сделку.','trades');
+      return `<div class="ad-table-wrap"><table class="ad-table ad-analysis-table"><thead><tr><th>Период</th><th>Сделок закрыто</th><th>Заработано</th></tr></thead><tbody>${groups.map(g=>{const value=g.trades.reduce((sum,t)=>sum+profit(t),0n);return `<tr><td><strong>${esc(g.title)}</strong></td><td class="ad-numeric">${g.trades.length}</td><td class="ad-numeric ${colorClass(value)}">${signed(value)} ${currency()}</td></tr>`;}).join('')}</tbody></table></div>`;
+    }
+    const explanation=`Каждая завершённая сделка учитывается ровно один раз — по дате и времени <strong>закрытия</strong> (${esc(state.profile.timezone)}). Доход = полный возврат − ставка. Пополнения, выводы и бонусы не входят в эти суммы.`;
+    return `<section class="ad-card ad-analysis-explainer">${section('Как считаются показатели','Единая формула для всех периодов')}<p>${explanation}</p></section><div class="ad-layout-2 ad-layout-breakdown">
+      <section class="ad-card">${section('Когда закрывались сделки','За выбранный период: количество и сумма дохода по времени закрытия')}${dataTable(buckets)}</section>
+      <section class="ad-card">${section('В какие дни закрывались сделки','Суммы по понедельникам, вторникам и т. д. за весь выбранный период, не за одну неделю')}${dataTable(weekdays)}</section>
+    </div>`;
   }
   function zonedDay(date) {
     try {
@@ -391,6 +406,22 @@
       return `<button type="button" data-cal-day="${day}" class="${selected?'selected ':''}${today?'today ':''}${counts[day]?'has-events':''}" aria-pressed="${selected}" title="${counts[day]||0} событий">${i+1}${counts[day]?'<i></i>':''}</button>`;
     })];
     return `<div class="ad-calendar"><div class="ad-calendar-head"><strong>${esc(monthName)}</strong><div><button data-cal-month="-1" aria-label="Предыдущий месяц">‹</button><button data-cal-month="1" aria-label="Следующий месяц">›</button></div></div><div class="ad-calendar-grid">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(x=>`<b>${x}</b>`).join('')}${days.join('')}</div><div class="ad-calendar-foot"><span class="ad-cal-mark"></span> Отмечены дни с событиями ${state.calendarDay?'<button type="button" data-cal-reset>Показать все</button>':''}</div></div>`;
+  }
+  function dashboardWorkspaceSummary(){
+    const today=zonedDay(new Date());
+    const tasks=[...state.plans].filter(x=>x.plan_date<=today).sort((a,b)=>Number(a.done)-Number(b.done)||b.plan_date.localeCompare(a.plan_date)).slice(0,5);
+    const goals=[...state.goals].sort((a,b)=>Number(micro(b.current_value)>=micro(b.target))-Number(micro(a.current_value)>=micro(a.target))).slice(0,4);
+    const notes=[...state.notes].sort((a,b)=>b.note_date.localeCompare(a.note_date)).slice(0,3);
+    const daySignals=[...state.signals].filter(x=>zonedDay(x.starts_at)===today).sort((a,b)=>stamp(a.starts_at)-stamp(b.starts_at));
+    const doneCount=state.plans.filter(x=>x.done).length;
+    const readyCount=state.goals.filter(x=>micro(x.current_value)>=micro(x.target)).length;
+    return `<section class="ad-card ad-overview-section">${section('Моё рабочее пространство','Все сведения — только из записей второго дневника. Быстрый переход к полному разделу.')}
+    <div class="ad-overview-mini-grid">
+      <article class="ad-overview-panel"><header><div><span class="ad-kicker">ПЛАН</span><h3>Задачи</h3></div><button type="button" class="ad-text-btn" data-go="plans">Открыть план →</button></header><p class="ad-overview-counter">${doneCount} из ${state.plans.length} выполнено</p>${tasks.length?`<ul class="ad-overview-items">${tasks.map(t=>`<li><span class="ad-overview-check ${t.done?'done':''}">${t.done?'✓':'○'}</span><span>${esc(t.title)} <small>${esc(t.plan_date)}</small></span></li>`).join('')}</ul>`:empty('Пока нет задач','Добавьте задачи в разделе «План».','overview')}</article>
+      <article class="ad-overview-panel"><header><div><span class="ad-kicker">ЦЕЛИ</span><h3>Мой прогресс</h3></div><button type="button" class="ad-text-btn" data-go="goals">Все цели →</button></header><p class="ad-overview-counter">${readyCount} из ${state.goals.length} достигнуто (вручную)</p>${goals.length?`<ul class="ad-overview-items">${goals.map(g=>{const current=micro(g.current_value),target=micro(g.target),percent=target>0n?Math.max(0,Math.min(100,Number(current*100n/target))):0;return `<li><span class="ad-overview-goal"><strong>${esc(g.title)}</strong><small>${money(current)} / ${money(target)} (${percent}%)</small><span class="ad-goal-track"><i style="width:${percent}%"></i></span></span></li>`;}).join('')}</ul>`:empty('Целей пока нет','Добавьте первую личную цель.','overview')}</article>
+      <article class="ad-overview-panel"><header><div><span class="ad-kicker">ЗАМЕТКИ</span><h3>Последние записи</h3></div><button type="button" class="ad-text-btn" data-go="notes">Все заметки →</button></header>${notes.length?`<ul class="ad-overview-items">${notes.map(n=>`<li class="ad-overview-note"><strong>${esc(n.title||'Без названия')}</strong><small>${esc(n.note_date)}</small><p>${esc(String(n.body||'').slice(0,175))}${String(n.body||'').length>175?'…':''}</p></li>`).join('')}</ul>`:empty('Нет заметок','Запишите наблюдения в разделе «Заметки».','overview')}</article>
+      <article class="ad-overview-panel"><header><div><span class="ad-kicker">СЕГОДНЯ</span><h3>Расписание</h3></div><button type="button" class="ad-text-btn" data-go="schedule">Открыть день →</button></header><p class="ad-overview-counter">${daySignals.length} сигналов · ${daySignals.filter(s=>s.enabled).length} активных</p>${daySignals.length?`<ul class="ad-overview-items">${daySignals.slice(0,8).map(s=>`<li><time>${clockTime(s.starts_at)}</time><span>${esc(s.title)}<small>${s.enabled?'Активен':'Отключён'}</small></span></li>`).join('')}</ul>`:empty('Сегодня нет сигналов','Запланируйте сигналы на нужный день.','schedule')}</article>
+    </div></section>`;
   }
   function dashboard() {
     const stats=periodStats(), overall=closedTrades();
@@ -440,7 +471,7 @@
           <div class="ad-profit-rows"><div><span>Завершено сделок</span><b>${stats.closed.length}</b></div><div><span>Сумма ставок</span><b>${money(stats.stakes)} ${currency()}</b></div><div><span>Сумма возвратов</span><b>${money(stats.payout)} ${currency()}</b></div><div><span>Доход на сделку</span><b>${money(stats.closed.length?stats.earnings/BigInt(stats.closed.length):0n)} ${currency()}</b></div></div>
           <div class="ad-performance-bottom">Показатели отражают записанные операции, а не обещание будущей доходности.</div></section>
       </div>
-      ${periodBreakdowns()}
+      ${dashboardWorkspaceSummary()}
       <div class="ad-layout-2 ad-layout-lower"><section class="ad-card">${section('Последние сделки','Отдельные события с точностью до секунды',`<button type="button" class="ad-text-btn" data-go="trades">Все сделки ${icon('arrow')}</button>`)}${recent.length?tradeTable(recent,true):empty('Сделок пока нет','Добавьте первую сделку, чтобы видеть историю.','trades')}</section>
       <section class="ad-card">${section('Ближайшие сигналы','Детальный план на день',`<button type="button" class="ad-text-btn" data-go="schedule">Расписание ${icon('arrow')}</button>`)}${scheduled.length?`<div class="ad-timeline">${scheduled.map(s=>`<div class="ad-timeline-item"><span class="ad-timeline-line"></span><span class="ad-timeline-day">${shortDate(s.starts_at)}</span><div><strong>${esc(s.title)}</strong><small>${clockTime(s.starts_at)} · ${esc(signalName(s.signal_type))}</small></div><span class="ad-status ad-status-open">План</span></div>`).join('')}</div>`:empty('Нет ближайших сигналов','Добавьте события с точным временем.','schedule')}</section></div>`;
   }
@@ -548,14 +579,27 @@
     return {trades,opened,bonuses,signals,income:trades.reduce((a,t)=>a+profit(t),0n)};
   }
   function calendarView(){
-    const [y,m]=state.calendarCursor.split('-').map(Number),last=new Date(Date.UTC(y,m,0)).getUTCDate();
-    const cells=Array.from({length:last},(_,i)=>{const day=`${y}-${String(m).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`,d=dayData(day);
-      return `<button class="ad-calendar-day-tile ${state.calendarDay===day?'selected':''}" data-cal-day="${day}"><strong>${i+1}</strong><small>${d.trades.length} закр. · ${d.signals.length} сигн.</small><em>${d.income>0n?'+'+money(d.income,2):'—'}</em></button>`;
-    }).join('');
-    const selected=state.calendarDay||zonedDay(new Date()),details=dayData(selected);
-    return `${pageHeading('КАЛЕНДАРЬ / 02','Календарь операций<span class="ad-heading-period">.</span>','По фактической дате закрытия, доходу, бонусам и плану сигналов.')}
-    <section class="ad-card">${section('Выбор месяца', 'Дни содержат подтверждённые данные')}<div class="ad-month-bar"><button class="ad-secondary" data-cal-month="-1">‹</button><strong>${new Date(Date.UTC(y,m-1,1)).toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'})}</strong><button class="ad-secondary" data-cal-month="1">›</button></div><div class="ad-month-grid">${cells}</div></section>
-    <section class="ad-card">${section('Итоги '+selected,'По выбранной календарной дате')}<div class="ad-stat-strip"><div><small>ЗАКРЫТО</small><strong>${details.trades.length}</strong></div><div><small>ДОХОД</small><strong>${fmt(details.income)}</strong></div><div><small>БОНУСЫ</small><strong>${details.bonuses.length}</strong></div><div><small>СИГНАЛЫ</small><strong>${details.signals.length}</strong></div></div><div class="ad-panel-actions"><button class="ad-secondary" data-go="trades">Все сделки</button><button class="ad-secondary" data-calendar-schedule="${selected}">Сигналы дня</button></div>${details.trades.length?tradeTable(details.trades):empty('Нет завершённых сделок','Выберите другой день.','trades')}</section>`;
+    const [y,m]=state.calendarCursor.split('-').map(Number);
+    const first=new Date(Date.UTC(y,m-1,1)),last=new Date(Date.UTC(y,m,0)).getUTCDate();
+    const offset=(first.getUTCDay()+6)%7;
+    const currentDay=zonedDay(new Date());
+    const monthDays=Array.from({length:last},(_,i)=>`${y}-${String(m).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`);
+    const monthly=monthDays.map(day=>({day,...dayData(day)}));
+    const cells=[...Array(offset).fill('<span class="ad-calendar-day-spacer" aria-hidden="true"></span>'),...monthly.map(d=>{
+      const profitDay=d.income>0n;
+      const caption=profitDay?`Доход +${money(d.income)} ${currency()}, ${d.trades.length} сделок`:`${d.trades.length} сделок, ${d.signals.length} сигналов`;
+      return `<button type="button" class="ad-calendar-day-tile ${profitDay?'has-profit':''} ${d.day===currentDay?'is-today':''} ${state.calendarDay===d.day?'selected':''}" data-cal-day="${d.day}" aria-label="${esc(d.day+': '+caption)}" aria-pressed="${state.calendarDay===d.day}"><strong>${Number(d.day.slice(-2))}</strong><small>${d.trades.length} закр. · ${d.signals.length} сигн.</small><em>${profitDay?'+'+money(d.income,2):'—'}</em></button>`;
+    })].join('');
+    const selected=state.calendarDay&&state.calendarDay.startsWith(state.calendarCursor)?state.calendarDay:(currentDay.startsWith(state.calendarCursor)?currentDay:monthDays[0]);
+    const details=dayData(selected),positiveDays=monthly.filter(x=>x.income>0n).length;
+    const monthIncome=monthly.reduce((a,x)=>a+x.income,0n);
+    const closedCount=monthly.reduce((a,x)=>a+x.trades.length,0);
+    return `${pageHeading('КАЛЕНДАРЬ / 02','Календарь операций<span class="ad-heading-period">.</span>','Зелёным отмечены дни, в которые закрытые сделки принесли доход.')} 
+    <section class="ad-card">${section('Выбор месяца','Доход относится к дню закрытия сделки, в вашем часовом поясе')}<div class="ad-month-bar"><button type="button" class="ad-secondary" data-cal-month="-1">‹</button><strong>${first.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'})}</strong><button type="button" class="ad-secondary" data-cal-month="1">›</button></div>
+    <div class="ad-month-weekdays" aria-hidden="true">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(x=>`<span>${x}</span>`).join('')}</div><div class="ad-month-grid">${cells}</div>
+    <div class="ad-calendar-legend"><span><i class="ad-legend-profit"></i> День с заработанным доходом</span><span><i class="ad-legend-today"></i> Сегодня</span></div>
+    <div class="ad-stat-strip ad-month-summary"><div><small>ПРИБЫЛЬНЫХ ДНЕЙ</small><strong>${positiveDays}</strong></div><div><small>ЗАКРЫТО СДЕЛОК</small><strong>${closedCount}</strong></div><div><small>ДОХОД ЗА МЕСЯЦ</small><strong class="ad-positive">${fmt(monthIncome)}</strong></div></div></section>
+    <section class="ad-card">${section('Итоги '+selected,'Операции только за выбранную дату')}<div class="ad-stat-strip"><div><small>ЗАКРЫТО</small><strong>${details.trades.length}</strong></div><div><small>ДОХОД ОТ СДЕЛОК</small><strong class="ad-positive">${fmt(details.income)}</strong></div><div><small>ПОЛУЧЕНО БОНУСОВ</small><strong>${details.bonuses.length}</strong></div><div><small>СИГНАЛЫ</small><strong>${details.signals.length}</strong></div></div><div class="ad-panel-actions"><button type="button" class="ad-secondary" data-go="trades">Все сделки</button><button type="button" class="ad-secondary" data-calendar-schedule="${selected}">Сигналы дня</button></div>${details.trades.length?tradeTable(details.trades):empty('Нет завершённых сделок','Выберите другой день.','trades')}</section>`;
   }
   function analyticsView(){
     const closed=periodTrades(),days=new Map();
@@ -578,7 +622,7 @@
   function plansView(){const day=state.scheduleDay||zonedDay(new Date()),rows=[...state.plans].sort((a,b)=>b.plan_date.localeCompare(a.plan_date));
     return `${pageHeading('ПЛАН / 02','План действий<span class="ad-heading-period">.</span>','Задачи и контроль выполнения независимо от основного дневника.')}
     <section class="ad-card"><div id="adWorkForm"></div><button class="ad-primary" data-add-work="plans">${icon('plus')} Новая задача</button></section><section class="ad-card">${section('Задачи','Отмечайте выполнение, исправляйте или удаляйте')}
-    ${rows.length?`<div class="ad-work-list">${rows.map(x=>`<div class="ad-work-item"><label><input type="checkbox" data-toggle-plan="${esc(x.id)}" ${x.done?'checked':''}><span>${esc(x.title)}</span></label><small>${esc(x.plan_date)}</small><button class="ad-mini" data-edit-work="plans" data-work-id="${esc(x.id)}">Править</button><button class="ad-mini" data-delete-work="plans" data-work-id="${esc(x.id)}">Удалить</button></div>`).join('')}</div>`:empty('Нет задач','Добавьте первую задачу.','schedule')}</section>`;}
+    ${rows.length?`<div class="ad-work-list">${rows.map(x=>`<div class="ad-work-item"><label><input type="checkbox" data-ad-toggle-plan="${esc(x.id)}" ${x.done?'checked':''}><span>${esc(x.title)}</span></label><small>${esc(x.plan_date)}</small><button class="ad-mini" data-edit-work="plans" data-work-id="${esc(x.id)}">Править</button><button class="ad-mini" data-delete-work="plans" data-work-id="${esc(x.id)}">Удалить</button></div>`).join('')}</div>`:empty('Нет задач','Добавьте первую задачу.','schedule')}</section>`;}
   function goalsView(){return `${pageHeading('ЦЕЛИ / 02','Цели и прогресс<span class="ad-heading-period">.</span>','Ручные цели с числовым прогрессом, без искусственных прогнозов.')}
      <section class="ad-card"><div id="adWorkForm"></div><button class="ad-primary" data-add-work="goals">${icon('plus')} Добавить цель</button></section><div class="ad-goals-grid">${state.goals.map(x=>{const current=micro(x.current_value),target=micro(x.target),pct=target>0n?Number(current*100n/target):0;return `<article class="ad-card"><h3>${esc(x.title)}</h3><div class="ad-goal-value">${money(current)} / ${money(target)}</div><div class="ad-goal-track"><span style="width:${Math.max(0,Math.min(100,pct))}%"></span></div><small>${pct}%${x.due_date?' · до '+esc(x.due_date):''}</small><div class="ad-panel-actions"><button class="ad-mini" data-edit-work="goals" data-work-id="${esc(x.id)}">Править</button><button class="ad-mini" data-delete-work="goals" data-work-id="${esc(x.id)}">Удалить</button></div></article>`;}).join('')||empty('Нет целей','Добавьте личную цель.','overview')}</div>`;}
   function notesView(){return `${pageHeading('ЗАМЕТКИ / 02','Заметки трейдера<span class="ad-heading-period">.</span>','Мысли, наблюдения и контекст сигналов. Данные хранятся отдельно.')}
@@ -649,7 +693,7 @@
     $('#adTradesResults').innerHTML=tradeTable(filteredTrades());
     $('#adTradesCount').textContent=`Показано: ${filteredTrades().length} из ${state.trades.length}`;
     bindCloseButtons();
-    $$('[data-edit-trade]',root).forEach(b=>b.onclick=()=>showTradeForm(b.dataset.editTrade));
+    $$('[data-ad-edit-trade]',root).forEach(b=>b.onclick=()=>showTradeForm(b.dataset.adEditTrade));
   }
   function refreshFilteredBonuses() {$('#adBonusResults').innerHTML=bonusResults();$$('[data-edit-bonus]',root).forEach(b=>b.onclick=()=>showBonusForm(b.dataset.editBonus));}
   function setBusy(form, value) {
@@ -774,15 +818,15 @@
   function bindTabActions() {
     $$('[data-ad-range]',root).forEach(b=>b.onclick=()=>{state.range=b.dataset.adRange;render();});
     $$('[data-go]',root).forEach(b=>b.onclick=()=>openTab(b.dataset.go,b.dataset.open||null));
-    $('#adAddTrade')?.addEventListener('click',showTradeForm);
+    $('#adAddTrade')?.addEventListener('click',()=>showTradeForm());
     $('#adTradeSearch')?.addEventListener('input',e=>{state.tradeSearch=e.target.value;refreshFilteredTrades();});
     $$('[data-trade-filter]',root).forEach(b=>b.onclick=()=>{state.tradeFilter=b.dataset.tradeFilter;render();});
     $('#adExportTrades')?.addEventListener('click',()=>{
       toCsv([['id','opened_at_utc','closed_at_utc','stake','total_return','earned','status','duration_seconds','note'],...filteredTrades().map(t=>[t.id,t.opened_at,t.closed_at,t.stake,t.payout,t.status==='closed'?decimal(profit(t)):'',t.status,t.duration_seconds,t.note])],'automated-diary-trades.csv');announce('CSV подготовлен.');
     });
-    $('#adAddBonus')?.addEventListener('click',showBonusForm);
+    $('#adAddBonus')?.addEventListener('click',()=>showBonusForm());
     $$('[data-bonus-filter]',root).forEach(b=>b.onclick=()=>{state.bonusFilter=b.dataset.bonusFilter;render();});
-    $('#adAddSignal')?.addEventListener('click',showSignalForm);
+    $('#adAddSignal')?.addEventListener('click',()=>showSignalForm());
     $('#adDaySelect')?.addEventListener('change',e=>{if(/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){state.scheduleDay=e.target.value;render();}});
     $('#adDayToday')?.addEventListener('click',()=>{state.scheduleDay=zonedDay(new Date());render();});
     $$('[data-day-shift]',root).forEach(b=>b.addEventListener('click',()=>{
@@ -794,8 +838,7 @@
     $$('[data-cal-day]',root).forEach(b=>b.onclick=()=>{state.calendarDay=state.calendarDay===b.dataset.calDay?null:b.dataset.calDay;render();});
     $('[data-cal-reset]',root)?.addEventListener('click',()=>{state.calendarDay=null;render();});
 
-    $$('[data-cancel-form]',root).forEach(b=>b.onclick=()=>{b.closest('.ad-entry-panel')?.remove();});
-    $$('[data-edit-trade]',root).forEach(b=>b.onclick=()=>{if(state.tab!=='trades')openTab('trades');showTradeForm(b.dataset.editTrade);});
+    $$('[data-ad-edit-trade]',root).forEach(b=>b.onclick=()=>{if(state.tab!=='trades')openTab('trades');showTradeForm(b.dataset.adEditTrade);});
     $$('[data-edit-bonus]',root).forEach(b=>b.onclick=()=>showBonusForm(b.dataset.editBonus));
     $$('[data-edit-signal]',root).forEach(b=>b.onclick=()=>showSignalForm(b.dataset.editSignal));
     $$('[data-remove-signal]',root).forEach(b=>b.onclick=async()=>{
@@ -823,9 +866,9 @@
     $$('[data-add-work]',root).forEach(b=>b.onclick=()=>showWorkForm(b.dataset.addWork));
     $$('[data-edit-work]',root).forEach(b=>b.onclick=()=>showWorkForm(b.dataset.editWork,b.dataset.workId));
     $$('[data-delete-work]',root).forEach(b=>b.onclick=()=>deleteWork(b.dataset.deleteWork,b.dataset.workId));
-    $$('[data-toggle-plan]',root).forEach(b=>b.onchange=async()=>{
+    $$('[data-ad-toggle-plan]',root).forEach(b=>b.onchange=async()=>{
       try{const user=await requireUser();if(!user)return;
-        const {error}=await getClient().from('automated_diary_plans').update({done:b.checked,updated_at:new Date().toISOString()}).eq('id',b.dataset.togglePlan).eq('user_id',user.id);
+        const {error}=await getClient().from('automated_diary_plans').update({done:b.checked,updated_at:new Date().toISOString()}).eq('id',b.dataset.adTogglePlan).eq('user_id',user.id);
         if(error)throw error;await load();}catch(e){announce(e.message||'Ошибка.',true);}
     });
     $('#adRefreshAdmin')?.addEventListener('click',loadAdminReport);
@@ -884,6 +927,11 @@
   });
   $$('.ad-tab',root).forEach(button=>button.addEventListener('click',()=>openTab(button.dataset.tab)));
   root.addEventListener('click',e=>{
+    // This application is independent: do not let document-level handlers in the main
+    // diary interpret identical-looking controls as main-diary actions.
+    e.stopPropagation();
+    const close=e.target.closest('[data-cancel-form]');
+    if(close && root.contains(close)){close.closest('.ad-entry-panel')?.remove();return;}
     const chip=e.target.closest('[data-ad-set-theme]');
     if(chip && root.contains(chip)){setTheme(chip.dataset.adSetTheme);if(state.tab==='settings'&&state.profile)render();}
   });

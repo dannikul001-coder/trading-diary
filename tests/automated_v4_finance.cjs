@@ -36,7 +36,12 @@ for(const [n,fn] of Object.entries({dashboard:a.dashboard,trades:a.tradesView,bo
  const html=fn(); assert(html.length>100,`empty ${n}`);
 }
 assert(a.dashboard().includes('ПОСЛЕДНИЕ 7 × 24 ЧАСА'));
-assert(a.tradesView().includes('data-edit-trade'));
+assert(a.dashboard().includes('Моё рабочее пространство'));
+assert(a.dashboard().includes('Заметка'));
+assert(a.calendarView().includes('has-profit'));
+assert(a.analyticsView().includes('Каждая завершённая сделка учитывается ровно один раз'));
+assert(!a.tradesView().includes('data-edit-trade='));
+assert(a.tradesView().includes('data-ad-edit-trade'));
 assert(a.bonusesView().includes('data-edit-bonus'));
 assert(a.scheduleView().includes('data-edit-signal'));
 assert(a.adminView().includes('learning')===false);

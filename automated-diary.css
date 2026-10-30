@@ -160,3 +160,41 @@
 @media(max-width:700px){#automatedDiary .ad-month-grid{gap:3px}#automatedDiary .ad-calendar-day-tile{min-height:70px;padding:5px 3px;gap:5px}#automatedDiary .ad-calendar-day-tile strong{font-size:12px}#automatedDiary .ad-calendar-day-tile small{font-size:8px;line-height:1.25}#automatedDiary .ad-calendar-day-tile em{font-size:9px}#automatedDiary .ad-week-nav{gap:4px}#automatedDiary .ad-week-nav button{padding:9px 1px}#automatedDiary .ad-week-nav button strong{font-size:14px}#automatedDiary .ad-week-nav button small{font-size:8px}#automatedDiary .ad-work-item{gap:8px}#automatedDiary .ad-goals-grid{grid-template-columns:1fr}#automatedDiary .ad-day-event .ad-mini{flex:1}#automatedDiary .ad-row-actions{min-width:110px}}
 
 @media(min-width:701px){#automatedDiary .ad-sidebar>.ad-sidebar-section:first-of-type{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--ad-border-strong) transparent}#automatedDiary .ad-sidebar{min-height:0}}
+
+
+/* V5 regression repair: factual positive days, clear breakdowns and workspace overview. */
+#automatedDiary .ad-month-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:8px;color:var(--ad-muted);font-size:10px;text-align:center;font-weight:700}
+#automatedDiary .ad-calendar-day-spacer{min-width:0;min-height:20px}
+#automatedDiary .ad-calendar-day-tile.has-profit{background:color-mix(in srgb,var(--ad-positive) 19%,var(--ad-surface));border-color:color-mix(in srgb,var(--ad-positive) 58%,var(--ad-border));box-shadow:inset 3px 0 0 var(--ad-positive)}
+#automatedDiary .ad-calendar-day-tile.has-profit strong,#automatedDiary .ad-calendar-day-tile.has-profit em{color:var(--ad-positive)}
+#automatedDiary .ad-calendar-day-tile.is-today{outline:2px dashed var(--ad-warning);outline-offset:-4px}
+#automatedDiary .ad-calendar-day-tile.selected{outline:2px solid var(--ad-accent);outline-offset:1px}
+#automatedDiary .ad-calendar-legend{display:flex;gap:20px;flex-wrap:wrap;font-size:11px;color:var(--ad-muted);margin:16px 0;align-items:center}
+#automatedDiary .ad-calendar-legend span{display:flex;gap:8px;align-items:center}
+#automatedDiary .ad-calendar-legend i{display:inline-block;width:14px;height:14px;border-radius:4px}
+#automatedDiary .ad-legend-profit{background:var(--ad-positive)}
+#automatedDiary .ad-legend-today{border:2px dashed var(--ad-warning)}
+#automatedDiary .ad-month-summary{margin-top:16px}
+#automatedDiary .ad-analysis-table{min-width:370px}
+#automatedDiary .ad-analysis-explainer p{color:var(--ad-muted);font-size:13px;line-height:1.8;max-width:950px;margin:8px 0 0}
+#automatedDiary .ad-analysis-explainer strong{color:var(--ad-text)}
+#automatedDiary .ad-overview-mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#automatedDiary .ad-overview-panel{border:1px solid var(--ad-border);background:var(--ad-elevated);padding:20px;border-radius:12px;min-width:0}
+#automatedDiary .ad-overview-panel header{display:flex;gap:10px;align-items:start;justify-content:space-between;margin-bottom:15px}
+#automatedDiary .ad-overview-panel h3{font-size:17px;margin:5px 0 0;letter-spacing:-.03em}
+#automatedDiary .ad-overview-panel .ad-text-btn{white-space:nowrap;font-size:11px}
+#automatedDiary .ad-overview-counter{color:var(--ad-muted);font-weight:600;font-size:12px;margin:0 0 15px}
+#automatedDiary .ad-overview-items{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+#automatedDiary .ad-overview-items li{display:flex;gap:12px;align-items:start;font-size:12px;overflow-wrap:anywhere;min-width:0}
+#automatedDiary .ad-overview-items small{display:block;color:var(--ad-muted);font-size:10px;margin-top:3px}
+#automatedDiary .ad-overview-items time{font-family:'DM Mono',monospace;color:var(--ad-positive);white-space:nowrap}
+#automatedDiary .ad-overview-check{font-size:18px;line-height:18px;color:var(--ad-muted)}
+#automatedDiary .ad-overview-check.done{color:var(--ad-positive)}
+#automatedDiary .ad-overview-goal{display:block;flex:1}
+#automatedDiary .ad-overview-goal strong{display:block;font-size:12px}
+#automatedDiary .ad-overview-goal .ad-goal-track{height:5px;display:block;margin-top:8px}
+#automatedDiary .ad-overview-goal .ad-goal-track i{display:block;background:var(--ad-positive);height:100%;border-radius:5px}
+#automatedDiary .ad-overview-note{display:block!important;border-bottom:1px solid var(--ad-border);padding-bottom:9px}
+#automatedDiary .ad-overview-note p{font-size:11px;color:var(--ad-muted);margin:6px 0 0;max-height:80px;overflow:hidden}
+@media(max-width:850px){#automatedDiary .ad-overview-mini-grid{grid-template-columns:1fr}}
+@media(max-width:700px){#automatedDiary .ad-month-weekdays{gap:3px}#automatedDiary .ad-calendar-day-tile.has-profit{box-shadow:inset 2px 0 0 var(--ad-positive)}#automatedDiary .ad-calendar-legend{gap:12px}#automatedDiary .ad-overview-panel{padding:15px}#automatedDiary .ad-overview-panel header{flex-wrap:wrap}}
