@@ -116,3 +116,47 @@
 #automatedDiary .ad-ledger-row .ad-negative{color:var(--ad-muted)}
 #automatedDiary .ad-revision{display:flex;gap:13px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--ad-border);padding:12px 0;color:var(--ad-muted);font-size:11px}
 #automatedDiary .ad-revision:last-child{border:0}#automatedDiary .ad-revision strong{color:var(--ad-text)}
+
+/* V4: isolated richer workspace, daily scheduler, editable records, calendar and progress. */
+#automatedDiary .ad-tab[hidden]{display:none!important}
+#automatedDiary .ad-row-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;min-width:115px}
+#automatedDiary .ad-panel-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+#automatedDiary .ad-month-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 18px}
+#automatedDiary .ad-month-bar strong{text-transform:capitalize;font-size:18px}
+#automatedDiary .ad-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+#automatedDiary .ad-calendar-day-tile{display:flex;flex-direction:column;gap:8px;text-align:left;min-height:91px;padding:12px;border-radius:9px;background:var(--ad-elevated);border:1px solid var(--ad-border);color:var(--ad-text)}
+#automatedDiary .ad-calendar-day-tile:hover,#automatedDiary .ad-calendar-day-tile.selected{border-color:var(--ad-accent);background:var(--ad-accent-light)}
+#automatedDiary .ad-calendar-day-tile strong{font:700 15px 'DM Mono',monospace}
+#automatedDiary .ad-calendar-day-tile small{color:var(--ad-muted);font-size:10px}
+#automatedDiary .ad-calendar-day-tile em{font:600 11px 'DM Mono',monospace;color:var(--ad-accent);font-style:normal}
+#automatedDiary .ad-daily-bars{height:255px;display:flex;align-items:flex-end;gap:5px;overflow-x:auto;padding:10px 0 0}
+#automatedDiary .ad-daily-bar{height:100%;display:flex;flex:1;min-width:27px;max-width:75px;flex-direction:column;align-items:center;justify-content:flex-end;gap:8px}
+#automatedDiary .ad-daily-bar span{display:block;width:70%;border-radius:6px 6px 2px 2px;background:linear-gradient(0deg,color-mix(in srgb,var(--ad-accent) 45%,transparent),var(--ad-accent));min-height:3px}
+#automatedDiary .ad-daily-bar small{font:9px 'DM Mono',monospace;color:var(--ad-dim);white-space:nowrap}
+#automatedDiary .ad-work-list{display:grid;gap:8px}
+#automatedDiary .ad-work-item{display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding:14px;border:1px solid var(--ad-border);border-radius:9px;background:var(--ad-elevated)}
+#automatedDiary .ad-work-item label{display:flex;align-items:center;gap:10px;flex:1;min-width:175px;overflow-wrap:anywhere}
+#automatedDiary .ad-work-item label input{accent-color:var(--ad-accent)}
+#automatedDiary .ad-work-item small{color:var(--ad-muted)}
+#automatedDiary .ad-goals-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px;align-items:stretch;margin-top:18px}
+#automatedDiary .ad-goals-grid .ad-card{margin:0;min-width:0}
+#automatedDiary .ad-goals-grid h3{font-size:17px;overflow-wrap:anywhere;margin:4px 0 20px}
+#automatedDiary .ad-goal-value{font:600 15px 'DM Mono',monospace;overflow-wrap:anywhere}
+#automatedDiary .ad-goal-track{height:9px;border-radius:9px;margin:13px 0 9px;background:var(--ad-border);overflow:hidden}
+#automatedDiary .ad-goal-track span{display:block;background:var(--ad-accent);height:100%;border-radius:9px}
+#automatedDiary .ad-goals-grid small{color:var(--ad-muted);font-size:11px}
+#automatedDiary .ad-note-body{font-size:12px;color:var(--ad-muted);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;max-height:250px;overflow-y:auto}
+#automatedDiary .ad-week-nav{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:9px;margin:0 0 15px}
+#automatedDiary .ad-week-nav button{display:grid;gap:7px;justify-items:center;padding:12px 5px;border:1px solid var(--ad-border);border-radius:12px;background:var(--ad-elevated);color:var(--ad-text)}
+#automatedDiary .ad-week-nav button.selected,#automatedDiary .ad-week-nav button:hover{border-color:var(--ad-accent);background:var(--ad-accent-light)}
+#automatedDiary .ad-week-nav button strong{font:800 18px 'DM Mono',monospace}
+#automatedDiary .ad-week-nav button small{color:var(--ad-muted);font-size:10px}
+#automatedDiary .ad-day-actions{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0}
+#automatedDiary .ad-muted-copy{font-size:12px;line-height:1.7;color:var(--ad-muted);max-width:780px}
+#automatedDiary .ad-day-event .ad-mini{white-space:nowrap;padding:7px 10px}
+#automatedDiary .ad-day-event-main small{overflow-wrap:anywhere}
+#automatedDiary .ad-table small{display:block}
+@media(max-width:1024px){#automatedDiary .ad-calendar-day-tile{min-height:75px;padding:8px}#automatedDiary .ad-calendar-day-tile small{font-size:9px}}
+@media(max-width:700px){#automatedDiary .ad-month-grid{gap:3px}#automatedDiary .ad-calendar-day-tile{min-height:70px;padding:5px 3px;gap:5px}#automatedDiary .ad-calendar-day-tile strong{font-size:12px}#automatedDiary .ad-calendar-day-tile small{font-size:8px;line-height:1.25}#automatedDiary .ad-calendar-day-tile em{font-size:9px}#automatedDiary .ad-week-nav{gap:4px}#automatedDiary .ad-week-nav button{padding:9px 1px}#automatedDiary .ad-week-nav button strong{font-size:14px}#automatedDiary .ad-week-nav button small{font-size:8px}#automatedDiary .ad-work-item{gap:8px}#automatedDiary .ad-goals-grid{grid-template-columns:1fr}#automatedDiary .ad-day-event .ad-mini{flex:1}#automatedDiary .ad-row-actions{min-width:110px}}
+
+@media(min-width:701px){#automatedDiary .ad-sidebar>.ad-sidebar-section:first-of-type{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--ad-border-strong) transparent}#automatedDiary .ad-sidebar{min-height:0}}
