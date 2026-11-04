@@ -1,4 +1,4 @@
-const CACHE='trading-diary-v40-automated-regression-fix-20261031';
+const CACHE='trading-diary-v6-audit-fixes-20261104';
 const ASSETS=['./','./index.html','./style.css','./automated-diary.css','./js/automated-diary.js','./js/data.js','./js/storage.js','./js/statistics.js','./js/charts.js','./js/settings.js','./js/auth.js','./js/admin.js','./js/currency.js','./js/supabase-config.js','./js/supabase.js','./js/import-center.js','./js/app.js','./manifest.json','./assets/logo.svg'];
 
 self.addEventListener('install',event=>event.waitUntil(

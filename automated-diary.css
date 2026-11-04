@@ -177,6 +177,14 @@
 #automatedDiary .ad-month-summary{margin-top:16px}
 #automatedDiary .ad-analysis-table{min-width:370px}
 #automatedDiary .ad-analysis-explainer p{color:var(--ad-muted);font-size:13px;line-height:1.8;max-width:950px;margin:8px 0 0}
+#automatedDiary .ad-chart-point{fill:var(--ad-surface);stroke:var(--ad-accent);stroke-width:2;cursor:pointer;opacity:.82;transition:r .15s,opacity .15s,fill .15s}
+#automatedDiary .ad-chart-point:hover,#automatedDiary .ad-chart-point:focus,#automatedDiary .ad-chart-point.active{r:7;opacity:1;fill:var(--ad-accent);outline:none}
+#automatedDiary .ad-chart-tooltip{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:10px;padding:10px 12px;border:1px solid var(--ad-border);border-radius:8px;background:var(--ad-elevated)}
+#automatedDiary .ad-chart-tooltip strong{font-size:13px;color:var(--ad-accent)}#automatedDiary .ad-chart-tooltip span,#automatedDiary .ad-chart-hint{font-size:10px;color:var(--ad-muted)}#automatedDiary .ad-chart-hint{margin:8px 0 0}
+#automatedDiary .ad-status-warning{border-color:color-mix(in srgb,var(--ad-warning) 42%,transparent);color:var(--ad-warning);background:color-mix(in srgb,var(--ad-warning) 9%,transparent)}
+#automatedDiary .ad-signal-select{display:grid;place-items:center;flex:none}#automatedDiary .ad-signal-select input{width:17px;height:17px;accent-color:var(--ad-accent)}
+#automatedDiary .ad-selection-count{font-size:11px;color:var(--ad-muted);align-self:center}#automatedDiary .ad-danger-outline{border-color:color-mix(in srgb,var(--ad-negative) 50%,var(--ad-border))!important;color:var(--ad-negative)!important}
+#automatedDiary .ad-daily-bar strong{font-size:9px;white-space:nowrap;color:var(--ad-text);font-variant-numeric:tabular-nums}
 #automatedDiary .ad-analysis-explainer strong{color:var(--ad-text)}
 #automatedDiary .ad-overview-mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 #automatedDiary .ad-overview-panel{border:1px solid var(--ad-border);background:var(--ad-elevated);padding:20px;border-radius:12px;min-width:0}
