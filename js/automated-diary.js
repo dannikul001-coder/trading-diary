@@ -13,7 +13,8 @@
     mode: '', profile: null, trades: [], bonuses: [], signals: [], ledger: [], revisions: [], tradeRevisions: [], bonusRevisions: [], profileRevisions: [], emailQueue: [], notes: [], plans: [], goals: [], adminRows: [], isAdmin: false,
     tab: 'dashboard', theme: 'obsidian', range: 'all', loading: false,
     tradeSearch: '', tradeFilter: 'all', bonusFilter: 'all', openForm: null,
-    calendarCursor: new Date().toISOString().slice(0,7), calendarDay: null, scheduleDay: null
+    calendarCursor: new Date().toISOString().slice(0,7), calendarDay: null, scheduleDay: null,
+    selectedSignals: new Set()
   };
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
   const icon = name => `<svg class="ad-icon" aria-hidden="true"><use href="#ad-i-${name}"/></svg>`;
@@ -100,7 +101,7 @@
   async function financeRpc(name,params) {
     const {data,error}=await getClient().rpc(name,params);
     if(error){
-      if(error.code==='PGRST202'||error.code==='42883')throw new Error('Не найдена необходимая RPC-функция: примените миграции V2 и V4 на тестовой базе.');
+      if(error.code==='PGRST202'||error.code==='42883')throw new Error(`Не найдена необходимая RPC-функция: примените миграции V2 и V4${name.endsWith('_v6')?' и V6':''} на тестовой базе.`);
       throw error;
     }
     return data;
@@ -188,6 +189,7 @@
         'automated_diary_notes','automated_diary_plans','automated_diary_goals',
         'automated_diary_trade_revisions','automated_diary_bonus_revisions','automated_diary_profile_revisions','automated_diary_email_queue'
       ].map(table=>query(table,user.id,table.endsWith('_revisions')?'changed_at':table.endsWith('_queue')?'updated_at':'created_at')));
+      state.selectedSignals=new Set([...state.selectedSignals].filter(id=>state.signals.some(s=>s.id===id)));
       const isAdmin=await c.rpc('ad_is_admin_v4');
       if(isAdmin.error)throw isAdmin.error;
       state.isAdmin=!!isAdmin.data;
@@ -263,6 +265,12 @@
   const balance = () => timeline().cash;
   const equity = () => balance()+reserved();
   const rangeStart = () => state.range==='all'?0:Date.now()-Number(state.range)*86400000;
+  function rangeDescription(){
+    if(state.range==='all')return 'За всё время ведения дневника';
+    const start=new Date(rangeStart()),end=new Date();
+    const options={timeZone:state.profile.timezone,day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'};
+    return `${state.range} × 24 часа: ${start.toLocaleString('ru-RU',options)} — ${end.toLocaleString('ru-RU',options)}`;
+  }
   function periodTrades(){return closedTrades().filter(t=>stamp(t.closed_at)>=rangeStart());}
   function periodStats(){
     const closed=periodTrades();
@@ -310,17 +318,27 @@
     const selected = all.filter(e => new Date(e.date).getTime() >= start);
     if (!selected.length) return empty('Нет операций за период', 'Когда появятся закрытые сделки, бонусы или финансовые операции, здесь будет история капитала.', 'chart');
     let v = baseline;
-    const values = [baseline, ...selected.map(e => (v += e.amount))];
+    const points = [{value:baseline,date:new Date(start||stamp(selected[0].date)).toISOString(),label:'Капитал на начало периода'},...selected.map(e => ({value:(v += e.amount),date:e.date,label:e.label}))];
+    const values = points.map(p=>p.value);
     let min = Math.min(...values), max = Math.max(...values);
     if (Math.abs(max-min)<0.000001) {min -= Math.max(1, Math.abs(min)*.05); max += Math.max(1, Math.abs(max)*.05);}
     const W=800,H=240,pl=10,pr=12,pt=16,pb=28;
-    const xy = values.map((value,i) => ({x:pl+i*(W-pl-pr)/Math.max(1,values.length-1), y:pt+(max-value)/(max-min)*(H-pt-pb),value}));
+    const xy = values.map((value,i) => ({x:pl+i*(W-pl-pr)/Math.max(1,values.length-1), y:pt+(max-value)/(max-min)*(H-pt-pb),value,...points[i]}));
     const path = xy.map((p,i) => `${i?'L':'M'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
     const bottom = H-pb;
     const fill = `${path} L${xy[xy.length-1].x.toFixed(2)},${bottom} L${xy[0].x.toFixed(2)},${bottom} Z`;
     const lines = Array.from({length:4},(_,i) => {const y=pt+i*(H-pt-pb)/3; const value=max-i*(max-min)/3;return `<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" class="ad-chart-grid-line"/><text x="${W-pr}" y="${y-5}" text-anchor="end" class="ad-chart-grid-text">${esc(money(value,2))}</text>`;}).join('');
     const up = values.at(-1) >= values[0];
-    return `<div class="ad-chart-wrap"><svg viewBox="0 0 ${W} ${H}" class="ad-equity-chart ${up?'up':'down'}" role="img" aria-label="Динамика капитала от ${money(values[0])} до ${money(values.at(-1))} ${currency()}"><defs><linearGradient id="adChartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--ad-accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--ad-accent)" stop-opacity="0"/></linearGradient></defs>${lines}<path d="${fill}" fill="url(#adChartFill)"/><path d="${path}" class="ad-chart-line"/><circle cx="${xy.at(-1).x}" cy="${xy.at(-1).y}" r="4.5" class="ad-chart-point"/></svg><div class="ad-chart-bottom"><span>${shortDate(selected[0].date)}</span><span>${shortDate(selected.at(-1).date)}</span></div></div>`;
+    const dots=xy.map((p,i)=>`<circle cx="${p.x}" cy="${p.y}" r="${i===xy.length-1?5:4}" class="ad-chart-point" tabindex="0" role="button" data-chart-point data-label="${esc(p.label)}" data-date="${esc(p.date)}" data-value="${esc(p.value)}" aria-label="${esc(p.label)}: ${money(p.value)} ${currency()}, ${humanDate(p.date)}"/>`).join('');
+    return `<div class="ad-chart-wrap" data-interactive-chart><svg viewBox="0 0 ${W} ${H}" class="ad-equity-chart ${up?'up':'down'}" role="img" aria-label="Динамика капитала от ${money(values[0])} до ${money(values.at(-1))} ${currency()}"><defs><linearGradient id="adChartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--ad-accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--ad-accent)" stop-opacity="0"/></linearGradient></defs>${lines}<path d="${fill}" fill="url(#adChartFill)"/><path d="${path}" class="ad-chart-line"/>${dots}</svg><div class="ad-chart-tooltip" role="status"><strong>${money(values.at(-1))} ${currency()}</strong><span>${esc(points.at(-1).label)} · ${humanDate(points.at(-1).date)}</span></div><div class="ad-chart-bottom"><span>${shortDate(selected[0].date)}</span><span>${shortDate(selected.at(-1).date)}</span></div><p class="ad-chart-hint">Наведите, нажмите или выберите точку клавишей Tab, чтобы увидеть значение и дату.</p></div>`;
+  }
+
+  function bindChartInteractivity(){
+    $$('[data-interactive-chart]',root).forEach(chart=>{
+      const tooltip=$('.ad-chart-tooltip',chart);
+      const show=point=>{if(!tooltip)return;tooltip.innerHTML=`<strong>${money(point.dataset.value)} ${currency()}</strong><span>${esc(point.dataset.label)} · ${humanDate(point.dataset.date)}</span>`;$$('[data-chart-point]',chart).forEach(x=>x.classList.toggle('active',x===point));};
+      $$('[data-chart-point]',chart).forEach(point=>{point.addEventListener('mouseenter',()=>show(point));point.addEventListener('focus',()=>show(point));point.addEventListener('click',()=>show(point));});
+    });
   }
   function empty(title, message, symbol='overview') {
     return `<div class="ad-empty"><span class="ad-empty-symbol">${icon(symbol)}</span><h3>${esc(title)}</h3><p>${esc(message)}</p></div>`;
@@ -432,7 +450,7 @@
     const totalStake=sumMicro(overall.map(t=>t.stake));
     const today=zonedDay(new Date());
     const todaySignals=state.signals.filter(s=>zonedDay(s.starts_at)===today);
-    const scheduled=[...state.signals].filter(s=>s.enabled&&stamp(s.starts_at)>=Date.now()).sort((a,b)=>stamp(a.starts_at)-stamp(b.starts_at)).slice(0,8);
+    const scheduled=[...state.signals].filter(s=>signalStatus(s)==='scheduled'&&stamp(s.starts_at)>=Date.now()).sort((a,b)=>stamp(a.starts_at)-stamp(b.starts_at)).slice(0,8);
     const recent=[...state.trades].sort((a,b)=>stamp(b.opened_at)-stamp(a.opened_at)).slice(0,6);
     const issues=financialWarnings();
     const todayEarned=overall.filter(t=>zonedDay(t.closed_at)===today).reduce((a,t)=>a+profit(t),0n);
@@ -457,7 +475,7 @@
         ${metric('СРЕДНИЙ ДОХОД / СДЕЛКА',fmt(avgIncome),'По завершённым сделкам')}
         ${metric('СРЕДНЯЯ СТАВКА',fmt(avgStake),'По открытым и завершённым сделкам')}
         ${metric('ПОЛУЧЕНО БОНУСОВ',fmt(bonusTotal(),4),'Отдельно от дохода сделок')}
-        ${metric('СИГНАЛОВ СЕГОДНЯ',money(todaySignals.length),`Активны: ${todaySignals.filter(x=>x.enabled).length}`)}
+        ${metric('СИГНАЛОВ СЕГОДНЯ',money(todaySignals.length),`Запланировано: ${todaySignals.filter(x=>signalStatus(x)==='scheduled').length} · пройдено: ${todaySignals.filter(x=>signalStatus(x)==='completed').length}`)}
       </div>
       <section class="ad-card ad-today-summary">${section('Подтверждённый доход по периодам','Только закрытые сделки, без переводов и бонусов')}<div class="ad-kpi-grid ad-kpi-secondary">
       ${metric('СЕГОДНЯ',fmt(todayEarned),'По дате закрытия в вашем часовом поясе')}
@@ -466,7 +484,7 @@
       ${metric('СДЕЛОК СЕГОДНЯ',overall.filter(t=>zonedDay(t.closed_at)===today).length,'Завершённых')}</div></section>
       <div class="ad-layout-2 ad-layout-chart">
         <section class="ad-card ad-chart-card">${section('Динамика общего капитала','Начальный баланс + доход от завершённых сделок + переводы + бонусы',periodToggle())}${buildEquityChart()}</section>
-        <section class="ad-card ad-performance-card">${section('Итоги периода','Только фактически завершённые сделки')}
+        <section class="ad-card ad-performance-card">${section('Итоги периода',rangeDescription())}
           <div class="ad-profit-summary"><span>ПОЛУЧЕННЫЙ ДОХОД</span><strong class="ad-positive">${signed(stats.earnings)} <small>${currency()}</small></strong></div>
           <div class="ad-profit-rows"><div><span>Завершено сделок</span><b>${stats.closed.length}</b></div><div><span>Сумма ставок</span><b>${money(stats.stakes)} ${currency()}</b></div><div><span>Сумма возвратов</span><b>${money(stats.payout)} ${currency()}</b></div><div><span>Доход на сделку</span><b>${money(stats.closed.length?stats.earnings/BigInt(stats.closed.length):0n)} ${currency()}</b></div></div>
           <div class="ad-performance-bottom">Показатели отражают записанные операции, а не обещание будущей доходности.</div></section>
@@ -500,21 +518,31 @@
     return `<div class="ad-bonus-list">${rows.map(b=>`<div class="ad-bonus-item"><span class="ad-bonus-symbol">${icon('bonuses')}</span><div class="ad-bonus-name"><strong>${esc(b.title||'Бонусный мешочек')}</strong><small>${humanDate(b.received_at||b.created_at)}</small></div><strong class="ad-bonus-value">${fmt(b.amount,4)}</strong><span class="ad-status ${b.status==='received'?'ad-status-closed':b.status==='pending'?'ad-status-open':'ad-status-muted'}">${({received:'Получен',pending:'Ожидается',cancelled:'Отменён'})[b.status]||esc(b.status)}</span><button type="button" class="ad-mini" data-edit-bonus="${esc(b.id)}">Править</button></div>`).join('')}</div>`;
   }
   const signalName = x => ({trade:'Сделка',bonus:'Бонус',other:'Другое'})[x] || String(x);
+  const storedSignalStatus = signal => ['scheduled','completed','skipped'].includes(signal.status)?signal.status:'scheduled';
+  function signalStatus(signal){
+    const stored=storedSignalStatus(signal);
+    if(stored!=='scheduled')return stored;
+    if(!signal.enabled)return 'disabled';
+    return stamp(signal.starts_at)<Date.now()?'overdue':'scheduled';
+  }
+  const signalStatusLabel = status => ({scheduled:'Запланирован',completed:'Пройден',skipped:'Пропущен',disabled:'Отключён',overdue:'Ожидает отметки'})[status]||status;
+  const signalStatusClass = status => status==='completed'?'ad-status-closed':status==='scheduled'?'ad-status-open':status==='overdue'?'ad-status-warning':'ad-status-muted';
   function scheduleView() {
     const day=state.scheduleDay||zonedDay(new Date());
     const listing=[...state.signals].filter(s=>zonedDay(s.starts_at)===day).sort((a,b)=>stamp(a.starts_at)-stamp(b.starts_at)||String(a.id).localeCompare(String(b.id)));
-    const active=listing.filter(x=>x.enabled);
-    const next=listing.find(x=>x.enabled&&stamp(x.starts_at)>=Date.now());
+    const completed=listing.filter(x=>signalStatus(x)==='completed');
+    const planned=listing.filter(x=>signalStatus(x)==='scheduled');
+    const next=planned.find(x=>stamp(x.starts_at)>=Date.now());
     const dow=new Date(`${day}T12:00:00Z`).toLocaleDateString('ru-RU',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long',year:'numeric'});
     const hourGroup=[...Array(24)].map((_,h)=>{
       const slice=listing.filter(s=>hourInZone(s.starts_at)===h);
       if(!slice.length)return '';
-      return `<div class="ad-day-hour"><span class="ad-day-hour-label">${String(h).padStart(2,'0')}:00</span><div class="ad-day-hour-events">${slice.map((s,i)=>`<article class="ad-day-event ${s.enabled?'':'muted'}"><span class="ad-day-sequence">${String(listing.indexOf(s)+1).padStart(2,'0')}</span><div class="ad-day-event-main"><strong>${esc(s.title)}</strong><small>${esc(s.instrument||signalName(s.signal_type))}${s.direction?' · '+esc(s.direction==='up'?'Вверх':s.direction==='down'?'Вниз':s.direction):''} · напоминание за ${num(s.remind_minutes)} мин.</small>${s.description?`<small>${esc(s.description)}</small>`:''}</div><time datetime="${esc(s.starts_at)}">${clockTime(s.starts_at)}</time><span class="ad-status ${s.enabled?'ad-status-open':'ad-status-muted'}">${s.enabled?'Запланирован':'Отключён'}</span><button type="button" class="ad-mini" data-edit-signal="${esc(s.id)}">Править</button><button type="button" class="ad-mini" data-remove-signal="${esc(s.id)}">Удалить</button></article>`).join('')}</div></div>`;
+      return `<div class="ad-day-hour"><span class="ad-day-hour-label">${String(h).padStart(2,'0')}:00</span><div class="ad-day-hour-events">${slice.map((s,i)=>{const status=signalStatus(s);return `<article class="ad-day-event ${status==='disabled'?'muted':''}"><label class="ad-signal-select"><input type="checkbox" data-select-signal="${esc(s.id)}" ${state.selectedSignals.has(s.id)?'checked':''}><span class="ad-sr-only">Выбрать ${esc(s.title)}</span></label><span class="ad-day-sequence">${String(listing.indexOf(s)+1).padStart(2,'0')}</span><div class="ad-day-event-main"><strong>${esc(s.title)}</strong><small>${esc(s.instrument||signalName(s.signal_type))}${s.direction?' · '+esc(s.direction==='up'?'Вверх':s.direction==='down'?'Вниз':s.direction):''} · напоминание за ${num(s.remind_minutes)} мин.</small>${s.description?`<small>${esc(s.description)}</small>`:''}</div><time datetime="${esc(s.starts_at)}">${clockTime(s.starts_at)}</time><span class="ad-status ${signalStatusClass(status)}">${signalStatusLabel(status)}</span><button type="button" class="ad-mini" data-signal-status="completed" data-signal-id="${esc(s.id)}">Пройден</button><button type="button" class="ad-mini" data-edit-signal="${esc(s.id)}">Править</button><button type="button" class="ad-mini" data-remove-signal="${esc(s.id)}">Удалить</button></article>`;}).join('')}</div></div>`;
     }).join('');
     return `${pageHeading('СИГНАЛЫ / ДЕНЬ','Расписание по часам<span class="ad-heading-period">.</span>','Восемь или больше сигналов в день — каждый со своим временем до секунды.',`<button class="ad-primary" id="adAddSignal">${icon('plus')} Добавить сигнал</button>`)}
       <section class="ad-card ad-day-navigation"><div><span class="ad-kicker">ВЫБРАННАЯ ДАТА</span><h2>${esc(dow)}</h2><small>Часовой пояс: ${esc(state.profile.timezone)}</small></div><div class="ad-day-navigation-buttons"><button class="ad-secondary" data-day-shift="-1" aria-label="Предыдущий день">‹</button><input type="date" id="adDaySelect" aria-label="Выбрать дату расписания" value="${esc(day)}"><button class="ad-secondary" data-day-shift="1" aria-label="Следующий день">›</button><button class="ad-secondary" id="adDayToday">Сегодня</button></div></section>
-      <div class="ad-stat-strip ad-day-stats"><div><small>СИГНАЛОВ ЗА ДЕНЬ</small><strong>${listing.length}</strong></div><div><small>ВКЛЮЧЕНЫ</small><strong>${active.length}</strong></div><div><small>ОТКЛЮЧЕНЫ</small><strong>${listing.length-active.length}</strong></div><div><small>СЛЕДУЮЩИЙ</small><strong>${next?clockTime(next.starts_at):'—'}</strong></div></div>
-      <div class="ad-week-nav">${Array.from({length:7},(_,i)=>{const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+i-3);const k=d.toISOString().slice(0,10);return `<button data-ad-week="${k}" class="${k===day?'selected':''}"><small>${d.toLocaleDateString('ru-RU',{weekday:'short',timeZone:'UTC'})}</small><strong>${d.getUTCDate()}</strong><small>${state.signals.filter(s=>zonedDay(s.starts_at)===k).length} сигн.</small></button>`;}).join('')}</div><div class="ad-day-actions"><button type="button" class="ad-secondary" id="adCopyDay">Копировать сигналы на другой день</button></div><div id="adSignalForm"></div>
+      <div class="ad-stat-strip ad-day-stats"><div><small>СИГНАЛОВ ЗА ДЕНЬ</small><strong>${listing.length}</strong></div><div><small>ЗАПЛАНИРОВАНО</small><strong>${planned.length}</strong></div><div><small>ПРОЙДЕНО</small><strong>${completed.length}</strong></div><div><small>СЛЕДУЮЩИЙ</small><strong>${next?clockTime(next.starts_at):'—'}</strong></div></div>
+      <div class="ad-week-nav">${Array.from({length:7},(_,i)=>{const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+i-3);const k=d.toISOString().slice(0,10);return `<button data-ad-week="${k}" class="${k===day?'selected':''}"><small>${d.toLocaleDateString('ru-RU',{weekday:'short',timeZone:'UTC'})}</small><strong>${d.getUTCDate()}</strong><small>${state.signals.filter(s=>zonedDay(s.starts_at)===k).length} сигн.</small></button>`;}).join('')}</div><div class="ad-day-actions"><button type="button" class="ad-secondary" id="adCopyDay">Копировать день</button><button type="button" class="ad-secondary" data-bulk-signal-status="completed">Выбранные: пройдены</button><button type="button" class="ad-secondary" data-bulk-signal-status="scheduled">Вернуть в план</button><button type="button" class="ad-secondary ad-danger-outline" id="adBulkDeleteSignals">Удалить выбранные</button><span class="ad-selection-count">Выбрано: ${state.selectedSignals.size}</span></div><div id="adSignalForm"></div>
       <section class="ad-card ad-day-agenda">${section('Сигналы на выбранный день','Хронологический порядок, часы · минуты · секунды')}${listing.length?`<div class="ad-day-hour-list">${hourGroup}</div>`:empty('В этот день сигналов нет','Создайте сигнал или выберите соседнюю дату.','schedule')}</section>
       <section class="ad-card ad-notice-card">${section('Напоминания браузера и почта','Почта подключается через отдельную серверную функцию')}<p>Уведомления работают только при открытой вкладке и выданном разрешении. Само разрешение не означает доставку. Почта: <strong>${state.profile.email_notifications_enabled?'согласие включено':'отключена'}</strong> (проверьте состояние сервера).</p><button class="ad-secondary" data-go="settings">Настройки почты</button><button class="ad-secondary" id="adNotify">Разрешить уведомления</button></section>`;
   }
@@ -610,14 +638,14 @@
     const bonuses=state.bonuses.filter(b=>b.status==='received'&&past(b.received_at||b.created_at)&&stamp(b.received_at||b.created_at)>=rangeStart());
     const bonusIncome=sumMicro(bonuses.map(b=>b.amount));
     return `${pageHeading('АНАЛИТИКА / 02','Аналитика дохода<span class="ad-heading-period">.</span>','Без показателей убытков: только реальные подтверждённые результаты.')}
-      <section class="ad-card">${section('Выберите период','Закрытые сделки',periodToggle())}<div class="ad-kpi-grid ad-kpi-secondary">
+      <section class="ad-card">${section('Выберите период',rangeDescription(),periodToggle())}<div class="ad-kpi-grid ad-kpi-secondary">
       ${metric('ДОХОД ОТ СДЕЛОК',fmt(closed.reduce((v,t)=>v+profit(t),0n)),'Не включает пополнения и бонусы')}
       ${metric('ЗАКРЫТО СДЕЛОК',closed.length,'По дате закрытия')}
       ${metric('СРЕДНИЙ ДОХОД',fmt(avg),'На завершённую сделку')}
       ${metric('БОНУСНЫЙ ДОХОД',fmt(bonusIncome,4),'Учитывается отдельно')}
-      </div></section><section class="ad-card">${section('Доход по дням','Каждый столбец — сумма подтверждённых доходов за календарный день')}
-      ${sorted.length?`<div class="ad-daily-bars">${sorted.slice(-45).map(([day,n])=>`<div class="ad-daily-bar" title="${day}: ${money(n)}"><span style="height:${max?Math.max(3,Number(n*100n/max)):0}%"></span><small>${day.slice(5)}</small></div>`).join('')}</div>`:empty('Нет результатов за период','Завершённые сделки появятся здесь.','trades')}</section>
-      ${periodBreakdowns()}<section class="ad-card">${section('Движение капитала','Учтены переводы и бонусы наряду с полученным доходом')}${buildEquityChart()}</section>`;
+      </div></section><section class="ad-card">${section('Доход по датам закрытия','Сумма и число сделок видны без наведения; дата относится к часовому поясу дневника')}
+      ${sorted.length?`<div class="ad-daily-bars">${sorted.slice(-45).map(([day,n])=>{const count=closed.filter(t=>zonedDay(t.closed_at)===day).length;return `<div class="ad-daily-bar" title="${day}: ${money(n)}"><strong>${money(n,2)}</strong><span style="height:${max?Math.max(3,Number(n*100n/max)):0}%"></span><small>${day.slice(5)} · ${count} сд.</small></div>`;}).join('')}</div>`:empty('Нет результатов за период','Завершённые сделки появятся здесь.','trades')}</section>
+      ${periodBreakdowns()}<section class="ad-card">${section('Движение общего капитала','Начальный баланс + чистый доход закрытых сделок + пополнения − выводы + бонусы. Открытая ставка меняет доступный остаток, но не общий капитал.')}${buildEquityChart()}</section>`;
   }
   function plansView(){const day=state.scheduleDay||zonedDay(new Date()),rows=[...state.plans].sort((a,b)=>b.plan_date.localeCompare(a.plan_date));
     return `${pageHeading('ПЛАН / 02','План действий<span class="ad-heading-period">.</span>','Задачи и контроль выполнения независимо от основного дневника.')}
@@ -679,6 +707,7 @@
     const views={dashboard,trades:tradesView,bonuses:bonusesView,schedule:scheduleView,calendar:calendarView,analytics:analyticsView,plans:plansView,goals:goalsView,notes:notesView,finance:financeView,admin:adminView,settings:settingsView};
     $('#adContent').innerHTML = (views[state.tab] || dashboard)();
     bindTabActions();
+    bindChartInteractivity();
   }
   function openTab(tab, form = null) {
     if (!(tab in titleByTab)||(tab==='admin'&&!state.isAdmin)) return;
@@ -794,6 +823,7 @@
       <label>Направление<select name="direction">${[['','Не указано'],['up','Вверх'],['down','Вниз'],['other','Иное']].map(([v,t])=>`<option value="${v}" ${item?.direction===v?'selected':''}>${t}</option>`).join('')}</select></label>
       <label>Дата и время (${esc(state.profile.timezone)})<input name="starts_at" type="datetime-local" step="1" required value="${item?zoneInput(item.starts_at,state.profile.timezone):initial}"></label>
       <label>Напомнить за, минут<input name="remind_minutes" type="number" min="0" max="10080" step="1" value="${esc(item?.remind_minutes??5)}" required></label>
+      ${item?`<label>Статус<select name="status">${[['scheduled','Запланирован'],['completed','Пройден'],['skipped','Пропущен']].map(([v,t])=>`<option value="${v}" ${storedSignalStatus(item)===v?'selected':''}>${t}</option>`).join('')}</select></label>`:`<label>Количество сигналов<input name="repeat_count" type="number" min="1" max="50" step="1" value="1" required></label><label>Интервал между сигналами, минут<input name="repeat_minutes" type="number" min="1" max="1440" step="1" value="5" required></label>`}
       <label>Описание<textarea name="description" rows="2" maxlength="1000">${esc(item?.description||'')}</textarea></label>
       <label class="ad-check"><input name="enabled" type="checkbox" ${!item||item.enabled?'checked':''}> Сигнал активен</label>
       <button class="ad-primary" type="submit">${item?'Сохранить сигнал':'Добавить сигнал'}</button></form>`);
@@ -801,12 +831,17 @@
       e.preventDefault();const f=new FormData(form);setBusy(form,true);
       try{
         const user=await requireUser();if(!user)return;
-        const row={title:String(f.get('title')).trim(),signal_type:f.get('signal_type'),starts_at:zonedIso(f.get('starts_at'),state.profile.timezone),
+        const row={title:String(f.get('title')).trim(),signal_type:f.get('signal_type'),starts_at:zonedIso(f.get('starts_at'),state.profile.timezone),status:item?f.get('status'):'scheduled',
           instrument:f.get('instrument')||'',direction:f.get('direction')||'',description:f.get('description')||'',
           remind_minutes:Number(f.get('remind_minutes')),enabled:!!f.get('enabled')};
         if(!row.title||!Number.isInteger(row.remind_minutes)||row.remind_minutes<0||row.remind_minutes>10080)throw new Error('Проверьте название и время напоминания.');
-        const call=item?getClient().from('automated_diary_signals').update(row).eq('user_id',user.id).eq('id',item.id).select('id').single():getClient().from('automated_diary_signals').insert({...row,user_id:user.id}).select('id').single();
-        const {error}=await call;if(error)throw error;await load();announce(item?'Сигнал изменён.':'Сигнал добавлен.');
+        const count=item?1:Number(f.get('repeat_count')),interval=Number(f.get('repeat_minutes'));
+        if(!item&&(!Number.isInteger(count)||count<1||count>50||!Number.isInteger(interval)||interval<1||interval>1440))throw new Error('Количество: 1–50, интервал: 1–1440 минут.');
+        const rows=Array.from({length:count},(_,i)=>({...row,user_id:user.id,title:count>1?`${row.title} · ${i+1}`:row.title,starts_at:new Date(stamp(row.starts_at)+i*interval*60000).toISOString()}));
+        const call=item?getClient().from('automated_diary_signals').update(row).eq('user_id',user.id).eq('id',item.id).select('id').single():getClient().from('automated_diary_signals').insert(rows).select('id');
+        const {error}=await call;if(error)throw error;
+        if(item&&storedSignalStatus(item)!==row.status)await financeRpc('ad_set_signal_status_v6',{p_ids:[item.id],p_status:row.status});
+        await load();announce(item?'Сигнал изменён.':count>1?`Добавлено сигналов: ${count}.`:'Сигнал добавлен.');
       }catch(err){announce(err.message||'Ошибка сохранения сигнала.',true);}finally{setBusy(form,false);}
     };
   }
@@ -841,6 +876,24 @@
     $$('[data-ad-edit-trade]',root).forEach(b=>b.onclick=()=>{if(state.tab!=='trades')openTab('trades');showTradeForm(b.dataset.adEditTrade);});
     $$('[data-edit-bonus]',root).forEach(b=>b.onclick=()=>showBonusForm(b.dataset.editBonus));
     $$('[data-edit-signal]',root).forEach(b=>b.onclick=()=>showSignalForm(b.dataset.editSignal));
+    $$('[data-select-signal]',root).forEach(box=>box.onchange=()=>{
+      if(box.checked)state.selectedSignals.add(box.dataset.selectSignal);else state.selectedSignals.delete(box.dataset.selectSignal);
+      const count=$('.ad-selection-count',root);if(count)count.textContent=`Выбрано: ${state.selectedSignals.size}`;
+    });
+    $$('[data-signal-status]',root).forEach(b=>b.onclick=async()=>{
+      try{const user=await requireUser();if(!user)return;await financeRpc('ad_set_signal_status_v6',{p_ids:[b.dataset.signalId],p_status:b.dataset.signalStatus});await load();announce('Статус сигнала обновлён.');}
+      catch(e){announce(e.message||'Не удалось обновить статус.',true);}
+    });
+    $$('[data-bulk-signal-status]',root).forEach(b=>b.onclick=async()=>{
+      const ids=[...state.selectedSignals];if(!ids.length)return announce('Сначала выберите сигналы.',true);
+      try{const user=await requireUser();if(!user)return;await financeRpc('ad_set_signal_status_v6',{p_ids:ids,p_status:b.dataset.bulkSignalStatus});state.selectedSignals.clear();await load();announce(`Обновлено сигналов: ${ids.length}.`);}
+      catch(e){announce(e.message||'Не удалось обновить выбранные сигналы.',true);}
+    });
+    $('#adBulkDeleteSignals')?.addEventListener('click',async()=>{
+      const ids=[...state.selectedSignals];if(!ids.length)return announce('Сначала выберите сигналы.',true);if(!confirm(`Удалить выбранные сигналы (${ids.length})?`))return;
+      try{const user=await requireUser();if(!user)return;const {error}=await getClient().from('automated_diary_signals').delete().eq('user_id',user.id).in('id',ids);if(error)throw error;state.selectedSignals.clear();await load();announce(`Удалено сигналов: ${ids.length}.`);}
+      catch(e){announce(e.message||'Не удалось удалить выбранные сигналы.',true);}
+    });
     $$('[data-remove-signal]',root).forEach(b=>b.onclick=async()=>{
       if(!confirm('Удалить этот сигнал и отменить будущие напоминания?'))return;
       try{const user=await requireUser();if(!user)return;
@@ -950,7 +1003,7 @@
     const now=Date.now();
     for(const s of state.signals){
       const when=new Date(s.starts_at).getTime(),start=when-num(s.remind_minutes)*60000;
-      if(s.enabled&&now>=start&&now<=when+30000&&!sessionStorage.getItem('adnotified_'+s.id)){
+      if(s.enabled&&storedSignalStatus(s)==='scheduled'&&now>=start&&now<=when+30000&&!sessionStorage.getItem('adnotified_'+s.id)){
         try{new Notification(s.title,{body:`Сигнал запланирован на ${new Date(when).toLocaleTimeString('ru-RU',{timeZone:state.profile.timezone})}`});sessionStorage.setItem('adnotified_'+s.id,'1');}
         catch(e){console.warn('Уведомление не доставлено:',e);}
       }

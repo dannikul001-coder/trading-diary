@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../automated-diary.css">
+  <title>Trading Diary 02 browser fixture</title>
+</head>
+<body>
+  <div class="app-shell"></div>
+  <div id="diaryChooser" hidden><button id="chooseMainDiary"></button><button id="chooseAutomatedDiary"></button></div>
+  <div id="automatedDiary" hidden>
+    <div class="ad-app">
+      <aside class="ad-sidebar"><div class="ad-sidebar-section"><nav class="ad-nav">
+        <button class="ad-tab active" data-tab="dashboard"><span>Обзор</span></button>
+        <button class="ad-tab" data-tab="schedule"><span>Расписание</span></button>
+        <button class="ad-tab" data-tab="analytics"><span>Аналитика</span></button>
+        <button class="ad-tab" data-tab="calendar"><span>Календарь</span></button>
+      </nav></div></aside>
+      <div class="ad-body"><header class="ad-topbar"><div class="ad-topbar-location"><span class="ad-topbar-overline">V6 TEST</span><strong id="adPageTitle">Обзор</strong></div><button id="adSwitchDiary"></button></header>
+        <main class="ad-main"><section id="adWizard" hidden></section><section id="adWorkspace" hidden><div id="adContent"></div></section></main>
+      </div>
+    </div>
+    <div id="adToast" class="ad-toast"></div>
+  </div>
+  <script>
+    localStorage.setItem('tradingDiary_selectedStructure','automated');
+    const profile={user_id:'test-user',initial_balance:'1000.000000',currency:'USDT',timezone:'Europe/Moscow',duration_seconds:60,stake_percent:2,profit_percent:40,signals_enabled:true,email_notifications_enabled:false};
+    const datasets={
+      automated_diary_trades:[
+        {id:'trade-1',opened_at:'2026-11-01T08:00:00Z',closed_at:'2026-11-01T08:01:00Z',status:'closed',stake:'100.000000',payout:'140.000000',note:'Первая'},
+        {id:'trade-2',opened_at:'2026-11-03T09:00:00Z',closed_at:'2026-11-03T09:01:00Z',status:'closed',stake:'120.000000',payout:'168.000000',note:'Вторая'}
+      ],
+      automated_diary_bonuses:[{id:'bonus-1',status:'received',amount:'10.000000',received_at:'2026-11-02T10:00:00Z',title:'Тестовый бонус'}],
+      automated_diary_signals:[
+        {id:'signal-1',title:'Сигнал 1',signal_type:'trade',starts_at:'2026-11-04T09:00:00Z',remind_minutes:5,enabled:true,status:'completed',instrument:'EUR/USD',direction:'up',description:''},
+        {id:'signal-2',title:'Сигнал 2',signal_type:'trade',starts_at:'2026-11-04T09:05:00Z',remind_minutes:5,enabled:true,status:'scheduled',instrument:'EUR/USD',direction:'down',description:''},
+        {id:'signal-3',title:'Сигнал 3',signal_type:'trade',starts_at:'2026-11-04T09:10:00Z',remind_minutes:5,enabled:true,status:'skipped',instrument:'EUR/USD',direction:'up',description:''}
+      ],
+      automated_diary_ledger:[{id:'cash-1',kind:'deposit',amount:'100.000000',operated_at:'2026-11-02T08:00:00Z',created_at:'2026-11-02T08:00:00Z',note:'Тест'}],
+      automated_diary_notes:[{id:'note-1',title:'Проверка',body:'Тестовая заметка',note_date:'2026-11-04',created_at:'2026-11-04T08:00:00Z'}],
+      automated_diary_plans:[{id:'plan-1',title:'Проверить статистику',done:false,plan_date:'2026-11-04',created_at:'2026-11-04T08:00:00Z'}],
+      automated_diary_goals:[{id:'goal-1',title:'Цель',target:'100.000000',current_value:'40.000000',due_date:'2026-12-01',created_at:'2026-11-04T08:00:00Z'}],
+      automated_diary_trade_revisions:[],automated_diary_bonus_revisions:[],automated_diary_profile_revisions:[],automated_diary_email_queue:[],automated_diary_ledger_revisions:[]
+    };
+    function chain(table){
+      const api={select(){return api},eq(){return api},order(){return api},range(){return api},in(){return api},update(){return api},insert(){return api},delete(){return api},single(){return Promise.resolve({data:{id:'test'},error:null})},maybeSingle(){return Promise.resolve({data:table==='automated_diary_profiles'?profile:null,error:null})},then(resolve){return Promise.resolve({data:datasets[table]||[],error:null}).then(resolve)}};
+      return api;
+    }
+    window.supabaseClient={auth:{getSession:async()=>({data:{session:{user:{id:'test-user'}}},error:null})},from:chain,rpc:async name=>({data:name==='ad_is_admin_v4'?false:null,error:null})};
+  </script>
+  <script src="../js/automated-diary.js"></script>
+  <script>
+    addEventListener('load',()=>setTimeout(()=>{
+      const report={};
+      report.dashboardRendered=!!document.querySelector('.ad-kpi-grid');
+      report.chartPoints=document.querySelectorAll('[data-chart-point]').length;
+      const point=document.querySelector('[data-chart-point]'),tip=document.querySelector('.ad-chart-tooltip');
+      if(point){point.dispatchEvent(new FocusEvent('focus'));report.chartTooltip=tip?.textContent.trim()||'';}
+      document.querySelector('[data-tab="analytics"]')?.click();
+      report.analyticsValues=[...document.querySelectorAll('.ad-daily-bar strong')].map(x=>x.textContent.trim());
+      document.querySelector('[data-tab="schedule"]')?.click();
+      report.scheduleStatuses=[...document.querySelectorAll('.ad-day-event .ad-status')].map(x=>x.textContent.trim());
+      report.bulkControls=document.querySelectorAll('[data-bulk-signal-status]').length;
+      report.horizontalOverflow=document.documentElement.scrollWidth>document.documentElement.clientWidth;
+      document.body.dataset.audit=JSON.stringify(report);
+      document.body.dataset.auditReady='true';
+    },800));
+  </script>
+</body>
+</html>
