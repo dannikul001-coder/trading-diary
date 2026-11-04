@@ -54,6 +54,7 @@
     addEventListener('load',()=>setTimeout(()=>{
       const report={};
       report.dashboardRendered=!!document.querySelector('.ad-kpi-grid');
+      report.goalProgress=document.querySelector('.ad-overview-goal small')?.textContent.trim()||'';
       report.chartPoints=document.querySelectorAll('[data-chart-point]').length;
       const point=document.querySelector('[data-chart-point]'),tip=document.querySelector('.ad-chart-tooltip');
       if(point){point.dispatchEvent(new FocusEvent('focus'));report.chartTooltip=tip?.textContent.trim()||'';}

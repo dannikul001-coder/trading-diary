@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 let src=fs.readFileSync(require('path').join(__dirname,'..','js','automated-diary.js'),'utf8');
-src=src.replace(/\}\)\(\);\s*$/, 'window.__tests={state,micro,money,decimal,timeline,reserved,balance,equity,profit,earnings,financialWarnings,closedTrades,zonedIso,dayData,calendarView,analyticsView,dashboard,tradesView,bonusesView,scheduleView,plansView,goalsView,notesView,adminView,settingsView,financeView,buildEquityChart,rangeDescription,signalStatus};})();');
+src=src.replace(/\}\)\(\);\s*$/, 'window.__tests={state,micro,money,decimal,timeline,reserved,balance,equity,goalProgress,profit,earnings,financialWarnings,closedTrades,zonedIso,dayData,calendarView,analyticsView,dashboard,tradesView,bonusesView,scheduleView,plansView,goalsView,notesView,adminView,settingsView,financeView,buildEquityChart,rangeDescription,signalStatus};})();');
 const fakeRoot={querySelector:()=>null,querySelectorAll:()=>[],addEventListener:()=>{}};
 const d={querySelector:(sel)=>sel==='#automatedDiary'?fakeRoot:null,querySelectorAll:()=>[],addEventListener:()=>{},};
 const ctx={document:d,window:{},crypto:require('crypto').webcrypto,localStorage:{},sessionStorage:{},console,setTimeout:()=>null,clearTimeout(){},setInterval(){},Date,Intl,Number,BigInt,Array,Object,String,Map,RegExp,Math,Error,Promise,JSON};
@@ -29,7 +29,7 @@ assert(a.analyticsView().includes('Аналитика дохода'));
 assert.equal(a.financialWarnings().length,0);
 a.state.notes=[{id:'x',title:'Заметка',body:'Текст',note_date:'2026-10-01'}];
 a.state.plans=[{id:'p',title:'План',done:true,plan_date:'2026-10-01'}];
-a.state.goals=[{id:'g',title:'Цель',target:'50.000000',current_value:'25.000000',due_date:'2026-12-31'}];
+a.state.goals=[{id:'g',title:'Цель',target:'2000.000000',current_value:'25.000000',due_date:'2026-12-31'}];
 a.state.adminRows=[{user_id:'u',display_name:'Test',email:'test@example.com',currency:'USDT',earned:'40.000001',available:'891.234502',trades_total:3,trades_closed:2,plans_done:1,plans_total:1,goals_complete:0,goals_total:1,learning_completed:4,learning_total:10}];a.state.isAdmin=true;
 a.state.signals=[{id:'s',title:'Сигнал',signal_type:'trade',starts_at:'2026-10-01T12:00:00Z',remind_minutes:5,enabled:true,status:'completed'}];a.state.scheduleDay='2026-10-01';
 for(const [n,fn] of Object.entries({dashboard:a.dashboard,trades:a.tradesView,bonuses:a.bonusesView,schedule:a.scheduleView,plans:a.plansView,goals:a.goalsView,notes:a.notesView,admin:a.adminView,settings:a.settingsView,finance:a.financeView})){
@@ -37,6 +37,13 @@ for(const [n,fn] of Object.entries({dashboard:a.dashboard,trades:a.tradesView,bo
 }
 assert(a.dashboard().includes('ПОСЛЕДНИЕ 7 × 24 ЧАСА'));
 assert(a.dashboard().includes('Моё рабочее пространство'));
+assert(a.dashboard().includes('по общему капиталу'));
+assert.equal(a.decimal(a.goalProgress(a.state.goals[0]).current),'1091.234502');
+assert.equal(a.goalProgress(a.state.goals[0]).percent,54.5);
+assert.equal(a.goalProgress({target:'100.000000'}).percent,100);
+assert(a.goalsView().includes('1 091,234502 / 2 000'));
+assert(!a.goalsView().includes('25 / 2 000'));
+assert(a.goalsView().includes('Текущий прогресс рассчитывается автоматически'));
 assert(a.dashboard().includes('Заметка'));
 assert(a.calendarView().includes('has-profit'));
 assert(a.analyticsView().includes('Каждая завершённая сделка учитывается ровно один раз'));

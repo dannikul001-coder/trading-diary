@@ -35,6 +35,8 @@ $json = [Net.WebUtility]::HtmlDecode($Matches[1])
 $result = $json | ConvertFrom-Json
 
 if (-not $result.dashboardRendered) { throw 'Dashboard did not render.' }
+if ([string]::IsNullOrWhiteSpace($result.goalProgress) -or $result.goalProgress -match '^40(?:\D|$)') { throw 'Goal progress still uses the stored manual value.' }
+if ($result.goalProgress -notmatch '1\D*198') { throw 'Goal progress does not use the calculated total capital.' }
 if ($result.chartPoints -lt 3) { throw 'Interactive capital history points are missing.' }
 if ([string]::IsNullOrWhiteSpace($result.chartTooltip)) { throw 'Chart tooltip did not react to focus.' }
 if ($result.analyticsValues.Count -lt 2) { throw 'Visible daily income values are missing.' }
