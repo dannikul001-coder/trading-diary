@@ -21,6 +21,7 @@ node --test tests/academy-terminal-chart.cjs tests/academy-studio-price.cjs test
 node --test tests/academy-content.cjs tests/academy-book-material.cjs tests/academy-source-practice.cjs tests/learning-attachment-labs.cjs tests/learning-indicators.cjs tests/learning-math.cjs tests/learning-labs-advanced.cjs
 node tests/academy-studio-route.cjs
 node tests/academy-reference-browser.cjs
+node tests/academy-reference-readability.cjs
 node tests/academy-studio-browser.cjs
 ```
 
@@ -34,6 +35,7 @@ node tests/academy-studio-browser.cjs
 - Новый браузерный suite: 81/81 урок на 320, 390, 1100 и 1440 px. Проверены четыре вкладки, реальные модели, ответы, конспекты, ограничения завершения, обновление счётчиков и отсутствие горизонтального переполнения.
 - Существующий suite: 81/81 урок на 1100, 390 и 320 px, возобновление, старый прогресс, изоляция аккаунтов, порядок сохранений и ошибки хранилища.
 - Проверены действия с графиком, скрытый префикс после повтора, неправильные и правильные ответы, дополнительные практикумы и прямые ссылки на материалы.
+- Проверена читаемость 186 ячеек и полей по всем урокам: контраст не ниже 4,5:1. На 320/390/1440 px подписи зон не пересекаются с маркерами, верхняя полоса не перекрывает управление графиком.
 - Учебные проверки не отправляли запросов к базе. Миграции, RLS, production-база и реальные пользовательские записи не изменялись.
 
 Основной вход — раздел «Обучение» в дневнике. Независимый просмотр: `academy-preview.html?lesson=2.1`.

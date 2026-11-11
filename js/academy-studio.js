@@ -50,7 +50,7 @@
   const root=host.querySelector('[data-studio-root]'),q=s=>root.querySelector(s),accountAtMount=String(window.currentUser?.id||'local-preview');
   const sameAccount=()=>String(window.currentUser?.id||'local-preview')===accountAtMount;
   function live(){return !disposed&&root.isConnected&&sameAccount();}
-  function positionStep(){const modal=root.closest('.modal');if(modal)modal.scrollTop=0;}
+  function positionStep(){const modal=root.closest('.modal');if(modal){modal.scrollTop=0;const content=modal.querySelector('#modalContent');if(content)content.scrollTop=0;}}
   function payload(extra={}){return {studio_version:VERSION,studio_step:step,studio_seen:[...seen],...extra};}
   function persist(extra={}){const snapshot=payload(extra);saveQueue=saveQueue.then(async()=>{if(!sameAccount())return false;if(!onStage)return true;try{await onStage(snapshot);return true;}catch{if(live())q('[data-as-save-status]').textContent='Не удалось сохранить прогресс в браузере.';return false;}});return saveQueue;}
   function gate(){const ready=seen.size===stages.length&&practiceCorrect&&quizScore===100;q('[data-as-complete]').disabled=completed||!ready;q('[data-as-gate]').textContent=completed?'Урок пройден. Можно повторить модель или перейти к следующему уроку.':ready?'Все шаги разобраны. Практика и проверка выполнены — заверши урок.':'Для завершения разбери все шаги, реши практику и ответь на вопросы.';}
