@@ -1,15 +1,20 @@
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Академия · проверка моделей</title><link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="../learning-models.css"><style>body{margin:0;padding:20px}#preview{max-width:1320px;margin:auto}@media(max-width:500px){body{padding:10px}}</style></head><body><main id="preview"></main><script src="../learning/course-v1.js"></script><script src="../learning/course-models.js"></script><script src="../js/learning-interactive.js"></script><script src="../js/learning-models.js"></script><script>
 (async()=>{
+  await new Promise((resolve,reject)=>{const link=document.createElement('link');link.rel='stylesheet';link.href='../learning-library.css';link.onload=resolve;link.onerror=reject;document.head.appendChild(link);});
   await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='../learning/course-guides.js';script.onload=resolve;script.onerror=reject;document.head.appendChild(script);});
+  await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='../js/learning-library.js';script.onload=resolve;script.onerror=reject;document.head.appendChild(script);});
   const host=document.getElementById('preview'),course=window.TRADING_COURSE_V1,params=new URLSearchParams(location.search);
   if(!params.has('audit')){const lesson=course.lessons.find(l=>l.key===params.get('lesson'))||course.lesson;window.InteractiveLearning.mount({host,lesson,progress:{},onSaveNotes:async notes=>localStorage.setItem('academy-preview-notes:'+lesson.id,notes)});return;}
   const assert=(condition,message)=>{if(!condition)throw new Error(message);};const results=[];
   for(const lesson of course.lessons){
     let completed=false,saved='',stages=[];const model=window.InteractiveLearning.mount({host,lesson,onStage:async p=>{stages=p.model_seen;},onSaveNotes:async notes=>{saved=notes;},onComplete:async()=>{completed=true;}}),q=s=>host.querySelector(s),m=lesson.content.interactiveLesson;
     model.finishAnimation();assert(q('[data-ml-complete]').disabled,lesson.key+': early completion');
+    assert(q('.ml-brief')?.textContent.includes('10 СЕКУНД'),'Lesson summary');
+    q('[data-ml-view="article"]').click();assert(q('.ml-workbench').hidden&&q('[data-ml-resource]').textContent.includes('Разобранный пример'),'Full lesson view');q('[data-ml-return]').click();assert(!q('.ml-workbench').hidden,'Return to model');q('[data-ml-view="terms"]').click();assert(q('[data-ml-resource] .ar-diagram'),'Terms diagram');q('[data-ml-return]').click();
+    const paletteProbe=document.createElement('span');paletteProbe.style.background='var(--site-secondary)';host.appendChild(paletteProbe);assert(getComputedStyle(q('.ml-canvas')).backgroundColor===getComputedStyle(paletteProbe).backgroundColor,'Chart does not match selected theme');paletteProbe.remove();
     assert(q('.ml-big-idea')?.textContent.length>80,'Beginner explanation missing');
     q('.ml-glossary summary').click();assert(q('.ml-glossary').open,'Glossary did not open');
-    const svg=q('svg');assert(Number(svg.dataset.visible)===6,'Initial count');
+    const svg=q('.ml-chart');assert(Number(svg.dataset.visible)===6,'Initial count');
     for(let i=0;i<3;i++){q('[data-ml-next]').click();model.finishAnimation();}
     const checkpoint=m.checkpoint.choices.findIndex(c=>c.correct),badCheckpoint=m.checkpoint.choices.findIndex(c=>!c.correct);
     q(`input[name="ml-checkpoint"][value="${badCheckpoint}"]`).checked=true;q('[data-ml-checkpoint]').click();assert(q('[data-ml-checkpoint-result]').classList.contains('wrong'),'Wrong checkpoint explanation');

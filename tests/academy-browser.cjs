@@ -5,6 +5,8 @@ const fs=require('node:fs');const os=require('node:os');const path=require('node
 const browser=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
 if(!browser)throw new Error('An installed Chrome or Edge is required.');
 const width=Number(process.argv[2]||390),manual=process.argv.includes('--screenshot'),integration=process.argv.includes('--integration');
+const theme=process.argv.find(a=>a.startsWith('--theme='))?.slice(8)||'midnight';
+if(!/^[a-z]+$/.test(theme))throw new Error('Invalid theme');
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'td-model-cdp-'));
 const child=spawn(browser,['--headless=new','--disable-gpu','--no-first-run','--allow-file-access-from-files','--remote-debugging-port=0','--user-data-dir='+temp,'about:blank'],{windowsHide:true,stdio:['ignore','ignore','pipe']});
 let socket;
@@ -17,6 +19,7 @@ let socket;
   const cdp=(method,params)=>send(method,params,sessionId);
   await cdp('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<700});
   await cdp('Page.enable');
+  await cdp('Page.addScriptToEvaluateOnNewDocument',{source:`addEventListener('DOMContentLoaded',()=>{document.body.classList.add('theme-${theme}');});`});
   const url=pathToFileURL(path.join(__dirname,integration?'course-shell-preview.html':'academy-models.html')).href+(manual?'?lesson=1.1':'?audit=1');await cdp('Page.navigate',{url});
   const evaluate=async expression=>(await cdp('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true})).result.value;
   let result;
@@ -24,7 +27,9 @@ let socket;
   if(integration){
     const check=await evaluate(`(async()=>{
       const check=(condition,message)=>{if(!condition)throw new Error(message);};
+      document.querySelector('[data-ar-mode="reference"]').click();check(!!document.querySelector('.ar-diagram'),'Reference diagram');check(document.querySelectorAll('[data-ar-term]').length===26,'Reference topics');document.querySelectorAll('[data-ar-term]')[3].click();check(document.querySelector('.ar-definition h3').textContent.includes('Четыре'),'Reference selection');document.querySelector('[data-ar-mode="practice"]').click();check(document.querySelectorAll('[data-ar-practice]').length===26,'Practice routes');document.querySelector('[data-ar-mode="course"]').click();check(document.querySelectorAll('.ar-chapter').length===9,'Course chapters');
       const id=window.TRADING_COURSE_V1.lessons[0].id;
+      document.querySelector('[data-ar-mode="practice"]').click();document.querySelector('[data-ar-practice]').click();await new Promise(r=>setTimeout(r,0));check(!!document.querySelector('#modalContent [data-ml-answer]'),'Direct practice route failed');document.querySelector('[data-ar-mode="course"]').click();
       localStorage.removeItem(courseV1ProgressKey());await openTrainingLesson(id);
       const find=s=>document.querySelector('#modalContent '+s);
       for(let i=0;i<3;i++)find('[data-ml-next]').click();
@@ -37,6 +42,6 @@ let socket;
       return {integration:true,notes:true,resume:true,completed:true,accountIsolation:true};
     })()`);
     if(!check?.integration)throw new Error('Integration failed: '+JSON.stringify(check));console.log(JSON.stringify(check));
-  }else if(manual){await new Promise(resolve=>setTimeout(resolve,800));const {data}=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});const output=path.join(os.tmpdir(),'trading-academy-'+width+'.png');fs.writeFileSync(output,Buffer.from(data,'base64'));console.log(output);}else{if(result.ready!=='true')throw new Error(result.error||'Audit did not finish');const audit=JSON.parse(result.audit);if(audit.passed!==26||audit.mobileWidth!==width)throw new Error(JSON.stringify(audit));console.log(JSON.stringify(audit));}
+  }else if(manual){await new Promise(resolve=>setTimeout(resolve,800));const {data}=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});const output=path.join(os.tmpdir(),'trading-academy-'+width+'-'+theme+'.png');fs.writeFileSync(output,Buffer.from(data,'base64'));console.log(output);}else{if(result.ready!=='true')throw new Error(result.error||'Audit did not finish');const audit=JSON.parse(result.audit);if(audit.passed!==26||audit.mobileWidth!==width)throw new Error(JSON.stringify(audit));console.log(JSON.stringify({...audit,theme}));}
   await send('Browser.close');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{socket?.close();child.kill();await new Promise(resolve=>setTimeout(resolve,300));const resolved=path.resolve(temp),root=path.resolve(os.tmpdir())+path.sep;if(resolved.startsWith(root)&&path.basename(resolved).startsWith('td-model-cdp-')){try{fs.rmSync(resolved,{recursive:true,force:true,maxRetries:5,retryDelay:100});}catch{}}});
