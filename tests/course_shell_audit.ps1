@@ -23,9 +23,9 @@ if ($dump -notmatch 'data-audit-ready="true"') {
 }
 if ($dump -notmatch 'data-audit="([^"]+)"') { throw 'Course shell audit result is missing.' }
 $result = ([Net.WebUtility]::HtmlDecode($Matches[1]) | ConvertFrom-Json)
-if ($result.modules -ne 9) { throw 'The course must expose nine sequential modules.' }
+if ($result.modules -ne 16) { throw 'The course must expose sixteen modules.' }
 if ($result.lessons -lt 20) { throw 'The new course program is incomplete.' }
-if ($result.available -ne 26) { throw 'All 26 model lessons must be available.' }
+if ($result.available -ne 72) { throw 'All 72 model lessons must be available.' }
 if ($result.planned -ne 0) { throw 'No placeholder lessons should remain.' }
 if (-not $result.noVideo -or -not $result.hasNoVideoLabel) { throw 'The no-video format is not explicit.' }
 if (-not $result.hasInteractiveFeature) { throw 'The exemplar interactive lesson is not featured.' }

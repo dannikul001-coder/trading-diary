@@ -13,6 +13,7 @@
   function render(options={}){
     lastOptions=options;originalRender(options);
     const {category='all',search='',progress={}}=options,all=course().lessons;
+    const allLabel=document.querySelector('[data-course-module="all"] small');if(allLabel)allLabel.textContent=`${all.length} уроков · ${course().program.length} модулей`;
     const moduleId=category.startsWith('course:')?category.slice(7):'all';
     const lessons=all.filter(l=>(moduleId==='all'||l.moduleId===moduleId)&&`${l.title} ${l.content.interactiveLesson.guide.terms}`.toLowerCase().includes(search.toLowerCase()));
     const grid=document.getElementById('trainingLessonGrid');if(!grid)return;

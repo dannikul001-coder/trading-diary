@@ -2,6 +2,7 @@
 (async()=>{
   await new Promise((resolve,reject)=>{const link=document.createElement('link');link.rel='stylesheet';link.href='../learning-library.css';link.onload=resolve;link.onerror=reject;document.head.appendChild(link);});
   await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='../learning/course-guides.js';script.onload=resolve;script.onerror=reject;document.head.appendChild(script);});
+  for(const src of ['../learning/course-extension.js','../js/learning-indicators.js','../js/learning-math.js'])await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=src;script.onload=resolve;script.onerror=reject;document.head.appendChild(script);});
   await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='../js/learning-library.js';script.onload=resolve;script.onerror=reject;document.head.appendChild(script);});
   const host=document.getElementById('preview'),course=window.TRADING_COURSE_V1,params=new URLSearchParams(location.search);
   if(!params.has('audit')){const lesson=course.lessons.find(l=>l.key===params.get('lesson'))||course.lesson;window.InteractiveLearning.mount({host,lesson,progress:{},onSaveNotes:async notes=>localStorage.setItem('academy-preview-notes:'+lesson.id,notes)});return;}
@@ -9,12 +10,14 @@
   for(const lesson of course.lessons){
     let completed=false,saved='',stages=[];const model=window.InteractiveLearning.mount({host,lesson,onStage:async p=>{stages=p.model_seen;},onSaveNotes:async notes=>{saved=notes;},onComplete:async()=>{completed=true;}}),q=s=>host.querySelector(s),m=lesson.content.interactiveLesson;
     model.finishAnimation();assert(q('[data-ml-complete]').disabled,lesson.key+': early completion');
+    if(m.indicator)assert(q('[data-ml-indicator]')?.textContent.length>25,'Indicator panel missing');
+    if(lesson.key==='14.3'){q('[data-lm-payout]').value='40';q('[data-lm-payout]').dispatchEvent(new Event('input',{bubbles:true}));assert(q('[data-lm-output]').textContent.includes('-0.60'),'Payout ladder worksheet');}
     assert(q('.ml-brief')?.textContent.includes('10 СЕКУНД'),'Lesson summary');
     q('[data-ml-view="article"]').click();assert(q('.ml-workbench').hidden&&q('[data-ml-resource]').textContent.includes('Разобранный пример'),'Full lesson view');q('[data-ml-return]').click();assert(!q('.ml-workbench').hidden,'Return to model');q('[data-ml-view="terms"]').click();assert(q('[data-ml-resource] .ar-diagram'),'Terms diagram');q('[data-ml-return]').click();
     const paletteProbe=document.createElement('span');paletteProbe.style.background='var(--site-secondary)';host.appendChild(paletteProbe);assert(getComputedStyle(q('.ml-canvas')).backgroundColor===getComputedStyle(paletteProbe).backgroundColor,'Chart does not match selected theme');paletteProbe.remove();
     assert(q('.ml-big-idea')?.textContent.length>80,'Beginner explanation missing');
     q('.ml-glossary summary').click();assert(q('.ml-glossary').open,'Glossary did not open');
-    const svg=q('.ml-chart');assert(Number(svg.dataset.visible)===6,'Initial count');
+    const svg=q('.ml-chart');assert(Number(svg.dataset.visible)===m.stages[0].count,'Initial count');
     for(let i=0;i<3;i++){q('[data-ml-next]').click();model.finishAnimation();}
     const checkpoint=m.checkpoint.choices.findIndex(c=>c.correct),badCheckpoint=m.checkpoint.choices.findIndex(c=>!c.correct);
     q(`input[name="ml-checkpoint"][value="${badCheckpoint}"]`).checked=true;q('[data-ml-checkpoint]').click();assert(q('[data-ml-checkpoint-result]').classList.contains('wrong'),'Wrong checkpoint explanation');
@@ -25,9 +28,9 @@
     q('[data-ml-scale]').click();model.finishAnimation();assert(Number(svg.dataset.visible)===Math.ceil(m.stages[3].count/3),'Aggregation count');q('[data-ml-scale]').click();model.finishAnimation();
     q('[data-ml-annotations]').click();assert(q('[data-ml-overlay]').querySelector('.ml-guide')===null,'Toggle annotation');q('[data-ml-annotations]').click();
     q('[data-ml-branch]').click();model.finishAnimation();assert(q('[data-ml-branch]').getAttribute('aria-pressed')==='true','Alternate branch');
-    q('[data-ml-next]').click();model.finishAnimation();assert(Number(svg.dataset.visible)===10,'Blind future count');assert(q('[data-ml-branch]').disabled,'Alternate future locked');assert(q('[data-ml-scale]').disabled,'Scale locked during decision');
+    q('[data-ml-next]').click();model.finishAnimation();assert(Number(svg.dataset.visible)===m.practice.count,'Blind future count');assert(q('[data-ml-branch]').disabled,'Alternate future locked');assert(q('[data-ml-scale]').disabled,'Scale locked during decision');
     q('[data-ml-answer]').click();assert(!model.state.revealed,'No reveal without decision');
-    const correct=m.practice.choices.findIndex(c=>c.correct);q(`input[name="ml-practice"][value="${correct}"]`).checked=true;q('[data-ml-answer]').click();model.finishAnimation();assert(Number(svg.dataset.visible)===16,'Future revealed');assert(!q('[data-ml-assessment]').hidden,'Quiz available');
+    const correct=m.practice.choices.findIndex(c=>c.correct);q(`input[name="ml-practice"][value="${correct}"]`).checked=true;q('[data-ml-answer]').click();model.finishAnimation();assert(Number(svg.dataset.visible)===m.practiceBars.length,'Future revealed');assert(!q('[data-ml-assessment]').hidden,'Quiz available');
     q('[data-ml-quiz]').dispatchEvent(new Event('submit',{cancelable:true}));assert(q('[data-ml-complete]').disabled,'Missing quiz blocks completion');
     m.quiz.forEach((question,i)=>{const wrong=question.choices.findIndex(c=>!c.correct);q(`input[name="ml-q-${i}"][value="${wrong}"]`).checked=true;});q('[data-ml-quiz]').dispatchEvent(new Event('submit',{cancelable:true}));assert(q('[data-ml-complete]').disabled,'Wrong quiz blocks completion');
     m.quiz.forEach((question,i)=>{const answer=question.choices.findIndex(c=>c.correct);q(`input[name="ml-q-${i}"][value="${answer}"]`).checked=true;});q('[data-ml-quiz]').dispatchEvent(new Event('submit',{cancelable:true}));assert(!q('[data-ml-complete]').disabled,'Valid quiz unlocks completion');
@@ -35,6 +38,6 @@
     q('[data-ml-notes]').value='Проверочный конспект '+lesson.key;q('[data-ml-save]').click();await Promise.resolve();assert(saved.includes(lesson.key),'Save notes');q('[data-ml-complete]').click();await Promise.resolve();assert(completed,'Complete callback');
     assert(!host.querySelector('iframe,video'),'No video');assert(document.documentElement.scrollWidth<=document.documentElement.clientWidth,'Mobile overflow '+lesson.key);results.push(lesson.key);model.dispose();
   }
-  document.body.dataset.audit=JSON.stringify({passed:results.length,lessons:results,mobileWidth:innerWidth});document.body.dataset.auditReady='true';
+  document.body.dataset.audit=JSON.stringify({passed:results.length,expected:course.lessons.length,lessons:results,mobileWidth:innerWidth});document.body.dataset.auditReady='true';
 })().catch(error=>{document.body.dataset.auditError=String(error.stack||error);document.body.dataset.auditReady='error';});
 </script></body></html>

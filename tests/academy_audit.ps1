@@ -17,5 +17,5 @@ if($code -ne 0){throw "Browser exited: $code"}
 if($dump -notmatch 'data-audit-ready="true"'){$detail=if($dump -match 'data-audit-error="([^"]+)"'){[Net.WebUtility]::HtmlDecode($Matches[1])}else{'No result'};throw $detail}
 if($dump -notmatch 'data-audit="([^"]+)"'){throw 'Missing result'}
 $result=[Net.WebUtility]::HtmlDecode($Matches[1])|ConvertFrom-Json
-if($result.passed -ne 26){throw 'Not all lessons passed.'}
+if($result.passed -ne 72){throw 'Not all lessons passed.'}
 $result|ConvertTo-Json -Compress

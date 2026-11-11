@@ -1,6 +1,6 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');global.window={};require('../learning/course-v1.js');require('../learning/course-models.js');require('../learning/course-guides.js');const course=window.TRADING_COURSE_V1;
+const {test}=require('node:test');const assert=require('node:assert/strict');global.window={};require('../learning/course-v1.js');require('../learning/course-models.js');require('../learning/course-guides.js');require('../learning/course-extension.js');const course=window.TRADING_COURSE_V1;
 test('Every program entry has a complete distinct model lesson',()=>{
-  const entries=course.program.flatMap(m=>m.lessons);assert.equal(entries.length,26);assert.equal(course.lessons.length,26);assert.equal(new Set(course.lessons.map(l=>l.id)).size,26);assert.equal(new Set(course.lessons.map(l=>l.excerpt)).size,26);
+  const entries=course.program.flatMap(m=>m.lessons);assert.equal(entries.length,72);assert.equal(course.lessons.length,72);assert.equal(new Set(course.lessons.map(l=>l.id)).size,72);assert.equal(new Set(course.lessons.map(l=>l.excerpt)).size,72);
   for(const entry of entries){const lesson=course.lessons.find(l=>l.key===entry.id);assert.ok(lesson,entry.id);const m=lesson.content.interactiveLesson;assert.equal(m.stages.length,4);assert.ok(m.stages.every(s=>s.body.trim()&&s.task.trim()));assert.ok(m.quiz.length>=2);for(const q of [m.practice,...m.quiz])assert.equal(q.choices.filter(c=>c.correct).length,1);}
 });
 test('Candles, blind futures and aggregation obey price invariants',()=>{

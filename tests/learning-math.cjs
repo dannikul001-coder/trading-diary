@@ -1,0 +1,4 @@
+const {test}=require('node:test'),assert=require('node:assert/strict');global.window={};require('../js/learning-math');const M=window.LearningMath;
+test('Fixed payout break-even and expectation',()=>{const a=M.payoutModel(100,.8,.6);assert.equal(a.profit,80);assert.equal(a.loss,-100);assert.ok(Math.abs(a.breakEven-1/1.8)<1e-12);assert.ok(Math.abs(a.expectation-8)<1e-12);assert.ok(Math.abs(M.payoutModel(100,.4,.6).breakEven-1/1.4)<1e-12);});
+test('Conflicting ladders are not silently treated as the same risk',()=>{assert.equal(M.series(100,[1,2,4],.8).totalLoss,7);assert.equal(M.series(100,[1,2,6],.8).totalLoss,9);assert.ok(Math.abs(M.series(100,[1,2,6],.4).lastWinNet+.6)<1e-12);});
+test('Recovery uses remaining capital; invalid values are rejected',()=>{assert.equal(M.recovery(.2),.25);assert.throws(()=>M.recovery(1));assert.throws(()=>M.payoutModel(100,.8,1.1));assert.throws(()=>M.payoutModel(-1,.8,.6));});
