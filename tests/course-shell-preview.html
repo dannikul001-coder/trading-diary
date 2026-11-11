@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../style.css">
+  <title>Новая программа обучения</title>
+</head>
+<body>
+  <section id="view-training"><div class="learning-shell">
+    <div class="learning-topbar"><div><span class="eyebrow">TRADING DIARY / INTERACTIVE ACADEMY</span><h2>Обучение</h2><p>Собственный последовательный курс без видео.</p></div><div class="learning-progress"><strong id="trainingProgressLabel">0%</strong><div><i id="trainingProgressBar"></i></div><small id="trainingProgressText"></small></div></div>
+    <div class="learning-layout-v27"><aside class="learning-program-sidebar"><div class="program-sidebar-head"><h3>Новая академия</h3></div><div id="trainingRoadmap" class="training-roadmap-v27"></div><article class="learning-next-card-v27"><div id="trainingNextLesson"></div></article></aside>
+    <main class="learning-catalog learning-catalog-v27"><div class="learning-toolbar learning-toolbar-v27"><div><small id="trainingSectionLabel"></small></div><label class="learning-search"><input id="trainingSearch"></label></div><div class="learning-filterbar"><div id="trainingStatusTabs" class="learning-status-tabs"></div><div id="trainingModeTabs" class="learning-mode-tabs"></div></div><div id="trainingFeature" class="learning-feature learning-feature-v27"></div><small id="trainingResultCount"></small><div id="trainingLessonGrid" class="training-grid training-grid-v27"></div></main></div>
+  </div></section>
+  <div id="modalContent"></div>
+  <script>window.DEFAULT_DATA={quotes:[]};window.openModal=function(){};window.closeModal=function(){};window.toast=function(){};addEventListener('error',event=>{document.body.dataset.auditError=String(event.error&&event.error.stack||event.message);document.body.dataset.auditReady='error';});</script>
+  <script>function escapeHtml(value){const span=document.createElement('span');span.textContent=String(value??'');return span.innerHTML;}</script>
+  <script src="../learning/course-v1.js"></script>
+  <script src="../js/learning-interactive.js"></script>
+  <script src="../js/admin.js"></script>
+  <script>
+    addEventListener('load',()=>setTimeout(()=>{try{
+      renderCourseV1View();
+      const report={
+        modules:document.querySelectorAll('[data-course-module]').length-1,
+        lessons:document.querySelectorAll('.course-program-card').length,
+        available:document.querySelectorAll('.course-program-card.is-available').length,
+        planned:document.querySelectorAll('.course-program-card.is-planned').length,
+        noVideo:!document.querySelector('video,iframe'),
+        hasNoVideoLabel:document.body.innerText.includes('БЕЗ ВИДЕО'),
+        hasInteractiveFeature:document.getElementById('trainingFeature').innerText.includes('ПЕРВЫЙ ПОЛНОСТЬЮ СОБРАННЫЙ УРОК'),
+        horizontalOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth
+      };
+      document.body.dataset.audit=JSON.stringify(report);
+      document.body.dataset.auditReady='true';
+    }catch(error){document.body.dataset.auditError=String(error&&error.stack||error);document.body.dataset.auditReady='error';}},50));
+  </script>
+</body>
+</html>

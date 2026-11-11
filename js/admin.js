@@ -2,6 +2,9 @@ let adminState={isAdmin:false,users:[],categories:[],lessons:[],category:'all',s
 let trainingState={categories:[],lessons:[],category:'all',search:'',status:'all',mode:'all',progress:[]};
 function trainingDone(id){return trainingState.progress.some(p=>p.lesson_id===id&&p.status==='completed')}
 function trainingProgressRow(id){return trainingState.progress.find(p=>p.lesson_id===id)||null}
+function courseV1ProgressKey(){return 'tradingDiary_courseV1Progress:'+String(window.currentUser?.id||'local-preview')}
+function courseV1Progress(){try{return JSON.parse(localStorage.getItem(courseV1ProgressKey())||'{}')}catch{return {}}}
+function saveCourseV1Progress(id,payload){const all=courseV1Progress();const previous=all[id]||{};const next={...previous,...payload,lesson_id:id,updated_at:new Date().toISOString()};if(previous.status==='completed'){next.status='completed';next.progress=100;}all[id]=next;localStorage.setItem(courseV1ProgressKey(),JSON.stringify(all));return all[id]}
 function parseTrainingQuiz(raw){if(Array.isArray(raw))return raw; if(!raw)return []; try{const x=JSON.parse(raw); return Array.isArray(x)?x:[]}catch{return []}}
 const LEARNING_TRACKS=[
  {id:'foundation',title:'База',short:'Фундамент',icon:'01',cats:['basics','candles','technical','tools','indicators']},
@@ -74,6 +77,7 @@ function bindAdminUI(){
   const dup=e.target.closest('[data-admin-duplicate]');if(dup){duplicateLesson(dup.dataset.adminDuplicate);return;}
   const tcat=e.target.closest('[data-training-category]');if(tcat){trainingState.category=tcat.dataset.trainingCategory;renderTrainingView();return;}
   const ttrack=e.target.closest('[data-training-track]');if(ttrack){trainingState.category=ttrack.dataset.trainingTrack==='all'?'all':`track:${ttrack.dataset.trainingTrack}`;renderTrainingView();return;}
+  const courseModule=e.target.closest('[data-course-module]');if(courseModule){trainingState.category=`course:${courseModule.dataset.courseModule}`;renderTrainingView();return;}
   const tstatus=e.target.closest('[data-training-status]');if(tstatus){trainingState.status=tstatus.dataset.trainingStatus;renderTrainingView();return;}
   const tmode=e.target.closest('[data-training-mode]');if(tmode){trainingState.mode=tmode.dataset.trainingMode;renderTrainingView();return;}
   const topen=e.target.closest('[data-training-open]');if(topen){openTrainingLesson(topen.dataset.trainingOpen);return;}
@@ -175,6 +179,7 @@ function previewLesson(id){openTrainingLesson(id);}
 
 async function loadTrainingView(){if(!window.supabaseClient||!window.currentUser)return;const [c,l,p]=await Promise.all([window.supabaseClient.from('learning_categories').select('*').eq('published',true).order('sort_order'),window.supabaseClient.from('learning_lessons').select('*').eq('status','published').order('sort_order'),window.supabaseClient.from('learning_progress').select('*').eq('user_id',window.currentUser.id)]);if(c.error||l.error)return;trainingState.categories=c.data||[];trainingState.lessons=l.data||[];trainingState.progress=p.data||[];renderTrainingView();}
 function renderTrainingView(){
+ if(window.TRADING_COURSE_V1){renderCourseV1View();return;}
  const tabs=document.getElementById('trainingCategoryTabs'),statusTabs=document.getElementById('trainingStatusTabs'),modeTabs=document.getElementById('trainingModeTabs'),grid=document.getElementById('trainingLessonGrid');if(!grid)return;
  const doneFor=l=>trainingState.progress.some(p=>p.lesson_id===l.id&&p.status==='completed');
  const progressFor=l=>trainingState.progress.find(p=>p.lesson_id===l.id)||null;
@@ -208,11 +213,45 @@ function renderTrainingView(){
  const total=trainingState.lessons.length,completed=trainingState.lessons.filter(doneFor).length,percent=total?Math.round(completed/total*100):0;const pl=document.getElementById('trainingProgressLabel'),pb=document.getElementById('trainingProgressBar'),pt=document.getElementById('trainingProgressText');if(pl)pl.textContent=percent+'%';if(pb)pb.style.width=percent+'%';if(pt)pt.textContent=`Завершено ${completed} из ${total} материалов.`;
  const next=trainingState.lessons.find(l=>statusFor(l)==='started')||trainingState.lessons.find(l=>!doneFor(l));const nextBox=document.getElementById('trainingNextLesson');if(nextBox)nextBox.innerHTML=next?`<b>${escapeHtml(next.title)}</b><span>${escapeHtml(next.excerpt||'Следующий материал')}</span><button class="secondary-btn" data-training-open="${next.id}">${statusFor(next)==='started'?'Продолжить →':'Начать →'}</button>`:`<b>Маршрут завершён</b><span>Все опубликованные материалы отмечены как пройденные.</span>`;
 }
+function renderCourseV1View(){
+ const course=window.TRADING_COURSE_V1,program=course.program||[],exemplar=course.lesson,progress=courseV1Progress();
+ const road=document.getElementById('trainingRoadmap'),grid=document.getElementById('trainingLessonGrid'),feature=document.getElementById('trainingFeature');if(!grid)return;
+ const selected=String(trainingState.category||'').startsWith('course:')?String(trainingState.category).slice(7):'all';
+ const allLessons=program.flatMap(module=>(module.lessons||[]).map(lesson=>({...lesson,moduleId:module.id,moduleTitle:module.title,dependsOn:module.dependsOn||[]})));
+ const q=String(trainingState.search||'').trim().toLowerCase();let shown=selected==='all'?allLessons:allLessons.filter(x=>x.moduleId===selected);if(q)shown=shown.filter(x=>`${x.title} ${x.moduleTitle}`.toLowerCase().includes(q));
+ const exemplarProgress=progress[exemplar.id]||{};const done=exemplarProgress.status==='completed';
+ if(road)road.innerHTML=`<button type="button" class="track-nav-item ${selected==='all'?'active':''}" data-course-module="all"><span class="track-nav-index">ALL</span><span><b>Весь маршрут</b><small>${program.length} модулей · ${allLessons.length} уроков</small></span></button>`+program.map((module,index)=>`<button type="button" class="track-nav-item ${selected===module.id?'active':''}" data-course-module="${module.id}"><span class="track-nav-index">${String(index).padStart(2,'0')}</span><span><b>${escapeHtml(module.title)}</b><small>${module.lessons.length} урока · ${module.dependsOn.length?'после '+module.dependsOn.join(', '):'старт'}</small></span></button>`).join('');
+ const statusTabs=document.getElementById('trainingStatusTabs'),modeTabs=document.getElementById('trainingModeTabs');if(statusTabs)statusTabs.innerHTML='<span class="course-format-chip">ПОСЛЕДОВАТЕЛЬНЫЙ КУРС</span><span class="course-format-chip">СМОДЕЛИРОВАННЫЕ ГРАФИКИ</span>';if(modeTabs)modeTabs.innerHTML='<span class="course-format-chip">БЕЗ ВИДЕО</span>';
+ if(feature)feature.innerHTML=`<div class="feature-copy"><span class="eyebrow">${done?'ЭТАЛОННЫЙ УРОК ПРОЙДЕН':'ПЕРВЫЙ ПОЛНОСТЬЮ СОБРАННЫЙ УРОК'}</span><h3>${escapeHtml(exemplar.title)}</h3><p>${escapeHtml(exemplar.excerpt||'Теория, три ситуации на графике, практика со скрытым будущим и проверка знаний.')}</p><div class="feature-meta"><span>ИНТЕРАКТИВНЫЙ</span><span>${exemplar.duration_minutes} мин</span><span>3 сценария</span><span>без видео</span></div></div><button class="primary-btn feature-open" data-training-open="${exemplar.id}">${done?'Повторить урок →':'Открыть эталонный урок →'}</button>`;
+ grid.classList.add('course-program-grid');grid.innerHTML=shown.map((lesson,index)=>{const available=lesson.id==='1.1',lessonDone=available&&done;return `<article class="training-lesson card training-card-v27 course-program-card ${available?'is-available':'is-planned'}" ${available?`data-training-open="${exemplar.id}"`:''}><div class="training-card-top"><span>${escapeHtml(lesson.id)}</span><em>${escapeHtml(lesson.moduleTitle)}</em><b>${lessonDone?'✓':available?'→':'○'}</b></div><div class="training-lesson-body"><span class="training-type">${lessonDone?'ПРОЙДЕНО':available?'ГОТОВ ДЛЯ ПРОВЕРКИ':'В ПРОГРАММЕ'}</span><h4>${escapeHtml(lesson.title)}</h4><p>${available?'Полноценный урок: теория, графики, самостоятельное решение, обратная связь и тест.':'Урок будет собран по эталонному интерактивному формату после проверки первой модели.'}</p><div class="lesson-card-meta"><span>${available?'28 мин':'ПОСЛЕДОВАТЕЛЬНО'}</span><span>${lesson.dependsOn.length?'Зависит от '+lesson.dependsOn.join(', '):'Начальный блок'}</span></div><div class="card-open-line"><span>${available?'Изучить модель':'Не поверхностная карточка — в разработке'}</span><strong>${available?'→':'🔒'}</strong></div></div></article>`}).join('')||'<div class="empty-inline">По этому запросу уроков нет.</div>';
+ const completed=done?1:0,total=allLessons.length,percent=Math.round(completed/total*100);const label=document.getElementById('trainingProgressLabel'),bar=document.getElementById('trainingProgressBar'),text=document.getElementById('trainingProgressText');if(label)label.textContent=percent+'%';if(bar)bar.style.width=percent+'%';if(text)text.textContent=`Полностью собрано и пройдено: ${completed} из ${total}.`;
+ const next=document.getElementById('trainingNextLesson');if(next)next.innerHTML=`<b>${escapeHtml(exemplar.title)}</b><span>${done?'Повтори сценарии или дождись следующего урока.':'Начни с эталонной интерактивной модели.'}</span><button class="secondary-btn" data-training-open="${exemplar.id}">${done?'Повторить →':'Начать →'}</button>`;
+ const section=document.getElementById('trainingSectionLabel'),count=document.getElementById('trainingResultCount');if(section)section.textContent=selected==='all'?'НОВАЯ ПРОГРАММА С НУЛЯ':escapeHtml(program.find(x=>x.id===selected)?.title||'МОДУЛЬ').toUpperCase();if(count)count.textContent=`${shown.length} уроков`;
+}
 async function openTrainingLesson(id){
- const l=trainingState.lessons.find(x=>x.id===id)||adminState.lessons.find(x=>x.id===id);if(!l)return;
+ const localCourseLesson=window.TRADING_COURSE_V1?.lesson?.id===id?window.TRADING_COURSE_V1.lesson:null;
+ const databaseLesson=trainingState.lessons.find(x=>x.id===id)||adminState.lessons.find(x=>x.id===id);const l=databaseLesson||localCourseLesson;if(!l)return;
+ const isLocalCourseLesson=!!localCourseLesson&&!databaseLesson;
  const c=l.content||{};const existing=trainingProgressRow(l.id);
- if(window.currentUser&&window.supabaseClient&&!existing){await window.supabaseClient.from('learning_progress').upsert({user_id:window.currentUser.id,lesson_id:l.id,status:'started',progress:10,started_at:new Date().toISOString(),updated_at:new Date().toISOString()});await loadTrainingView();}
- const row=trainingProgressRow(l.id)||{};const quiz=parseTrainingQuiz(c.quiz);const embed=youtubeEmbedUrl(c.videoUrl);openModal();
+ if(!isLocalCourseLesson&&window.currentUser&&window.supabaseClient&&!existing){await window.supabaseClient.from('learning_progress').upsert({user_id:window.currentUser.id,lesson_id:l.id,status:'started',progress:10,started_at:new Date().toISOString(),updated_at:new Date().toISOString()});await loadTrainingView();}
+ if(isLocalCourseLesson&&!courseV1Progress()[l.id])saveCourseV1Progress(l.id,{status:'started',progress:10,started_at:new Date().toISOString()});
+ const row=isLocalCourseLesson?(courseV1Progress()[l.id]||{}):(trainingProgressRow(l.id)||{});const quiz=parseTrainingQuiz(c.quiz);const embed=youtubeEmbedUrl(c.videoUrl);openModal();
+ if(c.interactiveLesson&&window.InteractiveLearning){
+  const host=document.getElementById('modalContent');
+  const saveProgress=async payload=>{
+   if(isLocalCourseLesson){Object.assign(row,saveCourseV1Progress(l.id,payload));renderCourseV1View();return;}
+   if(!window.supabaseClient||!window.currentUser)return;
+   const result=await window.supabaseClient.from('learning_progress').upsert({user_id:window.currentUser.id,lesson_id:l.id,...payload,updated_at:new Date().toISOString()});
+   if(result.error)throw result.error;
+   Object.assign(row,payload);
+  };
+  window.InteractiveLearning.mount({
+   host,lesson:l,progress:row,
+   onSaveNotes:async notes=>{await saveProgress({status:row.status==='completed'?'completed':'started',progress:Math.max(Number(row.progress||10),30),notes});toast('Конспект сохранён');await loadTrainingView();},
+   onComplete:async({notes,quizScore})=>{const payload={status:'completed',progress:100,notes,quiz_score:quizScore,completed_at:new Date().toISOString()};try{await saveProgress(payload);}catch(error){if(!/completed_at/i.test(error?.message||''))throw error;delete payload.completed_at;await saveProgress(payload);}toast('Урок завершён');await loadTrainingView();}
+  });
+  return;
+ }
  const facts=Array.isArray(c.facts)?c.facts:[];
  const typeLabel=q=>q.type==='multi_select'?'НЕСКОЛЬКО ОТВЕТОВ':q.type==='true_false'?'ВЕРНО / НЕВЕРНО':'ОДИН ОТВЕТ';
  const shuffle=arr=>{const x=[...arr];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]];}return x;};

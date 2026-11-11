@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Проверка интерактивного курса</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    body{margin:0;padding:20px;background:var(--site-primary,#081018);color:var(--site-secondary-ink,#f4f7f8)}
+    #preview{width:min(1080px,100%);margin:0 auto}
+    @media(max-width:500px){body{padding:10px}}
+  </style>
+</head>
+<body>
+  <main id="preview"></main>
+  <script src="../learning/course-v1.js"></script>
+  <script src="../js/learning-interactive.js"></script>
+  <script>
+    (async function(){
+      const lesson=window.TRADING_COURSE_V1.lesson;
+      let completed=false;
+      window.InteractiveLearning.mount({
+        host:document.getElementById('preview'),lesson,progress:{progress:10,notes:''},
+        onSaveNotes:async()=>{},onComplete:async()=>{completed=true;}
+      });
+      const audit={lessonRendered:!!document.querySelector('[data-il-root]'),scenarios:document.querySelectorAll('[data-il-scenario]').length,noVideo:!document.querySelector('video,iframe'),simulatedLabel:document.body.innerText.includes('СМОДЕЛИРОВАННЫЕ СИТУАЦИИ')};
+      const scenario=document.querySelector('[data-il-scenario]');
+      const before=scenario.querySelector('[data-il-chart] svg').getAttribute('aria-label');
+      scenario.querySelector('[data-il-next]').click();
+      const after=scenario.querySelector('[data-il-chart] svg').getAttribute('aria-label');
+      audit.scenarioAdvanced=before!==after;
+      const practice=document.querySelector('[data-il-practice]');
+      audit.futureHidden=practice.querySelector('svg').getAttribute('aria-label').includes('10');
+      practice.querySelector('input[value="1"]').checked=true;
+      practice.querySelector('[data-il-practice-submit]').click();
+      audit.futureRevealed=practice.dataset.revealed==='true'&&practice.querySelector('svg').getAttribute('aria-label').includes('14');
+      audit.practiceFeedback=practice.querySelector('[data-il-practice-result]').textContent.trim().length>20;
+      [0,0,1,1].forEach((answer,index)=>{document.querySelector(`input[name="il-q-${index}"][value="${answer}"]`).checked=true;});
+      document.querySelector('[data-il-quiz]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+      audit.quizScore=document.querySelector('[data-il-quiz-result]').textContent.includes('100%');
+      const complete=document.querySelector('[data-il-complete]');
+      audit.completionEnabled=!complete.disabled;
+      complete.click();
+      await Promise.resolve();
+      audit.completed=completed;
+      audit.horizontalOverflow=document.documentElement.scrollWidth>document.documentElement.clientWidth;
+      document.body.dataset.audit=JSON.stringify(audit);
+      document.body.dataset.auditReady='true';
+    })().catch(error=>{document.body.dataset.auditError=String(error&&error.stack||error);document.body.dataset.auditReady='error';});
+  </script>
+</body>
+</html>
