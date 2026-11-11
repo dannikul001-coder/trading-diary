@@ -1,6 +1,7 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');global.window={};require('../learning/course-v1.js');require('../learning/course-models.js');require('../learning/course-guides.js');require('../learning/course-extension.js');const course=window.TRADING_COURSE_V1;
+const {test}=require('node:test');const assert=require('node:assert/strict');global.window={};require('../learning/course-v1.js');require('../learning/course-models.js');require('../learning/course-guides.js');require('../learning/course-extension.js');require('../learning/course-editorial.js');require('../js/learning-labs.js');const course=window.TRADING_COURSE_V1;
+for(const part of ['a','b','c'])require('../learning/course-editorial-'+part+'.js');
 test('Every program entry has a complete distinct model lesson',()=>{
-  const entries=course.program.flatMap(m=>m.lessons);assert.equal(entries.length,72);assert.equal(course.lessons.length,72);assert.equal(new Set(course.lessons.map(l=>l.id)).size,72);assert.equal(new Set(course.lessons.map(l=>l.excerpt)).size,72);
+  const entries=course.program.flatMap(m=>m.lessons),expected=entries.length;assert.ok(expected>=73);assert.equal(course.lessons.length,expected);assert.equal(new Set(course.lessons.map(l=>l.id)).size,expected);assert.equal(new Set(course.lessons.map(l=>l.excerpt)).size,expected);
   for(const entry of entries){const lesson=course.lessons.find(l=>l.key===entry.id);assert.ok(lesson,entry.id);const m=lesson.content.interactiveLesson;assert.equal(m.stages.length,4);assert.ok(m.stages.every(s=>s.body.trim()&&s.task.trim()));assert.ok(m.quiz.length>=2);for(const q of [m.practice,...m.quiz])assert.equal(q.choices.filter(c=>c.correct).length,1);}
 });
 test('Candles, blind futures and aggregation obey price invariants',()=>{
@@ -10,3 +11,5 @@ test('Candles, blind futures and aggregation obey price invariants',()=>{
   }
 });
 test('Module dependencies point to earlier modules',()=>{course.program.forEach((m,i)=>m.dependsOn.forEach(id=>assert.ok(course.program.findIndex(x=>x.id===id)<i)));});
+test('Reviewed points refer to available lessons and usable exercises',()=>{const registry=require('../learning/editorial-review.json');for(const review of registry.reviews)for(const key of review.lessons)assert.ok(course.lessons.some(l=>l.key===key),'Missing reviewed lesson '+key);for(const lesson of course.lessons)for(const exercise of lesson.content.interactiveLesson.sourceExercises||[]){assert.equal(exercise.choices.filter(c=>c.correct).length,1);assert.ok(exercise.choices.every(c=>c.feedback));}});
+test('Forming candle reveals only observed extrema, and late entries use their own price',()=>{const labs=window.LearningLabs;assert.deepEqual(labs.candleAt(0),{o:100,h:100,l:100,last:100,closed:false});assert.deepEqual(labs.candleAt(2),{o:100,h:104,l:99,last:99,closed:false});assert.deepEqual(labs.candleAt(5),{o:100,h:106,l:98,last:102,closed:true});assert.equal(labs.signalAt(0).win,true);assert.deepEqual(labs.signalAt(1),{entryPrice:103,expiryPrice:101,minutesLeft:2,win:false});assert.equal(labs.patterns[2].closed,false);});

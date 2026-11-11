@@ -1,6 +1,8 @@
 # Расширение курса по доступной подборке
 
-Дата: 11 ноября 2026. Курс содержит 72 урока в 16 модулях: 26 базовых и 46 добавленных.
+Дата: 11 ноября 2026. Курс содержит 81 урок в 16 модулях: 26 базовых и 55 добавленных. Текстовый каталог и соответствующие расшифровки всех 424 записей проверены вручную; это отдельно от незавершённой проверки вложений.
+
+Продолжающаяся ручная сверка описана в [ACADEMY_EDITORIAL_REVIEW.md](ACADEMY_EDITORIAL_REVIEW.md). Актуальные числа даёт `scripts/editorial-progress.cjs`; тематическое сопоставление ниже не заменяет этот реестр.
 
 ## Добавленные блоки
 
@@ -36,6 +38,10 @@ MACD и RSI не объявляются измерителями объёма. �
 - [RSI — TradingView](https://www.tradingview.com/support/solutions/43000502338-relative-strength-index-rsi/)
 - [Supertrend — TradingView](https://www.tradingview.com/support/solutions/43000634738-supertrend/)
 - [Vortex — TradingView](https://www.tradingview.com/support/solutions/43000591352-vortex-indicator/)
+- [Parabolic SAR: формула, ограничения и начальное значение — TradingView](https://www.tradingview.com/support/solutions/43000502597-parabolic-sar-sar/)
+- [DeMarker: формула — MetaTrader](https://www.metatrader5.com/en/mobile-trading/iphone/help/chart/indicators/oscillators/demarker)
+- [Линейная регрессия: окно и границы — TradingView](https://www.tradingview.com/support/solutions/43000644936-linear-regression/)
+- [Schaff Trend Cycle: устройство — thinkorswim](https://toslc.thinkorswim.com/center/reference/Tech-Indicators/studies-library/R-S/SchaffTrendCycle)
 - [Состав технических рейтингов — TradingView](https://www.tradingview.com/support/solutions/43000475547-what-do-the-ratings-in-the-screener-mean/)
 - [Календарь Employment Situation — BLS](https://www.bls.gov/schedule/news_release/empsit.htm)
 - [Описание бинарных контрактов и рисков — Investor.gov](https://www.investor.gov/protect-your-investments/fraud/types-fraud/binary-options-fraud)

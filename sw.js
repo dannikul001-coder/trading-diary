@@ -1,8 +1,8 @@
-const CACHE='trading-diary-v9-extended-academy-20261111';
+const CACHE='trading-diary-v9-2-editorial-academy-20261111';
 const ASSETS=['./','./index.html','./style.css','./automated-diary.css','./js/automated-diary.js','./js/data.js','./js/storage.js','./js/statistics.js','./js/charts.js','./js/settings.js','./js/auth.js','./learning/course-v1.js','./js/learning-interactive.js','./js/admin.js','./js/currency.js','./js/supabase-config.js','./js/supabase.js','./js/import-center.js','./js/app.js','./manifest.json','./assets/logo.svg'];
 
 self.addEventListener('install',event=>event.waitUntil(
-  caches.open(CACHE).then(cache=>cache.addAll([...ASSETS,'./learning-models.css','./learning-library.css','./learning/course-models.js','./learning/course-guides.js','./learning/course-extension.js','./js/learning-indicators.js','./js/learning-math.js','./js/learning-models.js','./js/learning-library.js'])).then(()=>self.skipWaiting())
+  caches.open(CACHE).then(cache=>cache.addAll([...ASSETS,'./learning-models.css','./learning-library.css','./learning/course-models.js','./learning/course-guides.js','./learning/course-extension.js','./learning/course-editorial.js','./learning/course-editorial-a.js','./learning/course-editorial-b.js','./learning/course-editorial-c.js','./js/learning-indicators.js','./js/learning-math.js','./js/learning-labs.js','./js/learning-labs-advanced.js','./js/learning-models.js','./js/learning-library.js'])).then(()=>self.skipWaiting())
 ));
 
 self.addEventListener('activate',event=>event.waitUntil(
