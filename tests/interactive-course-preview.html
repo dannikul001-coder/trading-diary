@@ -23,6 +23,7 @@
         host:document.getElementById('preview'),lesson,progress:{progress:10,notes:''},
         onSaveNotes:async()=>{},onComplete:async()=>{completed=true;}
       });
+      if(!new URLSearchParams(location.search).has('audit'))return;
       const audit={lessonRendered:!!document.querySelector('[data-il-root]'),scenarios:document.querySelectorAll('[data-il-scenario]').length,noVideo:!document.querySelector('video,iframe'),simulatedLabel:document.body.innerText.includes('СМОДЕЛИРОВАННЫЕ СИТУАЦИИ')};
       const scenario=document.querySelector('[data-il-scenario]');
       const before=scenario.querySelector('[data-il-chart] svg').getAttribute('aria-label');

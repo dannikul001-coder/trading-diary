@@ -7,7 +7,7 @@ $browser = @(
 if (-not $browser) { throw 'Chrome or Edge is required for the interactive course audit.' }
 
 $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'interactive-course-preview.html')).Path -replace '\\','/'
-$url = 'file:///' + $fixture
+$url = 'file:///' + $fixture + '?audit=1'
 $profile = Join-Path $env:TEMP ('trading-diary-course-audit-' + [guid]::NewGuid().ToString('N'))
 $previousErrorAction = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
