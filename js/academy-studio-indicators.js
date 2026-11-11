@@ -4,11 +4,42 @@
   if(!I||!course)return;
   const registry=window.TD_STUDIO_LESSONS=window.TD_STUDIO_LESSONS||{};
   const names={ma:'Скользящие средние',rsi:'RSI — относительная сила',stochastic:'Stochastic — положение в диапазоне',macd:'MACD — разность средних',fractals:'Фракталы: центр и подтверждение',keltner:'Канал Кельтнера',bollinger:'Полосы Боллинджера',ao:'Awesome Oscillator (AO)',momentum:'Momentum — сравнение закрытий',supertrend:'Supertrend',vortex:'Vortex: VI+ и VI−',sar:'Parabolic SAR',demarker:'DeMarker',regression:'Регрессионный канал',heikin:'Heikin Ashi',donchian:'Канал Donchian',stc:'Schaff Trend Cycle (STC)','dual-supertrend':'Два Supertrend на Heikin Ashi'};
+  const explanations={
+    ma:['Средняя превращает несколько последних цен в одно число. Она помогает заметить общий ход, когда отдельные свечи отвлекают колебаниями.','Сначала найди свечи, затем линию среднего. Быстрая линия использует меньше свечей и обычно поворачивает раньше медленной.','Пересечение','Вчера быстрая линия была ниже медленной, сегодня закрылась выше: это новое пересечение, а не просто положение выше.'],
+    votes:['Сводка — короткий список ответов «да/нет», вычисленных по цене. Она экономит место, но скрывает устройство отдельных правил.','Прочитай каждый голос под панелями. Проверь, какие из них используют те же закрытия.','Зависимые показатели','Несколько расчётов могут повторять одну и ту же информацию о цене.'],
+    rsi:['RSI показывает, какие недавние изменения закрытий преобладали: повышения или снижения. Это шкала силы прошедшего движения, а не вероятность следующего роста.','Смотри на линию RSI и подписанные уровни 30 и 70. Выше 70 — недавние повышения преобладали; это ещё не команда продавать.','Порог','Заранее выбранное число, с которым сравнивают значение линии.'],
+    stochastic:['Stochastic показывает, насколько близко закрытие к верхней или нижней части недавнего диапазона. Две линии сглаживают это положение разными способами.','Сначала прочитай %K и %D, затем уровни 20/80. Положение одной линии выше другой не означает, что они пересеклись именно сейчас.','Диапазон окна','Расстояние между наибольшим максимумом и наименьшим минимумом выбранных свечей.'],
+    macd:['MACD сравнивает быструю и медленную средние цены. Положительная линия означает, что быстрая средняя выше медленной. Столбцы сравнивают сам MACD с его сигнальной линией.','Найди нулевую горизонталь. Затем сравни сплошную линию MACD с пунктирной сигнальной: их пересечение — другое событие, чем переход MACD через ноль.','Сигнальная линия','Сглаженное значение MACD; гистограмма показывает разность между ними.'],
+    fractals:['Фрактал отмечает локальную вершину или впадину: центральная свеча выделяется среди двух соседей слева и двух справа.','Метка стоит на центре, но получить её можно только после двух правых закрытий. Последние две свечи ещё нельзя подтвердить как центры.','Подтверждение','Момент, когда все необходимые для правила данные уже доступны.'],
+    keltner:['Канал Кельтнера показывает среднюю цену и обычный размер колебаний вокруг неё. Когда диапазоны свечей растут, канал может расширяться.','Найди середину и две крайние линии. Сравни закрытие с верхней и нижней границей; касание границы само по себе не обещает возврат.','ATR','Сглаженный диапазон свечей с учётом разрыва относительно предыдущего закрытия.'],
+    bollinger:['Полосы Боллинджера показывают, насколько закрытия разбросаны вокруг их среднего. Здесь две пары полос: ближняя и дальняя, с общим центром.','Сначала найди среднюю линию, затем ближние и дальние границы. Выход и последующее возвращение внутрь — два разных события.','Стандартное отклонение σ','Численная мера разброса закрытий относительно среднего.'],
+    ao:['AO сравнивает короткое и длинное средние середин свечей. Высота столбца показывает их разность.','Смотри отдельно на сторону относительно нуля и на изменение высоты от предыдущего столбца. Положительный столбец тоже может уменьшаться.','Медианная цена свечи','Здесь это полусумма максимума и минимума, а не средняя цена всех сделок.'],
+    momentum:['Momentum сравнивает цену сейчас с ценой десять свечей назад. В этой версии 100 означает, что обе цены равны.','Выше 100 — текущее закрытие выше прошлого; ниже 100 — ниже. Изменение наклона линии не равно переходу через 100.','База сравнения','Закрытие десять свечей назад, с которым сопоставляют текущее.'],
+    supertrend:['Supertrend строит переключаемую линию на расстоянии, связанном с диапазоном свечей. Линия помогает описать текущую сторону расчётного фильтра.','Сравни закрытие с линией. Проверь, поменялась ли сторона после последнего закрытия, а не только где линия находится сейчас.','Множитель ATR','Коэффициент, который задаёт расстояние расчётной границы от середины свечи.'],
+    vortex:['Vortex сравнивает два вида движения между соседними свечами. Линии VI+ и VI− позволяют увидеть, какая величина сейчас больше.','Прочитай обе линии. Новое пересечение проверяют по двум соседним закрытиям; линия выше другой — это состояние, которое могло начаться раньше.','Нормировка','Деление движений на общий диапазон окна для сопоставимой шкалы.'],
+    sar:['Parabolic SAR рисует точки, которые следуют за выбранным направлением цены и могут перейти на другую сторону. Расстояние меняется по заранее заданному алгоритму.','Найди точки и сравни их с ценой. Смена стороны точки и изменение последовательности вершин/впадин — разные проверки.','Ускорение AF','Коэффициент сближения следующей точки с крайним значением выбранного направления.'],
+    demarker:['DeMarker сравнивает обновления соседних максимумов и минимумов. Рост показателя означает относительное преобладание обновлений вверх в выбранном окне.','Смотри на шкалу 0–100 и подписанные уровни 20/80. Порог, его пересечение и последующий разворот цены — разные события.','Обновление экстремума','Насколько текущий максимум выше предыдущего или текущий минимум ниже предыдущего.'],
+    regression:['Регрессионный канал приближает последние закрытия прямой и измеряет их отклонения от неё. Он помогает описать наклон и разброс выбранного окна.','Линия здесь соединяет концы отдельных окон по 20 свечей. Сравни цену с серединой и границами; не переноси окно после результата.','Остаток','Разность фактического закрытия и значения подобранной прямой.'],
+    heikin:['Heikin Ashi заменяет исходные свечи вычисленными. Сглаженный цвет легче читать, но он может отличаться от цвета реальной свечи.','Сравни исходное и вычисленное закрытия. Для результата реальной сделки нужна исходная цена, а не нарисованное HA-закрытие.','Синтетическая цена','Результат преобразования исходных цен; сделка по такой цене не подразумевается.'],
+    donchian:['Donchian обводит наибольший максимум и наименьший минимум последних свечей. Середина канала находится ровно между этими границами.','Здесь окно 22 и текущая свеча включена. Для проверки выхода за прежнюю границу сравнивай с каналом предыдущей свечи.','Окно','Последние n свечей, участвующие в текущем расчёте.'],
+    stc:['STC превращает разность средних в сглаженную шкалу от 0 до 100. Это ещё один способ описать изменение ценового движения.','Найди уровни 35/65. Наклон линии, пересечение порога и обещание будущего исхода — разные вещи; последнее индикатор не даёт.','Цикл расчёта','Окно нормировки внутри цепочки преобразований, а не гарантированный период повторения рынка.'],
+    'dual-supertrend':['Сначала реальные свечи преобразуют в Heikin Ashi. Затем по этим вычисленным свечам строят два Supertrend с разной чувствительностью.','Проследи каждую линию отдельно: когда первая поменяла сторону и когда вторая согласовалась. Не заменяй реальную цену исполнения HA-ценой.','Согласование фильтров','Одновременное выполнение двух заданных условий; это не доказательство их независимости.']
+  };
+  const combinationSteps={
+    '13.1':['На закрытии сравни SMA(2) и SMA(5).','Для пересечения проверь также предыдущее закрытие.','Если версия требует фрактал, дождись двух правых свечей; без него это другая версия.'],
+    '13.2':['Отметь Close внутри канала, выше него или ниже.','Отдельно сравни VI+ и VI− и проверь новое пересечение.','Зафиксируй, нужны ли оба условия; при конфликте не выбирай удобную панель.'],
+    '13.3':['До исхода выбери гипотезу: возврат у области или продолжение.','Укажи область на цене и положение RSI.','Назови событие подтверждения выбранной гипотезы; число RSI не выбирает её за тебя.'],
+    '13.4':['Проверь, находится ли %K в выбранной зоне 20/80.','Проверь новое пересечение %K/%D по двум закрытиям.','Отдельно опиши направление вершин и впадин цены.'],
+    '13.5':['Сравни Close с линией Supertrend.','Сравни Close со SMA(5).','Отметь все переключения, включая те, за которыми движение не продолжилось.'],
+    '13.6':['Отметь выход за выбранную ближнюю или дальнюю полосу.','Дождись закрытия обратно внутри именно этой полосы.','Не подменяй версию возврата версией продолжения после результата.'],
+    '13.8':['Сначала проверь, что линии рассчитаны по Heikin Ashi.','Отметь смену стороны ATR(21) ×1 и ATR(14) ×2 отдельно.','Проверь согласование на закрытии, результат считай по исходным ценам.'],
+    '13.10':['Отметь касание границы Donchian(22).','Отдельно запиши наклон STC и положение относительно 35/65.','Заранее выбери событие: изменение наклона или пересечение порога; неизвестные настройки оставь неизвестными.']
+  };
   const frames=new WeakMap(),history=new WeakMap();
   const canAnimate=(before,after)=>!!before&&!(before.revealed&&!after.revealed)&&before.count<=after.count;
   function animateGeometry(host,meta){
     if(!host.querySelectorAll)return;
-    const nodes=Array.from(host.querySelectorAll('svg path,svg rect,svg line,svg circle'));
+    const nodes=Array.from(host.querySelectorAll('.as-indicator-svg path,.as-indicator-svg rect,.as-indicator-svg line,.as-indicator-svg circle'));
     const attributes=['x','y','width','height','x1','x2','y1','y2','cx','cy','r','d'];
     const current=nodes.map(node=>({tag:node.tagName,attrs:Object.fromEntries(attributes.map(a=>[a,node.getAttribute(a)]).filter(v=>v[1]!==null))}));
     const before=history.get(host);history.set(host,{...meta,geometry:current});
@@ -88,38 +119,68 @@
     return {bars:source,panels,count,parameter};
   }
   function graph(source,model,candles=false,label='',width=740){
-    const start=Math.max(0,source.length-32),shown=source.slice(start),lines=model?model.lines:[],bounded=model&&model.bounded;
+    const start=Math.max(0,source.length-(width<420?24:40)),shown=source.slice(start),lines=model?model.lines:[],bounded=model&&model.bounded;
     const nums=[...(candles?shown.flatMap(b=>[b.h,b.l]):[]),...lines.flatMap(l=>l.values.slice(start).filter(Number.isFinite)),...(model?model.levels:[])];
     if(!nums.length)return '<p class="as-indicator-warmup">Нужна история для полного окна: значения ещё не определены.</p>';
     let low=bounded?0:Math.min(...nums),high=bounded?100:Math.max(...nums);if(low===high){low-=1;high+=1;}const pad=(high-low)*.08;if(!bounded){low-=pad;high+=pad;}
-    const right=width-16,x=i=>42+i*(right-42)/Math.max(1,shown.length-1),y=v=>18+(high-v)/(high-low)*144;
+    const right=width-18,x=i=>46+i*(right-46)/Math.max(1,shown.length-1),y=v=>24+(high-v)/(high-low)*236;
     const grid=[low,(low+high)/2,high].map(v=>'<line x1="40" x2="'+right+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text x="36" y="'+(y(v)+4)+'" text-anchor="end">'+v.toFixed(1)+'</text>').join('');
     const candle=shown.map((b,i)=>'<g class="as-indicator-candle '+(b.c>=b.o?'as-indicator-up':'as-indicator-down')+'"><line x1="'+x(i)+'" x2="'+x(i)+'" y1="'+y(b.h)+'" y2="'+y(b.l)+'"/><rect x="'+(x(i)-4)+'" y="'+Math.min(y(b.o),y(b.c))+'" width="8" height="'+Math.max(1,Math.abs(y(b.o)-y(b.c)))+'"/></g>').join('');
     const paths=lines.map((l,j)=>{let started=false;const dot=model.type==='fractals'||model.type==='sar'&&j===1,hist=model.type==='ao'||model.type==='macd'&&j===2;
       const path=l.values.slice(start).map((v,i)=>{if(!Number.isFinite(v)){started=false;return '';}const p=(started?'L':'M')+x(i)+','+y(v);started=true;return p;}).join(' ');
       const marks=l.values.slice(start).map((v,i)=>Number.isFinite(v)?hist?'<rect x="'+(x(i)-3)+'" y="'+Math.min(y(v),y(0))+'" width="6" height="'+Math.max(1,Math.abs(y(v)-y(0)))+'"/>':dot?'<circle cx="'+x(i)+'" cy="'+y(v)+'" r="4"/>':'':'').join('');
       return '<g class="as-indicator-series as-indicator-series-'+j+'">'+(dot||hist?'':'<path d="'+path+'"/>')+marks+'</g>';}).join('');
-    return '<svg viewBox="0 0 '+width+' 190" role="img" aria-label="'+esc(label)+'"><g class="as-indicator-grid">'+grid+'</g>'+(model?model.levels.map(v=>'<path class="as-indicator-level" d="M40 '+y(v)+'H'+right+'"/>').join(''):'')+(candles?candle:'')+paths+'<text class="as-indicator-axis" x="42" y="184">Свеча '+(start+1)+'</text><text class="as-indicator-axis" x="'+right+'" y="184" text-anchor="end">'+source.length+'</text></svg>';
+    return '<svg viewBox="0 0 '+width+' 298" role="img" aria-label="'+esc(label)+'"><g class="as-indicator-grid">'+grid+'</g>'+(model?model.levels.map(v=>'<path class="as-indicator-level" d="M40 '+y(v)+'H'+right+'"/><text class="as-indicator-threshold" x="'+(right-3)+'" y="'+(y(v)-5)+'" text-anchor="end">'+(v===0?'Ноль · 0':v)+'</text>').join(''):'')+(candles?candle:'')+paths+'<text class="as-indicator-axis" x="46" y="286">Свеча '+(start+1)+'</text><text class="as-indicator-axis" x="'+right+'" y="286" text-anchor="end">'+source.length+'</text></svg>';
+  }
+  function reading(panel,source){
+    const fmt=v=>Number.isFinite(v)?v.toFixed(2):'ещё нет значения',a=panel.lines[0].values,b=panel.lines[1]?.values,i=source.length-1,v=a[i],previous=a[i-1];
+    const cross=b&&[v,previous,b[i],b[i-1]].every(Number.isFinite)?previous<=b[i-1]&&v>b[i]?'На последнем закрытии первая линия пересекла вторую вверх.':previous>=b[i-1]&&v<b[i]?'На последнем закрытии первая линия пересекла вторую вниз.':'На последнем закрытии нового пересечения двух линий нет.':'';
+    if(panel.type==='fractals')return 'Круг отмечает центр поворота. Подтверждение доступно только через две правые свечи; последние две центральные метки ещё неизвестны.';
+    if(!Number.isFinite(v))return 'Для полного расчёта ещё недостаточно закрытых свечей. Пустое место означает отсутствие значения, а не ноль.';
+    if(panel.type==='rsi')return 'RSI(14) = '+fmt(v)+'. '+(v>70?'Выше 70: повышения преобладали.':v<30?'Ниже 30: снижения преобладали.':'Между 30 и 70.')+' '+(previous<=70&&v>70?'Сейчас пересечён порог 70 вверх.':previous>=30&&v<30?'Сейчас пересечён порог 30 вниз.':'Новое пересечение внешнего порога сейчас не подтверждено.');
+    if(panel.type==='macd')return 'MACD '+fmt(v)+(v>=0?' выше нуля: EMA(12) выше EMA(26).':' ниже нуля: EMA(12) ниже EMA(26).')+' '+cross+' Столбец = MACD − сигнальная.';
+    if(['stochastic','vortex','ma'].includes(panel.type))return panel.lines[0].label+' = '+fmt(v)+(b?'; '+panel.lines[1].label+' = '+fmt(b[i])+'. '+cross:'.');
+    if(['demarker','stc'].includes(panel.type)){const levels=panel.levels;return 'Значение '+fmt(v)+'. '+(v<levels[0]?'Ниже '+levels[0]:v>levels.at(-1)?'Выше '+levels.at(-1):'Между '+levels.join(' и '))+'. '+(v>previous?'Линия растёт.':v<previous?'Линия снижается.':'Линия не изменилась.')+' Наклон и пересечение порога проверяют отдельно.';}
+    if(['ao','momentum'].includes(panel.type)){const zero=panel.type==='ao'?0:100;return 'Сейчас '+fmt(v)+', '+(v>=zero?'выше':'ниже')+' нейтрального уровня '+zero+'. По сравнению с предыдущим закрытием значение '+(v>previous?'увеличилось.':v<previous?'уменьшилось.':'не изменилось.');}
+    if(panel.type==='fractals')return 'Круг отмечает центр поворота. Подтверждение доступно только через две правые свечи; последние две центральные метки ещё неизвестны.';
+    if(['keltner','bollinger','donchian','regression'].includes(panel.type)){const close=source[i].c;return 'Исходный Close = '+fmt(close)+'. '+panel.lines.map(l=>l.label+' '+fmt(l.values[i])).join('; ')+'. Сравни положение цены с границами; касание и последующее возвращение — разные события.';}
+    if(panel.type==='heikin')return 'Исходный Close = '+fmt(v)+'; вычисленный HA Close = '+fmt(b[i])+'. Разница появилась из преобразования OHLC, а не из другой сделки.';
+    return 'Исходный Close = '+fmt(source[i].c)+'. '+panel.lines.map(l=>l.label+' '+fmt(l.values[i])).join('; ')+'. Сравни сторону каждой линии сейчас и на предыдущем закрытии.';
   }
   function render(key,host,state){
     state={...state,revealed:state.practice?!!state.revealed:Number(state.step)===4};
-    const spec=specs[key];let parameter='default';
-    function draw(){if(frames.has(host)){window.cancelAnimationFrame(frames.get(host));frames.delete(host);}const d=data(key,state,parameter),latest=d.bars.at(-1),last=d.count-1,plot=(...args)=>graph(...args,Math.max(280,Math.min(740,(host.clientWidth||764)-24)));
+    const spec=specs[key],teaching=registry[key].teaching;let parameter='default',terminalCleanups=[];
+    function draw(){terminalCleanups.forEach(fn=>fn());terminalCleanups=[];if(frames.has(host)){window.cancelAnimationFrame(frames.get(host));frames.delete(host);}const d=data(key,state,parameter),latest=d.bars.at(-1),last=d.count-1,plot=(...args)=>graph(...args,Math.max(232,Math.min(1100,(host.clientWidth||764)-8))).replace('<svg ','<svg class="as-indicator-svg" ');
       const overlay=['ma','fractals','keltner','bollinger','sar','regression','heikin','donchian','supertrend','dual-supertrend'];
       const warming=!d.panels.some(p=>p.lines.some(l=>l.values.some(Number.isFinite)));
-      const panels=(warming?'<p class="as-indicator-warmup" role="status">Пока показано '+d.count+' свечей: цепочке расчёта ещё нужна история. Пропуски не заполняются будущими значениями; переходи к следующим закрытиям.</p>':'')+d.panels.map(p=>'<section class="as-indicator-panel"><h4>'+esc(names[p.type])+'</h4>'+plot(d.bars,p,overlay.includes(p.type),spec[1]+': '+names[p.type])+'<ul class="as-indicator-values">'+p.lines.map((l,i)=>'<li class="as-indicator-label-'+i+'">'+esc(l.label)+': <strong>'+(Number.isFinite(l.values[last])?l.values[last].toFixed(2):'нет значения')+'</strong></li>').join('')+'</ul></section>').join('');
+      const panels=(warming?'<p class="as-indicator-warmup" role="status">Пока показано '+d.count+' свечей: цепочке расчёта ещё нужна история. Пропуски не заполняются будущими значениями; переходи к следующим закрытиям.</p>':'')+d.panels.map((p,index)=>'<section class="as-indicator-panel"><h4>'+esc(names[p.type])+'</h4><p class="as-indicator-reading">'+esc(reading(p,d.bars))+'</p><div data-as-indicator-overlay="'+index+'">'+plot(d.bars,p,overlay.includes(p.type),spec[1]+': '+names[p.type])+'</div><ul class="as-indicator-values">'+p.lines.map((l,i)=>'<li class="as-indicator-label-'+i+'">'+esc(l.label)+': <strong>'+(Number.isFinite(l.values[last])?l.values[last].toFixed(2):'нет значения')+'</strong></li>').join('')+'</ul></section>').join('');
       let extra='';
       if(spec[0]==='votes'){const c=d.bars.map(b=>b.c),a=I.sma(c,2).at(-1),b=I.sma(c,5).at(-1),r=I.rsi(c,14).at(-1),votes=[['Close > SMA5',latest.c>b],['SMA2 > SMA5',a>b],['RSI14 > 50',r>50]];extra='<div class="as-indicator-votes">'+votes.map(v=>'<span>'+v[0]+': '+(v[1]?'да':'нет')+'</span>').join('')+'<strong>'+votes.filter(v=>v[1]).length+' из 3 — зависимые расчёты</strong></div>';}
       if(spec[0]==='donchian'){const u=d.panels[0].lines[0].values,fmt=v=>Number.isFinite(v)?v.toFixed(2):'ещё нет полного окна';extra='<p>Верх канала сейчас: '+fmt(u.at(-1))+'; известный до текущей свечи: '+fmt(u.at(-2))+'.</p>';}
       if(spec[0]==='fractals')extra='<p>Последние две свечи не могут иметь подтверждённую центральную метку: правых соседей ещё нет. Метка на t становится доступна на закрытии t+2.</p>';
       if(spec[0]==='heikin'){const ha=I.heikin(d.bars);extra='<h4>Вычисленные свечи Heikin Ashi</h4>'+plot(ha,null,true,'Heikin Ashi: вычисленные OHLC')+'<p>Исходный Close '+latest.c.toFixed(2)+'; HA Close '+ha.at(-1).c.toFixed(2)+'.</p>';}
+      let contextZone;
+      if(key==='13.3'){const high=Math.max(...d.bars.slice(0,20).map(b=>b.h));contextZone={low:high-1,high,label:'Область первых 20 свечей'};extra='<p class="as-indicator-reading">Область отмечена по уже известным первым 20 свечам: '+contextZone.low.toFixed(2)+'–'+contextZone.high.toFixed(2)+'. Текущее закрытие '+latest.c.toFixed(2)+(latest.c>=contextZone.low&&latest.c<=contextZone.high?' внутри области.':' вне области.')+' RSI не заменяет проверку подхода к этой области.</p>'+extra;}
       const canMa=!state.practice&&['11.4','4.3'].includes(key),canPeriod=!state.practice&&['11.13','11.16'].includes(key);
       if(state.practice){const lastCloses=d.bars.slice(77,80).map(b=>b.c.toFixed(4));extra='<p class="as-indicator-inputs">Исходные Close свечей 78–80: '+lastCloses.join(' · ')+'. Вопрос относится к показанному префиксу до свечи 80; после раскрытия сравни изменение расчёта.</p>'+extra;}
-      host.innerHTML='<div class="as-indicator-root"><p class="as-indicator-formula">'+esc(spec[2])+'</p>'+(canMa?'<label>Тип средней <select class="as-indicator-parameter"><option value="default">SMA 2/5</option><option value="ema">EMA 2/5</option></select></label>':canPeriod?'<label>Окно <select class="as-indicator-parameter"><option value="default">'+(key==='11.16'?'22':'14')+'</option><option value="short">10</option></select></label>':'')+'<p class="as-indicator-status">Доступно '+d.count+' из 96 свечей · '+(state.revealed?'продолжение раскрыто':'будущее скрыто')+' · показаны последние '+Math.min(32,d.count)+'</p><section class="as-indicator-panel"><h4>Исходная цена</h4>'+plot(d.bars,null,true,'Исходные OHLC, только доступные свечи')+'</section>'+panels+extra+'<p class="as-indicator-note">'+esc(spec[3])+'</p><p class="as-indicator-note">Один синтетический участок для сравнения расчётов. Это не статистический тест стратегии.</p></div>';
+      const separatePrice=!overlay.includes(d.panels[0].type),checklist=combinationSteps[key];
+      host.innerHTML='<div class="as-indicator-root">'+
+        '<p class="as-indicator-meaning">'+esc(teaching.plain)+'</p><p class="as-indicator-read"><strong>Как читать: </strong>'+esc(teaching.read)+'</p>'+
+        (checklist?'<ol class="as-indicator-checklist">'+checklist.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>':'')+
+        (canMa?'<label>Тип средней <select class="as-indicator-parameter"><option value="default">SMA 2/5</option><option value="ema">EMA 2/5</option></select></label>':canPeriod?'<label>Окно <select class="as-indicator-parameter"><option value="default">'+(key==='11.16'?'22':'14')+'</option><option value="short">10</option></select></label>':'')+
+        '<p class="as-indicator-status">Доступно '+d.count+' из 96 свечей · '+(state.revealed?'продолжение раскрыто':'будущее скрыто')+'</p>'+
+        (separatePrice?'<section class="as-indicator-price"><h4>Цена: исходные свечи</h4><div data-as-indicator-price>'+plot(d.bars,null,true,'Исходные OHLC, только доступные свечи')+'</div></section>':'')+
+        panels+extra+'<details class="as-indicator-formula"><summary>Как получаются числа: формула и параметры</summary><p>'+esc(spec[2])+'</p></details>'+
+        '<p class="as-indicator-note">'+esc(spec[3])+'</p><p class="as-indicator-note">Синтетический учебный участок помогает понять расчёт. Он не проверяет доходность стратегии.</p></div>';
+      const priceHost=host.querySelector('[data-as-indicator-price]');
+      if(window.TDTerminalChart?.mount){
+        if(separatePrice&&priceHost){const fn=window.TDTerminalChart.mount(priceHost,{bars:d.bars,zone:contextZone,caption:'Исходная цена · доступны только '+d.count+' закрытых свечей',id:'price'});if(typeof fn==='function')terminalCleanups.push(fn);}
+        d.panels.forEach((p,index)=>{if(!overlay.includes(p.type)||['fractals','sar'].includes(p.type))return;const target=host.querySelector('[data-as-indicator-overlay="'+index+'"]');if(!target)return;const fn=window.TDTerminalChart.mount(target,{bars:d.bars,series:p.lines,caption:names[p.type]+' · линии рассчитаны по доступным свечам',id:'price'});if(typeof fn==='function')terminalCleanups.push(fn);});
+      }
       const control=host.querySelector('.as-indicator-parameter');if(control){control.value=parameter;control.onchange=()=>{parameter=control.value;draw();};}
       animateGeometry(host,{revealed:!!state.revealed,count:d.count});
     }
-    draw();return ()=>{if(frames.has(host)){window.cancelAnimationFrame(frames.get(host));frames.delete(host);}host.innerHTML='';};
+    draw();return ()=>{terminalCleanups.forEach(fn=>fn());if(frames.has(host)){window.cancelAnimationFrame(frames.get(host));frames.delete(host);}host.innerHTML='';};
   }
   function practiceFor(key,spec){
     const d=data(key,{practice:true}),first=d.panels[0],focus=first.lines[['sar','regression','heikin','dual-supertrend'].includes(first.type)?1:0],last=focus.values.at(-1),value=Number.isFinite(last)?last.toFixed(2):'ещё не определено';
@@ -167,14 +228,18 @@
   for(const [key,spec] of Object.entries(specs)){
     const lesson=course.lessons.find(l=>l.key===key);if(!lesson)throw new Error('Missing indicator lesson '+key);
     const m=lesson.content.interactiveLesson,g=m.guide;
+    const words=explanations[spec[0]]||explanations.ma,practiceData=data(key,{practice:true}),exampleRead=practiceData.panels.map(p=>names[p.type]+': '+reading(p,practiceData.bars)).join(' ');
+    const teaching={goal:g.goal||spec[1],plain:words[0],read:words[1],example:'В самостоятельном участке остановимся на свече 80. '+exampleRead+' Сначала запиши наблюдение, затем открой продолжение и проверь, сохранилось ли состояние.',terms:[{term:words[2],meaning:words[3]},{term:'Закрытие свечи (Close)',meaning:'Последняя известная цена завершённого интервала; по ней проверяют событие на этом шаге.'}],takeaway:spec[3]};
+    if(combinationSteps[key]){teaching.plain='Этот вариант соединяет несколько ценовых условий. Проверяй их по порядку. '+g.plain;teaching.read=combinationSteps[key].join(' ');}
+    if(key==='4.3'){teaching.plain=explanations.votes[0]+' Средние и RSI здесь получены из одной последовательности закрытий.';teaching.read=explanations.votes[1];}
     const stages=[
-      {title:spec[1],body:spec[2],task:'Прочитай входные величины. Посмотри, каким линиям ещё не хватает истории.'},
-      {title:'Окно и доступные данные',body:g.plain,task:spec[0]==='fractals'?'Найди центральную свечу и отсчитай два правых закрытия.':'Сравни исходную цену с расчётом; назови окно и шкалу.'},
-      {title:'Наблюдаемое событие',body:['4.2','4.3'].includes(key)?'Сопоставь среднюю с исходными закрытиями. Числа линии получены из тех же свечей, а не из отдельного источника.':['11.11','13.6'].includes(key)?'Сформулируй гипотезу по текущим показаниям. Сравнение продолжений откроется в последней сцене.':g.action,task:spec[3]},
-      {title:'Граница правила',body:g.trap,task:'Сформулируй отдельно наблюдение и условие отмены. Не используй ещё скрытые свечи.'},
-      {title:'Сравнение продолжений',body:spec[3],task:'Сравни две ветки после свечи 80. Какие показания поменялись после новых цен? Затем перейди к отдельному участку практики: его продолжение снова скрыто.'}
+      {title:'Читаем: '+names[spec.slice(4)[0]],body:teaching.plain,task:teaching.read},
+      {title:spec[1]+': читаем числа',body:g.plain,task:'Сопоставь подпись значения над панелью с последним закрытием. '+words[1]},
+      {title:combinationSteps[key]?'Проверяем условия по порядку':'Состояние или новое событие?',body:combinationSteps[key]?combinationSteps[key].join(' '):words[3],task:combinationSteps[key]?combinationSteps[key][1]:spec[3]},
+      {title:'Когда вывод не подходит',body:g.trap,task:'На текущем участке назови один факт, которого недостаточно для вывода. '+spec[3]},
+      {title:'Два продолжения одного наблюдения',body:'До свечи 80 обе ветки совпадают. После неё новые цены меняют расчёт. '+spec[3],task:'Переключи продолжение и сравни подписанные значения. Затем перейди к новому участку практики: его будущее снова скрыто.'}
     ];
-    registry[key]={kind:'indicator',alternate:true,alternateFromStep:4,alternateAfterReveal:true,stages,render:(host,state)=>render(key,host,state||{}),practice:practiceFor(key,spec),quiz:m.quiz,reflection:'Запиши формулу или цепочку расчёта, момент доступности события и одно условие, которое расчёт не подтверждает.'};
+    registry[key]={kind:'indicator',teaching,alternate:true,alternateFromStep:4,alternateAfterReveal:true,stages,render:(host,state)=>render(key,host,state||{}),practice:practiceFor(key,spec),quiz:m.quiz,reflection:'Своими словами: что измеряет линия, где на графике видно событие и какого будущего вывода из него сделать нельзя?'};
   }
   window.TD_STUDIO_INDICATORS={keys:Object.keys(specs),inspect:data,canAnimate};
 })();

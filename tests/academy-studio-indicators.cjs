@@ -5,6 +5,14 @@ for(const file of ['course-v1','course-models','course-guides','course-extension
 require('../js/learning-indicators');
 require('../js/academy-studio-indicators');
 const api=window.TD_STUDIO_INDICATORS,records=window.TD_STUDIO_LESSONS,I=window.LearningIndicators;
+test('beginner teaching explains meaning before formulas and provides an actual worked reading',()=>{
+  for(const key of api.keys){const t=records[key].teaching;for(const f of ['goal','plain','read','example','takeaway'])assert.ok(typeof t[f]==='string'&&t[f].length>10,key+' '+f);assert.ok(t.terms.length>=2);assert.ok(t.terms.every(x=>x.term&&x.meaning));assert.match(t.example,/свече 80/);const h={clientWidth:240,innerHTML:'',querySelector:()=>null};records[key].render(h,{step:2});assert.ok(h.innerHTML.indexOf('as-indicator-meaning')<h.innerHTML.indexOf('<details'));assert.ok(h.innerHTML.includes('as-indicator-reading'));if(key.startsWith('13.'))assert.ok(h.innerHTML.includes('as-indicator-checklist'));}
+  const h={clientWidth:240,innerHTML:'',querySelector:()=>null};records['11.1'].render(h,{step:2});assert.match(h.innerHTML,/as-indicator-threshold[^>]*>30</);assert.match(h.innerHTML,/as-indicator-threshold[^>]*>70</);assert.match(h.innerHTML,/viewBox="0 0 232 298"/);
+});
+test('terminal price overlays use causal price-unit lines and dispose their listeners',()=>{
+  const calls=[];let disposed=0;window.TDTerminalChart={mount:(host,options)=>{calls.push(options);return ()=>disposed++;}};
+  try{for(const key of ['11.1','11.4','13.2']){const target={},host={clientWidth:800,innerHTML:'',querySelector:s=>s.startsWith('[data-as-indicator-')?target:null};const clean=records[key].render(host,{practice:true});clean();}assert.equal(calls.length,3);assert.equal(disposed,3);assert.ok(calls.every(c=>c.bars.length===80));assert.equal(calls[0].series,undefined);assert.match(calls[1].series[0].label,/SMA/);assert.match(calls[2].series[0].label,/EMA/);}finally{delete window.TDTerminalChart;}
+});
 test('all 28 indicator lessons have a complete studio contract',()=>{
   assert.equal(api.keys.length,28);
   for(const key of api.keys){const r=records[key];assert.equal(r.kind,'indicator');assert.equal(r.stages.length,5);for(const s of r.stages)for(const f of ['title','body','task'])assert.ok(s[f]);for(const q of [r.practice,...r.quiz]){assert.ok(q.question);assert.equal(q.choices.filter(c=>c.correct).length,1);assert.ok(q.choices.every(c=>c.feedback));}}
@@ -49,6 +57,6 @@ test('geometric interpolation never carries revealed future into a hidden attemp
 });
 test('renderer adapts axes to narrow host, exposes real controls and cleans up',()=>{
   const control={value:'default',onchange:null},host={clientWidth:304,innerHTML:'',querySelector:()=>control};
-  const cleanup=records['11.4'].render(host,{step:4});assert.match(host.innerHTML,/viewBox="0 0 280 190"/);assert.match(host.innerHTML,/SMA\(2\)/);control.value='ema';control.onchange();assert.match(host.innerHTML,/EMA\(2\)/);assert.doesNotMatch(host.innerHTML,/NaN|undefined/);cleanup();assert.equal(host.innerHTML,'');
+  const cleanup=records['11.4'].render(host,{step:4});assert.match(host.innerHTML,/viewBox="0 0 296 298"/);assert.match(host.innerHTML,/SMA\(2\)/);control.value='ema';control.onchange();assert.match(host.innerHTML,/EMA\(2\)/);assert.doesNotMatch(host.innerHTML,/NaN|undefined/);cleanup();assert.equal(host.innerHTML,'');
   for(const key of api.keys){const h={clientWidth:304,innerHTML:'',querySelector:()=>null};for(let step=0;step<5;step++){records[key].render(h,{step});assert.doesNotMatch(h.innerHTML,/NaN|Infinity|undefined/,key+' stage '+step);}records[key].render(h,{practice:true});assert.match(h.innerHTML,/будущее скрыто/);assert.doesNotMatch(h.innerHTML,/NaN|undefined/);}
 });
