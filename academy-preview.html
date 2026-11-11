@@ -13,8 +13,8 @@
  function openModal(){document.getElementById('modalBackdrop').classList.add('open');}
  function closeModal(){window.activeLearningModel?.dispose?.();window.activeLearningModel=null;document.getElementById('modalBackdrop').classList.remove('open');}
  bindAdminUI();renderCourseV1View();
- const previewParams=new URLSearchParams(location.search),previewLesson=window.TRADING_COURSE_V1.lessons.find(l=>l.key===previewParams.get('lesson'));
- if(previewLesson)openTrainingLesson(previewLesson.id).then(()=>{if(previewParams.get('material')==='practice')document.querySelector('[data-as-view="source-practice"]')?.click();});
+ (function(){const params=new URLSearchParams(location.search),selected=window.TRADING_COURSE_V1.lessons.find(l=>l.key===params.get('lesson'));
+ if(selected)openTrainingLesson(selected.id).then(()=>{if(params.get('material')==='practice')document.querySelector('[data-as-view="source-practice"]')?.click();});})();
  document.getElementById('modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 </script></body></html>
