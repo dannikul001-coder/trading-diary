@@ -1,16 +1,23 @@
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Академия · проверка моделей</title><link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="../learning-models.css"><style>body{margin:0;padding:20px}#preview{max-width:1320px;margin:auto}@media(max-width:500px){body{padding:10px}}</style></head><body><main id="preview"></main><script src="../learning/course-v1.js"></script><script src="../learning/course-models.js"></script><script src="../js/learning-interactive.js"></script><script src="../js/learning-models.js"></script><script>
 (async()=>{
+  await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='../learning/course-guides.js';script.onload=resolve;script.onerror=reject;document.head.appendChild(script);});
   const host=document.getElementById('preview'),course=window.TRADING_COURSE_V1,params=new URLSearchParams(location.search);
   if(!params.has('audit')){const lesson=course.lessons.find(l=>l.key===params.get('lesson'))||course.lesson;window.InteractiveLearning.mount({host,lesson,progress:{},onSaveNotes:async notes=>localStorage.setItem('academy-preview-notes:'+lesson.id,notes)});return;}
   const assert=(condition,message)=>{if(!condition)throw new Error(message);};const results=[];
   for(const lesson of course.lessons){
     let completed=false,saved='',stages=[];const model=window.InteractiveLearning.mount({host,lesson,onStage:async p=>{stages=p.model_seen;},onSaveNotes:async notes=>{saved=notes;},onComplete:async()=>{completed=true;}}),q=s=>host.querySelector(s),m=lesson.content.interactiveLesson;
     model.finishAnimation();assert(q('[data-ml-complete]').disabled,lesson.key+': early completion');
+    assert(q('.ml-big-idea')?.textContent.length>80,'Beginner explanation missing');
+    q('.ml-glossary summary').click();assert(q('.ml-glossary').open,'Glossary did not open');
     const svg=q('svg');assert(Number(svg.dataset.visible)===6,'Initial count');
     for(let i=0;i<3;i++){q('[data-ml-next]').click();model.finishAnimation();}
+    const checkpoint=m.checkpoint.choices.findIndex(c=>c.correct),badCheckpoint=m.checkpoint.choices.findIndex(c=>!c.correct);
+    q(`input[name="ml-checkpoint"][value="${badCheckpoint}"]`).checked=true;q('[data-ml-checkpoint]').click();assert(q('[data-ml-checkpoint-result]').classList.contains('wrong'),'Wrong checkpoint explanation');
+    q(`input[name="ml-checkpoint"][value="${checkpoint}"]`).checked=true;q('[data-ml-checkpoint]').click();assert(q('[data-ml-checkpoint-result]').classList.contains('correct'),'Correct checkpoint explanation');
+    if(lesson.key==='5.2'){q('[data-ml-distance]').value='8';q('[data-ml-distance]').dispatchEvent(new Event('input'));assert(q('[data-ml-size]').textContent.includes('12.50'),'Position calculator');q('[data-ml-distance]').value='0';q('[data-ml-distance]').dispatchEvent(new Event('input'));assert(q('[data-ml-size]').textContent.includes('положительное'),'Zero distance must be rejected');}
     assert(stages.length===4,'All theory stages');
     const first=q('.ml-candle');first.dispatchEvent(new FocusEvent('focus'));assert(q('[data-ml-inspector]').textContent.includes('O '),'Candle inspector');
-    q('[data-ml-scale]').click();model.finishAnimation();assert(Number(svg.dataset.visible)===4,'Aggregation count');q('[data-ml-scale]').click();model.finishAnimation();
+    q('[data-ml-scale]').click();model.finishAnimation();assert(Number(svg.dataset.visible)===Math.ceil(m.stages[3].count/3),'Aggregation count');q('[data-ml-scale]').click();model.finishAnimation();
     q('[data-ml-annotations]').click();assert(q('[data-ml-overlay]').querySelector('.ml-guide')===null,'Toggle annotation');q('[data-ml-annotations]').click();
     q('[data-ml-branch]').click();model.finishAnimation();assert(q('[data-ml-branch]').getAttribute('aria-pressed')==='true','Alternate branch');
     q('[data-ml-next]').click();model.finishAnimation();assert(Number(svg.dataset.visible)===10,'Blind future count');assert(q('[data-ml-branch]').disabled,'Alternate future locked');assert(q('[data-ml-scale]').disabled,'Scale locked during decision');
