@@ -29,6 +29,11 @@
   root.insertAdjacentHTML('beforeend',`<section class="as-lesson-plan" data-as-plan hidden><h2>План обучения</h2><p>Сначала разберись в экране и свечах, затем переходи к структуре, расчётам и самостоятельным решениям.</p>${(window.TD_STUDIO_JOURNEY||[]).map((s,i)=>`<details><summary>${i+1}. ${esc(s.title)}</summary><p>${esc(s.skill)}</p><ul>${[...s.core,...s.additional].map(key=>{const l=window.TRADING_COURSE_V1.lessons.find(x=>x.key===key);return l?`<li><button type="button" data-as-open-lesson="${esc(l.id)}">${esc(l.title)}</button></li>`:'';}).join('')}</ul></details>`).join('')}</section>`);
   q('.as-step-actions').insertAdjacentHTML('beforebegin','<p class="as-lesson-takeaway" data-as-takeaway hidden></p>');q('[data-as-takeaway]').textContent='Запомни: '+(teaching.takeaway||'');
   const notes=q('.as-notes'),noteDetails=document.createElement('details');noteDetails.className='as-notes-disclosure';noteDetails.innerHTML='<summary>Мой конспект — сохранить вывод</summary>';notes.before(noteDetails);noteDetails.append(notes);
+  const hasSourcePractice=['14.2','14.5','15.6'].includes(lesson.key)&&window.AcademySourcePractice;
+  let sourcePractice=null;
+  if(hasSourcePractice){q('.as-view-nav').insertAdjacentHTML('beforeend','<button type="button" data-as-view="source-practice">Практикум по материалам</button>');root.insertAdjacentHTML('beforeend','<section class="as-source-material" data-as-source-practice hidden></section>');}
+  const sourceCases=q('[data-as-source-cases]');
+  if(sourceCases){sourceCases.innerHTML=(old.sourceExercises||[]).map((item,i)=>`<details class="as-source-case"><summary>${esc(item.title)}</summary><p>${esc(item.question||'')}</p><fieldset>${(item.choices||[]).map((choice,j)=>`<label><input type="radio" name="as-source-case-${i}" value="${j}"><span>${esc(choice.text)}</span></label>`).join('')}</fieldset><button type="button" data-as-check-source="${i}">Проверить объяснение</button><p data-as-source-feedback="${i}" role="status"></p></details>`).join('');}
   q('.as-local-note').textContent='Учебные данные. Прогресс и конспект сохраняются в этом браузере отдельно для аккаунта.';
   function live(){return !disposed&&root.isConnected&&sameAccount();}
   function positionStep(){const modal=root.closest('.modal');if(modal)modal.scrollTop=0;}
@@ -43,7 +48,7 @@
    q('[data-as-takeaway]').hidden=practice||step!==stages.length-1;q('.as-completion').hidden=!revealed;root.dataset.lessonMode=practice?'practice':'learn';
   }
   function enterPractice(){practice=true;alternate=false;showView('model');render();positionStep();}
-  function showView(view){q('[data-as-model]').hidden=view!=='model';q('[data-as-reference]').hidden=view!=='reference';q('[data-as-plan]').hidden=view!=='plan';q('[data-as-assessment]').hidden=view!=='model'||!revealed;q('.as-completion').hidden=view!=='model'||!revealed;root.querySelectorAll('[data-as-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.asView===view)));}
+  function showView(view){q('[data-as-model]').hidden=view!=='model';q('[data-as-reference]').hidden=view!=='reference';q('[data-as-plan]').hidden=view!=='plan';if(hasSourcePractice){q('[data-as-source-practice]').hidden=view!=='source-practice';if(view==='source-practice'&&!sourcePractice)sourcePractice=window.AcademySourcePractice.mount(q('[data-as-source-practice]'),lesson.key);}q('[data-as-assessment]').hidden=view!=='model'||!revealed;q('.as-completion').hidden=view!=='model'||!revealed;root.querySelectorAll('[data-as-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.asView===view)));}
   root.addEventListener('click',async event=>{
    const b=event.target.closest('button');if(!b)return;if(!sameAccount()){q('[data-as-save-status]').textContent='Аккаунт изменился. Открой урок заново.';return;}
    if(b.hasAttribute('data-as-step')){practice=false;alternate=false;step=Number(b.dataset.asStep);seen.add(step);render();positionStep();persist();}
@@ -52,6 +57,7 @@
    else if(b.hasAttribute('data-as-to-practice'))enterPractice();
    else if(b.hasAttribute('data-as-view')){showView(b.dataset.asView);if(b.dataset.asView==='model')paint();}
    else if(b.hasAttribute('data-as-open-lesson')){await window.openTrainingLesson?.(b.dataset.asOpenLesson);}
+   else if(b.hasAttribute('data-as-check-source')){const index=Number(b.dataset.asCheckSource),item=old.sourceExercises[index],input=q(`input[name="as-source-case-${index}"]:checked`),result=q(`[data-as-source-feedback="${index}"]`);if(!input){result.textContent='Сначала выбери объяснение.';return;}const choice=item.choices[Number(input.value)];result.textContent=(choice.correct?'Верно. ':'Проверь рассуждение. ')+(choice.feedback||'');}
    else if(b.hasAttribute('data-as-alternate')){alternate=!alternate;paint();b.setAttribute('aria-pressed',String(alternate));b.textContent=alternate?'Вернуть первый вариант':'Сравнить другой исход';}
    else if(b.hasAttribute('data-as-reveal')){
     const input=q('input[name="as-practice"]:checked');if(!input){q('[data-as-practice-result]').textContent='Выбери ответ до раскрытия.';return;}
@@ -62,7 +68,7 @@
   });
   q('[data-as-quiz]').addEventListener('submit',event=>{event.preventDefault();let correct=0;quiz.forEach((item,i)=>{const selected=q(`input[name="as-q-${i}"]:checked`),choice=selected?item.choices[Number(selected.value)]:null;if(choice?.correct)correct++;q(`[data-as-feedback="${i}"]`).textContent=choice?(choice.correct?'Верно. ':'Пока неверно. ')+(choice.feedback||''):'Выбери ответ.';});quizScore=Math.round(correct/quiz.length*100);q('[data-as-quiz-score]').textContent=`Верно ${correct} из ${quiz.length}. ${quizScore===100?'Проверка пройдена.':'Можно исправить ответы.'}`;gate();});
   const lab=q('[data-as-extra-lab]');if(window.LearningLabs)window.LearningLabs.mount(lab,lesson.key);
-  render();return {dispose(){disposed=true;cleanup?.();},finishAnimation(){},goToPractice:enterPractice,get state(){return {step,seen:[...seen],revealed,quizScore,studio:true,practiceCorrect};}};
+  render();return {dispose(){disposed=true;cleanup?.();if(typeof sourcePractice==='function')sourcePractice();else sourcePractice?.dispose?.();},finishAnimation(){},goToPractice:enterPractice,get state(){return {step,seen:[...seen],revealed,quizScore,studio:true,practiceCorrect};}};
  }
  window.InteractiveLearning.mount=mount;
  window.AcademyStudio={version:VERSION,isDone:done,validSeen,kindLabel};

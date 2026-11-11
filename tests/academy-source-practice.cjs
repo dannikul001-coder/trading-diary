@@ -1,0 +1,12 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),path=require('path');
+const c={window:{},Intl};vm.createContext(c);vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/academy-source-practice.js'),'utf8'),c);
+const api=c.window.AcademySourcePractice,{accounting:a,grade:g}=api.math;
+assert.equal(a([]).initialRisk,18);assert.equal(a([{units:1,price:104},{units:2,price:94}]).gross,-8);
+assert.equal(a([{units:1,price:104},{units:1,price:108},{units:1,price:100}]).gross,12);
+assert.equal(a([{units:1,price:104},{units:1,price:108},{units:1,price:80}]).gross,-8);
+assert.equal(a([{units:1,price:104},{units:1,price:108},{units:1,price:112}],.5).net,22.5);
+assert.equal(a([{units:3,price:100}],.5).net,-1.5);assert.equal(a([],NaN),null);assert.equal(a([{units:4,price:104}]),null);
+assert.equal(g({confirmed:false,outcome:3},'act').compliant,false);assert.equal(g({confirmed:false,outcome:3},'act').net,2.9);assert.equal(g({confirmed:true,outcome:-2},'act').compliant,true);assert.equal(g({confirmed:false,outcome:3},'skip').net,0);assert.equal(api.cases.length,20);
+let removed=0;const host={innerHTML:'',addEventListener(){},removeEventListener(){removed++}};const mounted=api.mount(host,'14.5');assert.ok(host.innerHTML.includes('18 контракт-тиков'));assert.ok(!host.innerHTML.includes('Конец учебной ветки'));mounted.dispose();assert.equal(removed,2);assert.equal(host.innerHTML,'');
+api.mount(host,'15.6');assert.ok(host.innerHTML.includes('Будущая цена не показана'));assert.ok(host.innerHTML.includes('0 / 20'));
+console.log('Source practice: partial-exit arithmetic, costs, process/outcome separation and cleanup passed');
