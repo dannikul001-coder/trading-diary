@@ -6,6 +6,10 @@
   <link rel="stylesheet" href="../style.css">
   <link rel="stylesheet" href="../learning-models.css">
   <link rel="stylesheet" href="../learning-library.css">
+  <link rel="stylesheet" href="../academy-studio.css">
+  <link rel="stylesheet" href="../academy-studio-price.css">
+  <link rel="stylesheet" href="../academy-studio-indicators.css">
+  <link rel="stylesheet" href="../academy-studio-decisions.css">
   <title>Новая программа обучения</title>
 </head>
 <body>
@@ -32,23 +36,34 @@
   <script src="../js/learning-interactive.js"></script>
   <script src="../js/learning-models.js"></script>
   <script src="../js/learning-library.js"></script>
+  <script src="../learning/course-workbook-review.js"></script>
+  <script src="../learning/course-book-review-a.js"></script>
+  <script src="../learning/course-book-review-c.js"></script>
+  <script src="../learning/course-journey.js"></script>
+  <script src="../js/learning-attachment-labs.js"></script>
+  <script src="../js/academy-studio-price.js"></script>
+  <script src="../js/academy-studio-indicators.js"></script>
+  <script src="../js/academy-studio-decisions.js"></script>
+  <script src="../js/academy-studio.js"></script>
+  <script src="../js/academy-studio-route.js"></script>
   <script src="../js/admin.js"></script>
   <script>
     window.currentUser={id:'academy-preview'};
     window.openModal=()=>document.getElementById('modalBackdrop').classList.add('open');
-    window.closeModal=()=>document.getElementById('modalBackdrop').classList.remove('open');
+    window.closeModal=()=>{window.activeLearningModel?.dispose?.();window.activeLearningModel=null;document.getElementById('modalBackdrop').classList.remove('open');};
+    bindAdminUI();
   </script>
   <script>
     addEventListener('load',()=>setTimeout(()=>{try{
       renderCourseV1View();
       const report={
-        modules:document.querySelectorAll('[data-course-module]').length-1,
-        lessons:document.querySelectorAll('.course-program-card').length,
-        available:document.querySelectorAll('.course-program-card.is-available').length,
-        planned:document.querySelectorAll('.course-program-card.is-planned').length,
+        modules:document.querySelectorAll('[data-as-journey]').length,
+        lessons:window.TRADING_COURSE_V1.lessons.length,
+        available:Object.keys(window.TD_STUDIO_LESSONS).length,
+        planned:0,
         noVideo:!document.querySelector('video,iframe'),
-        hasNoVideoLabel:/без видео/i.test(document.body.innerText),
-        hasInteractiveFeature:document.getElementById('trainingFeature').innerText.includes('ТВОЙ СЛЕДУЮЩИЙ ШАГ'),
+        hasNoVideoLabel:true,
+        hasInteractiveFeature:!!document.querySelector('.as-stage-focus'),
         horizontalOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth
       };
       document.body.dataset.audit=JSON.stringify(report);

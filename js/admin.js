@@ -249,7 +249,7 @@ async function openTrainingLesson(id){
   if(window.activeLearningModel)window.activeLearningModel.dispose?.();
   window.activeLearningModel=window.InteractiveLearning.mount({
    host,lesson:l,progress:row,
-   onStage:async payload=>{if(isLocalCourseLesson)Object.assign(row,saveCourseV1Progress(l.id,payload));},
+   onStage:async payload=>{if(isLocalCourseLesson){Object.assign(row,saveCourseV1Progress(l.id,payload));if(payload.studio_completed===true)renderCourseV1View();}},
    onSaveNotes:async notes=>{await saveProgress({status:row.status==='completed'?'completed':'started',progress:Math.max(Number(row.progress||10),30),notes});toast('Конспект сохранён');await loadTrainingView();},
    onComplete:async({notes,quizScore})=>{const payload={status:'completed',progress:100,notes,quiz_score:quizScore,completed_at:new Date().toISOString()};try{await saveProgress(payload);}catch(error){if(!/completed_at/i.test(error?.message||''))throw error;delete payload.completed_at;await saveProgress(payload);}toast('Урок завершён');await loadTrainingView();}
   });

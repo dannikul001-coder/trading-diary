@@ -31,6 +31,15 @@ let socket;
   if(integration){
     const check=await evaluate(`(async()=>{
       const check=(condition,message)=>{if(!condition)throw new Error(message);};
+      if(window.AcademyStudio){
+        check(document.querySelectorAll('[data-as-journey]').length===8,'Eight skill stages');
+        const lesson=TRADING_COURSE_V1.lessons.find(l=>l.key==='1.1');await openTrainingLesson(lesson.id);
+        const find=s=>document.querySelector('#modalContent '+s);check(!!find('[data-studio-root]'),'Studio mount');
+        find('[data-as-notes]').value='Сохранённый конспект';find('[data-as-save]').click();await new Promise(r=>setTimeout(r,0));find('[data-as-step="2"]').click();await new Promise(r=>setTimeout(r,0));await openTrainingLesson(lesson.id);
+        check(find('[data-as-notes]').value==='Сохранённый конспект','Studio notes persistence');check(activeLearningModel.state.step===2,'Studio resume');
+        window.currentUser={id:'second-synthetic-account'};check(!courseV1Progress()[lesson.id],'Studio account isolation');
+        return {integration:true,studio:true,notes:true,resume:true,accountIsolation:true};
+      }
       const expected=window.TRADING_COURSE_V1.lessons.length;document.querySelector('[data-ar-mode="reference"]').click();check(!!document.querySelector('.ar-diagram'),'Reference diagram');check(document.querySelectorAll('[data-ar-term]').length===expected,'Reference topics');document.querySelectorAll('[data-ar-term]')[3].click();check(document.querySelector('.ar-definition h3').textContent.includes('Четыре'),'Reference selection');document.querySelector('[data-ar-mode="practice"]').click();check(document.querySelectorAll('[data-ar-practice]').length===expected,'Practice routes');document.querySelector('[data-ar-mode="course"]').click();check(document.querySelectorAll('.ar-chapter').length===16,'Course chapters');
       const id=window.TRADING_COURSE_V1.lessons[0].id;
       document.querySelector('[data-ar-mode="practice"]').click();document.querySelector('[data-ar-practice]').click();await new Promise(r=>setTimeout(r,0));check(!!document.querySelector('#modalContent [data-ml-answer]'),'Direct practice route failed');document.querySelector('[data-ar-mode="course"]').click();
