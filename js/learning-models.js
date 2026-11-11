@@ -2,6 +2,7 @@
   'use strict';
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const oldMount=window.InteractiveLearning.mount;
+  function exampleParts(model){const cases=(model.sourceExercises||[]).map(exercise=>({...exercise,explanation:exercise.choices.find(choice=>choice.correct)?.feedback||''}));let primary=model.guide?.example||'';for(const item of cases)if(item.explanation)primary=primary.replace(' '+item.explanation,'');return {primary,cases};}
   function mount(options){
     const {host,lesson,progress={},onSaveNotes,onComplete,onStage}=options,m=lesson.content?.interactiveLesson;
     if(!m?.model)return oldMount(options);
@@ -51,8 +52,7 @@
     }
     function calculate(){const risk=Number(q('[data-ml-risk]').value),distance=Number(q('[data-ml-distance]').value);q('[data-ml-size]').textContent=risk>=0&&distance>0?`${(risk/distance).toFixed(2)} единиц до издержек`:'Укажи неотрицательный риск и положительное расстояние';}
     function renderGuide(){
-      const g=m.guide,s=m.stages[step],copy=q('[data-ml-copy]'),cases=(m.sourceExercises||[]).map(exercise=>({...exercise,explanation:exercise.choices.find(choice=>choice.correct)?.feedback||''}));
-      let workedExample=g.example;for(const item of cases)if(item.explanation)workedExample=workedExample.replace(' '+item.explanation,'');
+      const g=m.guide,s=m.stages[step],copy=q('[data-ml-copy]'),{primary:workedExample,cases}=exampleParts(m);
       q('[data-ml-inspector]').textContent='Выбери свечу нажатием или клавишей Tab. Здесь появятся четыре цены: начало, самая высокая, самая низкая и конец интервала.';
       q('[data-ml-scale]').textContent=grouped?'Показать отдельные свечи':'Объединить по 3';q('[data-ml-branch]').textContent=branch?'Вернуть первый вариант':'Сравнить продолжения';
       q('[data-ml-scale]').hidden=!practice&&step<2&&m.kind!=='time';q('[data-ml-branch]').hidden=!practice&&step<2;
@@ -81,7 +81,7 @@
       q('.ml-head').insertAdjacentHTML('afterend',`<section class="ml-brief"><span>ГЛАВНАЯ МЫСЛЬ ЗА 10 СЕКУНД</span><p>${esc(m.takeaway)}</p><div><span>4 коротких шага</span><span>Учебная модель</span><span>Практика после объяснения</span></div></section><nav class="ml-reading-modes" aria-label="Как изучать урок"><button type="button" data-ml-view="model" aria-pressed="true">Пошаговая модель</button><button type="button" data-ml-view="article" aria-pressed="false">Полный разбор</button><button type="button" data-ml-view="terms" aria-pressed="false">Термины и схема</button></nav><section class="ml-resource" data-ml-resource hidden></section>`);
       q('.ml-brief>p').textContent=g.plain.split('. ')[0]+'.';
       q('.ml-reading-modes').addEventListener('click',event=>{const button=event.target.closest('[data-ml-view]');if(!button)return;const view=button.dataset.mlView;q('.ml-reading-modes').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));q('.ml-workbench').hidden=view!=='model';const resource=q('[data-ml-resource]');resource.hidden=view==='model';
-        if(view==='article')resource.innerHTML=`<span class="ml-eyebrow">ПОЛНЫЙ РАЗБОР</span><h2>${esc(lesson.title)}</h2><p class="ml-resource-lead">${esc(g.plain)}</p><h3>Разобранный пример</h3><p>${esc(g.example)}</p><h3>Что сделать на модели</h3><p>${esc(g.action)}</p><h3>Частая ошибка</h3><p>${esc(g.trap)}</p><h3>Термины</h3><p>${esc(g.terms)}</p><button type="button" class="primary-btn" data-ml-return>Вернуться к модели →</button>`;
+        if(view==='article'){const parts=exampleParts(m);resource.innerHTML=`<span class="ml-eyebrow">ПОЛНЫЙ РАЗБОР</span><h2>${esc(lesson.title)}</h2><p class="ml-resource-lead">${esc(g.plain)}</p><h3>Разобранный пример</h3><p>${esc(parts.primary)}</p>${parts.cases.map(item=>`<details class="ml-extra-case"><summary>${esc(item.title)}</summary><p>${esc(item.explanation)}</p></details>`).join('')}<h3>Что сделать на модели</h3><p>${esc(g.action)}</p><h3>Частая ошибка</h3><p>${esc(g.trap)}</p><h3>Термины</h3><p>${esc(g.terms)}</p><button type="button" class="primary-btn" data-ml-return>Вернуться к модели →</button>`;}
         if(view==='terms')resource.innerHTML=`<span class="ml-eyebrow">ТЕРМИНЫ ПРОСТЫМИ СЛОВАМИ</span><h2>${esc(m.concept)}</h2>${window.CourseLibrary?window.CourseLibrary.diagram(lesson):''}<p>${esc(g.terms)}</p><div class="ml-action"><b>Связь с уроком</b><p>${esc(g.plain)}</p></div><button type="button" class="primary-btn" data-ml-return>Попробовать на модели →</button>`;
         resource.querySelector('[data-ml-return]')?.addEventListener('click',()=>q('[data-ml-view="model"]').click());
       });
