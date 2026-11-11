@@ -26,6 +26,7 @@
   <script>
     localStorage.setItem('tradingDiary_selectedStructure','automated');
     const profile={user_id:'test-user',initial_balance:'1000.000000',currency:'USDT',timezone:'Europe/Moscow',duration_seconds:60,stake_percent:2,profit_percent:40,signals_enabled:true,email_notifications_enabled:false};
+    const fixtureDay=new Date().toISOString().slice(0,10);
     const datasets={
       automated_diary_trades:[
         {id:'trade-1',opened_at:'2026-11-01T08:00:00Z',closed_at:'2026-11-01T08:01:00Z',status:'closed',stake:'100.000000',payout:'140.000000',note:'Первая'},
@@ -33,9 +34,9 @@
       ],
       automated_diary_bonuses:[{id:'bonus-1',status:'received',amount:'10.000000',received_at:'2026-11-02T10:00:00Z',title:'Тестовый бонус'}],
       automated_diary_signals:[
-        {id:'signal-1',title:'Сигнал 1',signal_type:'trade',starts_at:'2026-11-04T09:00:00Z',remind_minutes:5,enabled:true,status:'completed',instrument:'EUR/USD',direction:'up',description:''},
-        {id:'signal-2',title:'Сигнал 2',signal_type:'trade',starts_at:'2026-11-04T09:05:00Z',remind_minutes:5,enabled:true,status:'scheduled',instrument:'EUR/USD',direction:'down',description:''},
-        {id:'signal-3',title:'Сигнал 3',signal_type:'trade',starts_at:'2026-11-04T09:10:00Z',remind_minutes:5,enabled:true,status:'skipped',instrument:'EUR/USD',direction:'up',description:''}
+        {id:'signal-1',title:'Сигнал 1',signal_type:'trade',starts_at:fixtureDay+'T09:00:00Z',remind_minutes:5,enabled:true,status:'completed',instrument:'EUR/USD',direction:'up',description:''},
+        {id:'signal-2',title:'Сигнал 2',signal_type:'trade',starts_at:fixtureDay+'T09:05:00Z',remind_minutes:5,enabled:true,status:'scheduled',instrument:'EUR/USD',direction:'down',description:''},
+        {id:'signal-3',title:'Сигнал 3',signal_type:'trade',starts_at:fixtureDay+'T09:10:00Z',remind_minutes:5,enabled:true,status:'skipped',instrument:'EUR/USD',direction:'up',description:''}
       ],
       automated_diary_ledger:[{id:'cash-1',kind:'deposit',amount:'100.000000',operated_at:'2026-11-02T08:00:00Z',created_at:'2026-11-02T08:00:00Z',note:'Тест'}],
       automated_diary_notes:[{id:'note-1',title:'Проверка',body:'Тестовая заметка',note_date:'2026-11-04',created_at:'2026-11-04T08:00:00Z'}],
