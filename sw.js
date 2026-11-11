@@ -1,8 +1,8 @@
-const CACHE='trading-diary-v6-2-interactive-learning-20261111';
+const CACHE='trading-diary-v7-model-academy-20261111';
 const ASSETS=['./','./index.html','./style.css','./automated-diary.css','./js/automated-diary.js','./js/data.js','./js/storage.js','./js/statistics.js','./js/charts.js','./js/settings.js','./js/auth.js','./learning/course-v1.js','./js/learning-interactive.js','./js/admin.js','./js/currency.js','./js/supabase-config.js','./js/supabase.js','./js/import-center.js','./js/app.js','./manifest.json','./assets/logo.svg'];
 
 self.addEventListener('install',event=>event.waitUntil(
-  caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())
+  caches.open(CACHE).then(cache=>cache.addAll([...ASSETS,'./learning-models.css','./learning/course-models.js','./js/learning-models.js'])).then(()=>self.skipWaiting())
 ));
 
 self.addEventListener('activate',event=>event.waitUntil(

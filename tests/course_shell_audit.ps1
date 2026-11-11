@@ -25,8 +25,8 @@ if ($dump -notmatch 'data-audit="([^"]+)"') { throw 'Course shell audit result i
 $result = ([Net.WebUtility]::HtmlDecode($Matches[1]) | ConvertFrom-Json)
 if ($result.modules -ne 9) { throw 'The course must expose nine sequential modules.' }
 if ($result.lessons -lt 20) { throw 'The new course program is incomplete.' }
-if ($result.available -ne 1) { throw 'Exactly one exemplar lesson should be available in the first local version.' }
-if ($result.planned -ne ($result.lessons - 1)) { throw 'Planned lesson states are inconsistent.' }
+if ($result.available -ne 26) { throw 'All 26 model lessons must be available.' }
+if ($result.planned -ne 0) { throw 'No placeholder lessons should remain.' }
 if (-not $result.noVideo -or -not $result.hasNoVideoLabel) { throw 'The no-video format is not explicit.' }
 if (-not $result.hasInteractiveFeature) { throw 'The exemplar interactive lesson is not featured.' }
 if ($result.horizontalOverflow) { throw 'Course shell has horizontal overflow at 390px.' }

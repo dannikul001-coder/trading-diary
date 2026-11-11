@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="../learning-models.css">
   <title>Новая программа обучения</title>
 </head>
 <body>
@@ -12,12 +13,19 @@
     <div class="learning-layout-v27"><aside class="learning-program-sidebar"><div class="program-sidebar-head"><h3>Новая академия</h3></div><div id="trainingRoadmap" class="training-roadmap-v27"></div><article class="learning-next-card-v27"><div id="trainingNextLesson"></div></article></aside>
     <main class="learning-catalog learning-catalog-v27"><div class="learning-toolbar learning-toolbar-v27"><div><small id="trainingSectionLabel"></small></div><label class="learning-search"><input id="trainingSearch"></label></div><div class="learning-filterbar"><div id="trainingStatusTabs" class="learning-status-tabs"></div><div id="trainingModeTabs" class="learning-mode-tabs"></div></div><div id="trainingFeature" class="learning-feature learning-feature-v27"></div><small id="trainingResultCount"></small><div id="trainingLessonGrid" class="training-grid training-grid-v27"></div></main></div>
   </div></section>
-  <div id="modalContent"></div>
+  <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><button class="modal-close" onclick="closeModal()" aria-label="Закрыть урок">×</button><div id="modalContent"></div></div></div>
   <script>window.DEFAULT_DATA={quotes:[]};window.openModal=function(){};window.closeModal=function(){};window.toast=function(){};addEventListener('error',event=>{document.body.dataset.auditError=String(event.error&&event.error.stack||event.message);document.body.dataset.auditReady='error';});</script>
   <script>function escapeHtml(value){const span=document.createElement('span');span.textContent=String(value??'');return span.innerHTML;}</script>
   <script src="../learning/course-v1.js"></script>
+  <script src="../learning/course-models.js"></script>
   <script src="../js/learning-interactive.js"></script>
+  <script src="../js/learning-models.js"></script>
   <script src="../js/admin.js"></script>
+  <script>
+    window.currentUser={id:'academy-preview'};
+    window.openModal=()=>document.getElementById('modalBackdrop').classList.add('open');
+    window.closeModal=()=>document.getElementById('modalBackdrop').classList.remove('open');
+  </script>
   <script>
     addEventListener('load',()=>setTimeout(()=>{try{
       renderCourseV1View();
@@ -28,7 +36,7 @@
         planned:document.querySelectorAll('.course-program-card.is-planned').length,
         noVideo:!document.querySelector('video,iframe'),
         hasNoVideoLabel:document.body.innerText.includes('БЕЗ ВИДЕО'),
-        hasInteractiveFeature:document.getElementById('trainingFeature').innerText.includes('ПЕРВЫЙ ПОЛНОСТЬЮ СОБРАННЫЙ УРОК'),
+        hasInteractiveFeature:document.getElementById('trainingFeature').innerText.includes('ТВОЙ СЛЕДУЮЩИЙ ШАГ'),
         horizontalOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth
       };
       document.body.dataset.audit=JSON.stringify(report);

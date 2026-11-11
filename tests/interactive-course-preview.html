@@ -17,6 +17,7 @@
   <script src="../js/learning-interactive.js"></script>
   <script>
     (async function(){
+      if(!new URLSearchParams(location.search).has('audit')){location.replace('academy-models.html?lesson=1.1');return;}
       const lesson=window.TRADING_COURSE_V1.lesson;
       let completed=false;
       window.InteractiveLearning.mount({

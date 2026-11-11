@@ -177,7 +177,7 @@ async function duplicateLesson(id){const l=adminState.lessons.find(x=>x.id===id)
 async function deleteAdminLesson(id){if(!confirm('Удалить урок?'))return;const {error}=await window.supabaseClient.from('learning_lessons').delete().eq('id',id);if(error)toast(error.message,true);else loadAdminLearning();}
 function previewLesson(id){openTrainingLesson(id);}
 
-async function loadTrainingView(){if(!window.supabaseClient||!window.currentUser)return;const [c,l,p]=await Promise.all([window.supabaseClient.from('learning_categories').select('*').eq('published',true).order('sort_order'),window.supabaseClient.from('learning_lessons').select('*').eq('status','published').order('sort_order'),window.supabaseClient.from('learning_progress').select('*').eq('user_id',window.currentUser.id)]);if(c.error||l.error)return;trainingState.categories=c.data||[];trainingState.lessons=l.data||[];trainingState.progress=p.data||[];renderTrainingView();}
+async function loadTrainingView(){if(window.CourseAcademy){renderCourseV1View();return;}if(!window.supabaseClient||!window.currentUser)return;const [c,l,p]=await Promise.all([window.supabaseClient.from('learning_categories').select('*').eq('published',true).order('sort_order'),window.supabaseClient.from('learning_lessons').select('*').eq('status','published').order('sort_order'),window.supabaseClient.from('learning_progress').select('*').eq('user_id',window.currentUser.id)]);if(c.error||l.error)return;trainingState.categories=c.data||[];trainingState.lessons=l.data||[];trainingState.progress=p.data||[];renderTrainingView();}
 function renderTrainingView(){
  if(window.TRADING_COURSE_V1){renderCourseV1View();return;}
  const tabs=document.getElementById('trainingCategoryTabs'),statusTabs=document.getElementById('trainingStatusTabs'),modeTabs=document.getElementById('trainingModeTabs'),grid=document.getElementById('trainingLessonGrid');if(!grid)return;
@@ -214,6 +214,7 @@ function renderTrainingView(){
  const next=trainingState.lessons.find(l=>statusFor(l)==='started')||trainingState.lessons.find(l=>!doneFor(l));const nextBox=document.getElementById('trainingNextLesson');if(nextBox)nextBox.innerHTML=next?`<b>${escapeHtml(next.title)}</b><span>${escapeHtml(next.excerpt||'Следующий материал')}</span><button class="secondary-btn" data-training-open="${next.id}">${statusFor(next)==='started'?'Продолжить →':'Начать →'}</button>`:`<b>Маршрут завершён</b><span>Все опубликованные материалы отмечены как пройденные.</span>`;
 }
 function renderCourseV1View(){
+ if(window.CourseAcademy){window.CourseAcademy.render({category:trainingState.category,search:trainingState.search,progress:courseV1Progress()});return;}
  const course=window.TRADING_COURSE_V1,program=course.program||[],exemplar=course.lesson,progress=courseV1Progress();
  const road=document.getElementById('trainingRoadmap'),grid=document.getElementById('trainingLessonGrid'),feature=document.getElementById('trainingFeature');if(!grid)return;
  const selected=String(trainingState.category||'').startsWith('course:')?String(trainingState.category).slice(7):'all';
@@ -229,7 +230,7 @@ function renderCourseV1View(){
  const section=document.getElementById('trainingSectionLabel'),count=document.getElementById('trainingResultCount');if(section)section.textContent=selected==='all'?'НОВАЯ ПРОГРАММА С НУЛЯ':escapeHtml(program.find(x=>x.id===selected)?.title||'МОДУЛЬ').toUpperCase();if(count)count.textContent=`${shown.length} уроков`;
 }
 async function openTrainingLesson(id){
- const localCourseLesson=window.TRADING_COURSE_V1?.lesson?.id===id?window.TRADING_COURSE_V1.lesson:null;
+ const localCourseLesson=window.TRADING_COURSE_V1?.lessons?.find(l=>l.id===id)||(window.TRADING_COURSE_V1?.lesson?.id===id?window.TRADING_COURSE_V1.lesson:null);
  const databaseLesson=trainingState.lessons.find(x=>x.id===id)||adminState.lessons.find(x=>x.id===id);const l=databaseLesson||localCourseLesson;if(!l)return;
  const isLocalCourseLesson=!!localCourseLesson&&!databaseLesson;
  const c=l.content||{};const existing=trainingProgressRow(l.id);
@@ -245,8 +246,10 @@ async function openTrainingLesson(id){
    if(result.error)throw result.error;
    Object.assign(row,payload);
   };
-  window.InteractiveLearning.mount({
+  if(window.activeLearningModel)window.activeLearningModel.dispose?.();
+  window.activeLearningModel=window.InteractiveLearning.mount({
    host,lesson:l,progress:row,
+   onStage:async payload=>{if(isLocalCourseLesson)Object.assign(row,saveCourseV1Progress(l.id,payload));},
    onSaveNotes:async notes=>{await saveProgress({status:row.status==='completed'?'completed':'started',progress:Math.max(Number(row.progress||10),30),notes});toast('Конспект сохранён');await loadTrainingView();},
    onComplete:async({notes,quizScore})=>{const payload={status:'completed',progress:100,notes,quiz_score:quizScore,completed_at:new Date().toISOString()};try{await saveProgress(payload);}catch(error){if(!/completed_at/i.test(error?.message||''))throw error;delete payload.completed_at;await saveProgress(payload);}toast('Урок завершён');await loadTrainingView();}
   });
