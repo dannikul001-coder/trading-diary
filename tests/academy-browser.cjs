@@ -26,6 +26,7 @@ let socket;
   const evaluate=async expression=>(await cdp('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true})).result.value;
   let result;
   if(manual&&process.argv.includes('--chart'))await evaluate('new Promise(resolve=>{const timer=setInterval(()=>{const el=document.querySelector(".ml-visual");if(el){clearInterval(timer);el.scrollIntoView({block:"start"});resolve(true);}},50);})');
+  if(manual&&process.argv.includes('--lab'))await evaluate('new Promise((resolve,reject)=>{let tries=0;const timer=setInterval(()=>{const el=document.querySelector(".ml-lab");if(el){clearInterval(timer);el.scrollIntoView({block:"start"});resolve(true);}else if(++tries>100){clearInterval(timer);reject(new Error("Lesson lab not found"));}},50);})');
   for(let i=0;i<150;i++){result=await evaluate('({ready:document.body?.dataset.auditReady,error:document.body?.dataset.auditError,audit:document.body?.dataset.audit,model:!!document.querySelector("[data-model-root]")})');if(manual?result.model:result.ready)break;await new Promise(resolve=>setTimeout(resolve,100));}
   if(integration){
     const check=await evaluate(`(async()=>{
