@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="../style.css">
   <link rel="stylesheet" href="../learning-models.css">
+  <link rel="stylesheet" href="../learning-library.css">
   <title>Новая программа обучения</title>
 </head>
 <body>
@@ -21,6 +22,7 @@
   <script src="../learning/course-guides.js"></script>
   <script src="../js/learning-interactive.js"></script>
   <script src="../js/learning-models.js"></script>
+  <script src="../js/learning-library.js"></script>
   <script src="../js/admin.js"></script>
   <script>
     window.currentUser={id:'academy-preview'};
@@ -36,7 +38,7 @@
         available:document.querySelectorAll('.course-program-card.is-available').length,
         planned:document.querySelectorAll('.course-program-card.is-planned').length,
         noVideo:!document.querySelector('video,iframe'),
-        hasNoVideoLabel:document.body.innerText.includes('БЕЗ ВИДЕО'),
+        hasNoVideoLabel:/без видео/i.test(document.body.innerText),
         hasInteractiveFeature:document.getElementById('trainingFeature').innerText.includes('ТВОЙ СЛЕДУЮЩИЙ ШАГ'),
         horizontalOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth
       };
