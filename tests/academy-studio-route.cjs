@@ -1,0 +1,8 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const shell={innerHTML:''},events={};const context={window:{CourseAcademy:{},AcademyStudio:{isDone:p=>p?.studio_completed===true},TD_STUDIO_LESSONS:{}},structuredClone,document:{querySelector:()=>shell,addEventListener:(type,fn)=>events[type]=fn},localStorage:{getItem:()=>null}};vm.createContext(context);
+for(const name of ['learning/course-v1.js','learning/course-models.js','learning/course-guides.js','learning/course-extension.js','learning/course-journey.js','js/academy-studio-route.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',name),'utf8'),context);
+const c=context.window.TRADING_COURSE_V1,j=context.window.TD_STUDIO_JOURNEY,m=j.flatMap(s=>[...s.core,...s.additional]);
+assert.equal(j.length,8);assert.equal(m.length,81);assert.equal(new Set(m).size,81);assert.deepEqual([...m].sort(),Array.from(c.lessons,l=>l.key).sort());assert.equal(j[0].id,'conditions');assert.ok(j[0].core.includes('1.1'));
+context.window.CourseAcademy.render({progress:{}});assert.equal((shell.innerHTML.match(/class="as-plan-lesson"/g)||[]).length,81);assert.equal((shell.innerHTML.match(/data-as-journey=/g)||[]).length,8);assert.ok(shell.innerHTML.includes('Начать с устройства свечи'));assert.ok(!shell.innerHTML.includes('type="checkbox"'));assert.ok(!context.window.AcademyStudioRoute.stageDone(j[0],{}));
+const progress={};for(const key of j[0].core){const lesson=c.lessons.find(l=>l.key===key);progress[lesson.id]={studio_completed:true};}assert.ok(context.window.AcademyStudioRoute.stageDone(j[0],progress));
+console.log('Route: 81 unique memberships, 81 catalog lessons, 8 stages, clear start, core gate passed');

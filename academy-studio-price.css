@@ -12,6 +12,9 @@
 .as-price-caption{font-size:14px;font-weight:650;line-height:1.5;margin:0 0 10px;overflow-wrap:anywhere}
 .as-price-readout,.as-price-status{font-size:13px;line-height:1.6;margin:10px 0 0;overflow-wrap:anywhere}
 .as-price-status{color:var(--as-muted)}
+.as-price-terminal,.as-price-aggregate{min-width:0;width:100%}
+.as-price-aggregate:not([hidden]){margin-top:20px}
+.as-price-detail{padding:0 4px 8px;color:var(--as-ink)}
 .as-diagram-paths{display:grid;gap:8px;margin-top:12px;font-size:13px;line-height:1.5}
 .as-diagram-paths p{margin:0;padding:9px 12px;background:var(--as-soft);border-radius:8px}
 @media(max-width:420px){.as-price-frame{padding:8px}.as-price-caption{font-size:13px}.as-price-readout,.as-price-status{font-size:12px}}
