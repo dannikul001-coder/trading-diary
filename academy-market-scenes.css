@@ -44,6 +44,35 @@
 .as-terminal-svg .as-terminal-series-bar.as-market-hist-up{fill:var(--am-up);stroke:var(--am-up)}
 .as-terminal-svg .as-terminal-series-bar.as-market-hist-down{fill:var(--am-down);stroke:var(--am-down)}
 
+/* Explanatory text has its own layout below the SVG. It never covers price. */
+.as-market-annotation-rail{padding:12px 14px;border-top:1px solid var(--am-border)}
+.as-market-annotation-rail[hidden]{display:none}
+.as-market-annotation-help{margin:0 0 10px;font-size:12px;line-height:1.5;color:var(--am-muted)}
+.as-market-annotation-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.academy-studio button.as-market-annotation-card{
+ display:flex;align-items:flex-start;gap:9px;min-width:0;width:100%;min-height:44px;
+ padding:9px 10px;text-align:left;border:1px solid var(--am-border);border-radius:8px;
+ background:var(--am-panel);color:var(--am-ink);font-size:12px;line-height:1.5;
+ white-space:normal;overflow-wrap:anywhere;cursor:pointer;pointer-events:auto;
+}
+.as-market-annotation-card.as-market-annotation-zone{grid-column:1/-1;border-left:3px solid var(--am-accent)}
+.as-market-annotation-card.support{border-left-color:var(--am-up)}
+.as-market-annotation-card.resistance{border-left-color:var(--am-down)}
+.as-market-annotation-badge{display:inline-flex;flex:0 0 22px;justify-content:center;align-items:center;min-height:22px;border-radius:5px;background:var(--am-surface);color:var(--am-ink);font-weight:700}
+.as-market-annotation-copy{display:grid;gap:2px;min-width:0}
+.as-market-annotation-title{font-weight:600}
+.as-market-annotation-detail{font-size:11px;color:var(--am-muted)}
+.academy-studio button.as-market-annotation-card:is(:hover,:focus-visible,[aria-pressed=true]){border-color:var(--am-accent);background:var(--am-surface)}
+.academy-studio button.as-market-annotation-card:focus-visible{outline:2px solid var(--am-accent);outline-offset:2px}
+.as-terminal[data-authored=true] .as-terminal-zone{fill:var(--am-accent);fill-opacity:.14}
+.as-terminal[data-authored=true] .as-terminal-area-support .as-terminal-zone{fill:var(--am-up)}
+.as-terminal[data-authored=true] .as-terminal-area-resistance .as-terminal-zone{fill:var(--am-down)}
+.as-terminal-svg .as-terminal-area.is-annotation-active .as-terminal-zone{fill-opacity:.28}
+.as-terminal-svg .as-terminal-area.is-annotation-active .as-terminal-bound{stroke-width:2.5;stroke-dasharray:none}
+.as-terminal-svg :is(.as-terminal-mark,.as-market-point).is-annotation-active{stroke:var(--am-accent);stroke-width:4}
+.as-terminal-svg :is(.as-market-arrow,.as-market-segment,.as-market-reference-level).is-annotation-active{stroke:var(--am-accent);stroke-width:3}
+@media(max-width:480px){.as-market-annotation-list{grid-template-columns:minmax(0,1fr)}.as-market-annotation-rail{padding:10px 12px}}
+
 .as-market-facts,.as-market-paths{
  min-width:0;max-width:100%;margin-top:16px;padding:16px 18px;
  border:1px solid var(--am-border);border-radius:12px;

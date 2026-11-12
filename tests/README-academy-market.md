@@ -20,6 +20,7 @@ The browser checks require Playwright and Chrome or Chromium. Set `TD_NODE_MODUL
 
 ```powershell
 node tests/academy-market-browser.cjs http://127.0.0.1:8767/academy-preview.html
+node tests/academy-annotation-visibility.cjs http://127.0.0.1:8767/academy-preview.html
 node tests/academy-market-motion.cjs http://127.0.0.1:8767/academy-preview.html
 node tests/academy-reference-browser.cjs http://127.0.0.1:8767/academy-preview.html
 node tests/academy-model-controls-browser.cjs http://127.0.0.1:8767/academy-preview.html
@@ -29,6 +30,7 @@ node tests/academy-theme-browser.cjs http://127.0.0.1:8767/academy-preview.html
 
 - `academy-market-models.cjs` verifies exact prices, aggregation, TR/ATR, immutable history, causal annotations and independent exercises.
 - `academy-market-browser.cjs` opens all 55 market lessons at 1440, 390 and 320px, traverses every stage and case, checks label bounds and collisions, operates actual controls, and exercises practice, retry, tabs and notes. `TD_MARKET_REPORT` chooses its JSON report path.
+- `academy-annotation-visibility.cjs` checks that explanatory labels stay below the price SVG and cannot obscure its zones, candles or points. It exercises highlighting from the label buttons, persistence across chart redraws and annotation toggling for all 55 market lessons at 1440, 390 and 320px.
 - `academy-market-motion.cjs` records intermediate geometry for applicable changes, checks immediate removal of future intervals and reduced-motion behaviour, and captures every final theory model. `TD_MOTION_OUTPUT` chooses its report and gallery directory.
 - `academy-reference-browser.cjs` completes all 81 lessons, including wrong and correct responses, source cases, save failures, account isolation and completion gates. `TD_REFERENCE_WIDTHS` and `TD_REFERENCE_REPORT` select widths and the report destination.
 - The controls and source-material checks exercise parameter changes, numerical inputs, checklists and the additional practice material.
