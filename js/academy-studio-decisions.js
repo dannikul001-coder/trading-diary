@@ -251,7 +251,10 @@
       else visual=table(spec.rows);
       const explanation=phase===3?summary||definitions[spec.key].reflection:definitions[spec.key].stages[phase].task;
       host.innerHTML=`<section class="as-decision-root" aria-label="${esc(spec.title)}"><div class="as-decision-heading"><span>Учебная модель · ${esc(spec.key)} · деньги в условных ден. ед.; объём в единицах позиции</span><h3>${esc(spec.title)}</h3></div>${controls?`<div class="as-decision-controls">${controls}</div>`:''}<div class="as-decision-visual">${visual}</div><p class="as-decision-summary" role="status">${esc(explanation)}</p></section>`;
-      host.querySelectorAll('[data-field]').forEach(el=>el.addEventListener('change',()=>{const key=el.dataset.field;if(el.type==='checkbox')values[key]=el.checked;else if(el.tagName==='TEXTAREA')values[key]=el.value;else {const v=Number(el.value);values[key]=el.value.trim()!==''&&Number.isFinite(v)&&v>=Number(el.min)&&v<=Number(el.max)?v:NaN;}draw();}));
+      host.querySelectorAll('[data-field]').forEach(el=>el.addEventListener('change',()=>{const key=el.dataset.field;if(el.type==='checkbox')values[key]=el.checked;else if(el.tagName==='TEXTAREA'){
+        // Committing text on blur must not replace the button receiving the first click.
+        values[key]=el.value;return;
+      }else {const v=Number(el.value);values[key]=el.value.trim()!==''&&Number.isFinite(v)&&v>=Number(el.min)&&v<=Number(el.max)?v:NaN;}draw();}));
       const save=host.querySelector('[data-save]');if(save)save.addEventListener('click',()=>{const note=host.querySelector('[data-field="note"]');values.note=note.value.trim();if(!values.note){note.focus();return;}session.locked=true;draw();});
     }
     draw();

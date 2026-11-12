@@ -1,10 +1,13 @@
-const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{pathToFileURL}=require('node:url');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),{pathToFileURL}=require('node:url');
 const modules=process.env.TD_NODE_MODULES||'C:/Program Files/WindowsApps/OpenAI.CodexPrimaryRuntime.v26-1110-973-0_26.1110.973.0_x64__3k8sg7r9htsxt/dependencies/node/node_modules';
 const {chromium}=require(path.join(modules,'playwright'));
 const repo=path.join(__dirname,'..'),base=process.argv[2]||pathToFileURL(path.join(repo,'academy-preview.html')).href;
 const executablePath=process.env.TD_BROWSER||['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
 const widths=process.env.TD_REFERENCE_WIDTHS?process.env.TD_REFERENCE_WIDTHS.split(',').map(Number):[320,390,1100,1440];
-const styles=['academy-reference-route.css','academy-reference-chart.css','academy-reference.css'];
+const styles=['academy-reference-route.css','academy-reference-chart.css','academy-reference.css','academy-theme.css'];
+const availableThemes=[...new Set([...fs.readFileSync(path.join(repo,'index.html'),'utf8').matchAll(/data-appearance-preset="([a-z]+)"/g)].map(m=>m[1]))];
+const themeNames=process.env.TD_REFERENCE_THEMES==='all'?availableThemes:process.env.TD_REFERENCE_THEMES?process.env.TD_REFERENCE_THEMES.split(','):[null];
+const presetLiteral=fs.readFileSync(path.join(repo,'js/app.js'),'utf8').match(/function applyAppearancePreset\(name\)\{\s*const presets=(\{[\s\S]*?\n  \});/)[1],presets=vm.runInNewContext('('+presetLiteral+')');
 for(const file of ['index.html','academy-preview.html','tests/course-shell-preview.html']){const text=fs.readFileSync(path.join(repo,file),'utf8');for(const css of styles)assert(text.includes(css),file+' missing '+css);}
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath,args:['--allow-file-access-from-files']});
@@ -12,11 +15,13 @@ for(const file of ['index.html','academy-preview.html','tests/course-shell-previ
   const p=await browser.newPage({viewport:{width:390,height:1000},reducedMotion:'reduce'}),errors=[],database=[],failedRequests=[];
   p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(/supabase\.(?:co|in)\//.test(r.url()))database.push(r.url());});p.on('requestfailed',r=>failedRequests.push(r.url()));
   await p.goto(base);await p.waitForFunction(()=>window.AcademyStudio&&Object.keys(window.TD_STUDIO_LESSONS||{}).length===81);
-  for(const width of widths){
+  const reports=[];
+  for(const theme of themeNames)for(const width of widths){
    await p.setViewportSize({width,height:1000});
-   const report=await p.evaluate(async width=>{
+   if(theme)await p.evaluate(({theme,accent})=>{document.body.className='theme-'+theme+(accent!=='teal'?' accent-'+accent:'');document.body.dataset.theme=theme;},{theme,accent:presets[theme].accent});
+   const report=await p.evaluate(async({width,theme})=>{
     const failures=[],check=(v,message)=>{if(!v)throw new Error(message);},visible=el=>!!el&&el.checkVisibility(),tick=()=>new Promise(r=>setTimeout(r,0));
-    window.currentUser={id:'reference-browser-synthetic-'+width};let completed=0,cases=0,renders=0;
+    window.currentUser={id:'reference-browser-synthetic-'+(theme||'default')+'-'+width};let completed=0,cases=0,renders=0;
     const prefix=scene=>JSON.stringify({text:scene.textContent,svg:[...scene.querySelectorAll('svg')].map(svg=>({viewBox:svg.getAttribute('viewBox'),text:svg.textContent,geometry:[...svg.querySelectorAll('line,rect,path,circle')].map(n=>[n.tagName,...[...n.attributes].map(a=>[a.name,a.value]).filter(a=>!['id','clip-path'].includes(a[0]))])}))});
     for(const lesson of TRADING_COURSE_V1.lessons){
      const entry=TD_STUDIO_LESSONS[lesson.key],original=entry.render;let renderCount=0,lastOptions;
@@ -46,10 +51,12 @@ for(const file of ['index.html','academy-preview.html','tests/course-shell-previ
      }catch(e){failures.push({key:lesson.key,width,message:e.message});}
      finally{entry.render=original;window.closeModal();await tick();if(window.activeLearningModel!==null)failures.push({key:lesson.key,width,message:'close did not clear active model'});}
     }
-    return{width,completed,cases,renders,failures};
-   },width);
+    return{theme,width,completed,cases,renders,failures};
+   },{width,theme});
+   reports.push(report);
    console.log(JSON.stringify(report));assert.deepEqual(report.failures,[]);assert.equal(report.completed,81);
   }
+  if(process.env.TD_REFERENCE_REPORT)fs.writeFileSync(process.env.TD_REFERENCE_REPORT,JSON.stringify(reports,null,2));
   for(const width of [320,390]){await p.setViewportSize({width,height:1000});await p.evaluate(()=>openTrainingLesson(TRADING_COURSE_V1.lessons.find(l=>l.key==='1.1').id));const plan=p.locator('.as-breadcrumb [data-as-view="plan"]');assert.equal(await plan.isVisible(),true,'real mobile plan control');await plan.click();assert.equal(await p.locator('[data-as-plan]').isVisible(),true);await p.locator('[data-as-next]').click();assert.equal(await p.locator('[data-as-model]').isVisible(),true);assert.equal(await p.locator('[data-as-plan]').isVisible(),false);await p.locator('.modal-close').click();}
   await p.setViewportSize({width:1100,height:1000});await p.evaluate(()=>{window.currentUser={id:'reference-real-controls'};renderCourseV1View();});
   await p.evaluate(()=>openTrainingLesson(TRADING_COURSE_V1.lessons.find(l=>l.key==='1.1').id));
