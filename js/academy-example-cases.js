@@ -47,6 +47,7 @@
   return variants.map(([title,step],i)=>({id:i?'contrast-'+i:'base',title,step,alternate:false,tone:'neutral',body:entry.stages[step].body+' '+entry.teaching.takeaway,task:entry.stages[step].task}));
  }
  for(const [key,entry] of Object.entries(entries)){
+  if(entry.examples?.length)continue;
   const spec=price?.scene(key),last=entry.stages.length-1;
   if(spec){entry.examples=candleCases(key,entry,spec);continue;}
   if(entry.kind==='indicator'){
