@@ -13,6 +13,13 @@ for(const practice of [false,true]){
  const hold=api.visible('2.1',{practice,step:3,revealed:true}),breakdown=api.visible('2.1',{practice,step:3,revealed:true,alternate:true});assert.equal(hold.bars.length,48);assert.equal(breakdown.bars.length,48);assert.equal(JSON.stringify(hold.bars.slice(0,42)),JSON.stringify(prefix.bars));assert.equal(JSON.stringify(breakdown.bars.slice(0,42)),JSON.stringify(prefix.bars));assert(hold.bars[42].c>100);assert(breakdown.bars[42].c<98);
 }
 assert(lessons['2.1'].teaching.example.includes('99,6'));assert(lessons['2.1'].practice.question.includes('99,6'));assert(lessons['2.1'].quiz[0].question.includes('99,4'));
+for(const step of [0,1,2]){
+ const current=api.terminalConfig('2.1',{step}),last=api.terminalConfig('2.1',{step:2});
+ assert.equal(current.bars.length,42,'full context from the first explanation');
+ for(const part of ['bars','zones','markers'])assert.equal(JSON.stringify(current[part]),JSON.stringify(last[part]),'theory steps retain '+part);
+ assert(current.highlight.length>0&&current.highlight.every(i=>i<42),'each explanation points to known candles');
+ assert.equal(JSON.stringify(current.bars),JSON.stringify(api.visible('2.1',{step,alternate:true}).bars),'continuation stays hidden on both branches');
+}
 assert.equal(Object.keys(lessons).length,27);
 for(const key of keys){const lesson=lessons[key];assert(lesson);assert(lesson.stages.length>=4&&lesson.stages.length<=6);assert.equal(lesson.practice.choices.filter(x=>x.correct).length,1);assert(lesson.quiz.length);const prefix=api.visible(key,{practice:true,revealed:false,alternate:false}),other=api.visible(key,{practice:true,revealed:false,alternate:true});assert.equal(JSON.stringify(prefix),JSON.stringify(other),'same prefix '+key);for(const b of prefix.bars){assert(b.h>=Math.max(b.o,b.c));assert(b.l<=Math.min(b.o,b.c));}const host={clientWidth:360,innerHTML:''};const cleanup=lesson.render(host,{practice:true,revealed:false});assert.equal(typeof cleanup,'function');assert(!/NaN|Infinity/.test(host.innerHTML));assert(host.innerHTML.includes('viewBox="0 0 330'));const first=host.innerHTML;lesson.render(host,{practice:true,revealed:false,alternate:true});assert.equal(host.innerHTML,first,'no future-dependent HTML '+key);cleanup();}
 const tf=api.scene('3.3').bars,a=api.aggregate(tf,3);assert.equal(JSON.stringify(a[0]),JSON.stringify({o:100,h:105,l:99,c:104}));assert.equal(JSON.stringify(a[1]),JSON.stringify({o:104,h:110,l:103,c:109}));assert.equal(JSON.stringify(a[2]),JSON.stringify({o:109,h:110,l:102,c:103}));assert.equal(api.aggregate(tf.slice(0,5),3).length,1,'do not promote incomplete group');

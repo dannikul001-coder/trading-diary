@@ -18,7 +18,7 @@
   const stored=typeof window.courseV1Progress==='function'?window.courseV1Progress():{},count=course.lessons.filter(l=>done(stored[l.id])).length,percent=Math.round(count/course.lessons.length*100);
   const title={'1.1':'Как устроена свеча','0.1':'Как читать график','0.2':'Сколько времени в одной свече','2.1':'Уровни поддержки и сопротивления'}[lesson.key]||lesson.title,uid='as-lesson-'+lesson.key.replace(/[^a-z0-9]/gi,'-');
   let step=progress.studio_version===VERSION&&Number.isInteger(progress.studio_step)?Math.max(0,Math.min(stages.length-1,progress.studio_step)):0;
-  let tab='theory',aux=null,practice=false,revealed=false,alternate=false,practiceCorrect=false,quizScore=null,cleanup=null,sourcePractice=null,disposed=false,saveQueue=Promise.resolve(true),completed=done(progress);
+  let tab=progress.studio_version===VERSION&&tabNames.includes(progress.studio_tab)?progress.studio_tab:'theory',aux=null,practice=tab==='practice',revealed=false,alternate=false,practiceCorrect=false,quizScore=null,cleanup=null,sourcePractice=null,disposed=false,saveQueue=Promise.resolve(true),completed=done(progress);
   const seen=new Set(validSeen(progress.studio_version===VERSION?progress.studio_seen:[],stages.length));seen.add(step);
   const hasSourcePractice=['14.2','14.5','15.6'].includes(lesson.key)&&window.AcademySourcePractice;
   const courseButtons=sectionLessons.map(l=>`<li><button type="button" data-as-open-lesson="${esc(l.id)}" ${l.id===lesson.id?'aria-current="page"':''}><span class="as-course-check">${done(stored[l.id])?'✓':esc(l.key)}</span><span>${esc(l.id===lesson.id?title:l.title)}</span>${l.id===lesson.id?'<small>Сейчас</small>':''}</button></li>`).join('');
@@ -51,7 +51,7 @@
   const sameAccount=()=>String(window.currentUser?.id||'local-preview')===accountAtMount;
   function live(){return !disposed&&root.isConnected&&sameAccount();}
   function positionStep(){const modal=root.closest('.modal');if(modal){modal.scrollTop=0;const content=modal.querySelector('#modalContent');if(content)content.scrollTop=0;}}
-  function payload(extra={}){return {studio_version:VERSION,studio_step:step,studio_seen:[...seen],...extra};}
+  function payload(extra={}){return {studio_version:VERSION,studio_step:step,studio_tab:tab,studio_seen:[...seen],...extra};}
   function persist(extra={}){const snapshot=payload(extra);saveQueue=saveQueue.then(async()=>{if(!sameAccount())return false;if(!onStage)return true;try{await onStage(snapshot);return true;}catch{if(live())q('[data-as-save-status]').textContent='Не удалось сохранить прогресс в браузере.';return false;}});return saveQueue;}
   function gate(){const ready=seen.size===stages.length&&practiceCorrect&&quizScore===100;q('[data-as-complete]').disabled=completed||!ready;q('[data-as-gate]').textContent=completed?'Урок пройден. Можно повторить модель или перейти к следующему уроку.':ready?'Все шаги разобраны. Практика и проверка выполнены — заверши урок.':'Для завершения разбери все шаги, реши практику и ответь на вопросы.';}
   function refreshCourseProgress(){
@@ -72,7 +72,7 @@
    const visible=!aux&&tab!=='notes';q('[data-as-model]').hidden=!visible;q('[data-as-reference]').hidden=!!aux||tab!=='examples';q('[data-as-assessment]').hidden=!!aux||tab!=='practice'||!revealed;q('[data-as-notes-panel]').hidden=!!aux||tab!=='notes';q('[data-as-plan]').hidden=aux!=='plan';if(hasSourcePractice)q('[data-as-source-practice]').hidden=aux!=='source-practice';q('.as-completion').hidden=!!aux||!(tab==='notes'||tab==='practice'&&revealed);q('.as-extra-materials').hidden=!hasSourcePractice;
    root.querySelectorAll('[data-as-tab]').forEach(b=>{b.setAttribute('aria-selected',String(!aux&&b.dataset.asTab===tab));b.setAttribute('aria-pressed',String(!aux&&b.dataset.asTab===tab));});q('[data-as-tab-content]').setAttribute('aria-labelledby',`${uid}-tab-${tab}`);gate();if(visible)paint();else{cleanup?.();cleanup=null;}
   }
-  function setTab(next){if(!tabNames.includes(next))return;aux=null;tab=next;practice=tab==='practice';if(tab==='examples'){step=stages.length-1;seen.add(step);persist();}if(practice)alternate=false;render();}
+  function setTab(next){if(!tabNames.includes(next))return;aux=null;tab=next;practice=tab==='practice';if(tab==='examples'){step=stages.length-1;seen.add(step);}if(practice)alternate=false;render();persist();}
   function enterPractice(){setTab('practice');positionStep();}
   function showView(view){if(view==='model')setTab('theory');else if(view==='reference')setTab('examples');else if(view==='plan'||view==='source-practice'&&hasSourcePractice){aux=view;practice=false;render();if(view==='source-practice'&&!sourcePractice)sourcePractice=window.AcademySourcePractice.mount(q('[data-as-source-practice]'),lesson.key);}}
   function resetPractice(){revealed=false;practiceCorrect=false;quizScore=null;alternate=false;q('[data-as-choices]').disabled=false;q('[data-as-reveal]').disabled=false;q('[data-as-retry]').hidden=true;q('[data-as-practice-result]').textContent='';q('[data-as-quiz-score]').textContent='';root.querySelectorAll('[data-as-feedback]').forEach(n=>n.textContent='');root.querySelectorAll('input[name="as-practice"], [data-as-quiz] input').forEach(n=>n.checked=false);}
@@ -81,7 +81,7 @@
    if(b.hasAttribute('data-as-tab'))setTab(b.dataset.asTab);
    else if(b.hasAttribute('data-as-go')){setTab(b.dataset.asGo);positionStep();}
    else if(b.hasAttribute('data-as-step')){practice=false;step=Number(b.dataset.asStep);seen.add(step);render();persist();}
-   else if(b.hasAttribute('data-as-replay')){if(practice){resetPractice();}else{step=0;alternate=false;}render();}
+   else if(b.hasAttribute('data-as-replay')){if(practice){resetPractice();}else{step=0;alternate=false;}render();persist();}
    else if(b.hasAttribute('data-as-next')){if(aux)setTab('theory');else if(tab==='theory'&&step<stages.length-1){step++;seen.add(step);render();persist();}else if(tab==='notes'){if(completed&&sequence[index+1])await window.openTrainingLesson?.(sequence[index+1].id);else enterPractice();}else setTab(tabNames[Math.min(3,tabNames.indexOf(tab)+1)]);positionStep();}
    else if(b.hasAttribute('data-as-prev')){if(aux)setTab('theory');else if(tab==='theory'){step=Math.max(0,step-1);render();persist();}else setTab(tabNames[Math.max(0,tabNames.indexOf(tab)-1)]);positionStep();}
    else if(b.hasAttribute('data-as-to-practice'))enterPractice();

@@ -134,6 +134,9 @@
   request=window.requestAnimationFrame(tick);return cancel;
  }
  specs['1.2'].cut=6;
+ // Keep the reference's repeated reactions visible while the explanation changes.
+ // The six continuation candles are still unavailable until the final step.
+ specs['2.1'].counts=[42,42,42];
  const stageCounts={'0.2':[3,3,6],'1.3':[3,5,8],'2.2':[4,5,5],'3.3':[3,6,6],'4.1':[2,3,3],'6.2':[4,5,5],'12.2':[2,3,3],'12.3':[1,3,3],'12.4':[2,3,3],'12.7':[2,2,2],'13.9':[2,3,3]};
  for(const [key,counts] of Object.entries(stageCounts))specs[key].counts=counts;
  tasks['1.1']=['Найди открытие O100 и текущую цену P100.','Обнови High до110; назови ещё неизвестное закрытие.','Сравни текущий Low95 с High110.','Измерь тело6, верхнюю тень4 и нижнюю5.'];
@@ -238,7 +241,8 @@
    for(const i of spec.reactionLow)if(i<bars.length)add(i,bars[i].l,'Подход к поддержке · свеча '+(i+1));
    for(const i of spec.reactionHigh)if(i<bars.length)add(i,bars[i].h,'Подход к сопротивлению · свеча '+(i+1));
    if(bars.length>=spec.cut)add(spec.cut-1,bars[spec.cut-1].c,'Новый подход · свеча '+spec.cut);
-   return {id:'price',bars,caption:'Поддержка и сопротивление',zones:spec.zones.map(z=>({...z})),levels,markers,defaultLimit:bars.length,forming:false,intervalLabel:'завершённые интервалы'};
+   const highlight=s.hidden?[spec.cut-1]:s.step===0?[spec.reactionLow[0],spec.reactionHigh[0]]:s.step===1?[spec.reactionLow[1],spec.reactionHigh[1]]:s.step===2?[spec.cut-1]:[];
+   return {id:'price',bars,caption:'Поддержка и сопротивление',zones:spec.zones.map(z=>({...z})),levels,markers,highlight,defaultLimit:bars.length,forming:false,intervalLabel:'завершённые интервалы'};
   }
   if(spec.mode==='ohlc'){
    const grouped=new Map();for(const [label,price] of [['Открытие',last.o],['Максимум',last.h],['Минимум',last.l],[s.forming?'Сейчас':'Закрытие',last.c]])grouped.set(price,[...(grouped.get(price)||[]),label]);
