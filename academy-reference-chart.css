@@ -2,3 +2,5 @@
 .as-terminal-zone-chip{pointer-events:none}.as-terminal-zone-label-bg{fill:var(--as-panel);stroke:var(--as-accent);stroke-width:1}.as-terminal-zone-chip-support .as-terminal-zone-label-bg{stroke:var(--as-up,var(--academy-border))}.as-terminal-zone-chip-resistance .as-terminal-zone-label-bg{stroke:var(--as-down,var(--academy-border))}.as-terminal-svg .as-terminal-zone-chip .as-terminal-area-label{fill:var(--academy-ink);stroke:none;font-size:12px;font-weight:600}
 
 .as-terminal-svg .as-terminal-mark-active{stroke:var(--as-accent);stroke-width:3px}
+.as-terminal-svg .as-terminal-series-point,.as-terminal-svg .as-terminal-series-bar{stroke-width:1;stroke-dasharray:none}.as-terminal-series-point.as-terminal-series-0,.as-terminal-series-bar.as-terminal-series-0{fill:var(--as-chart-line)}.as-terminal-series-point.as-terminal-series-1,.as-terminal-series-bar.as-terminal-series-1{fill:var(--as-chart-line2)}.as-terminal-series-point.as-terminal-series-2,.as-terminal-series-bar.as-terminal-series-2{fill:var(--as-accent)}
+.as-terminal-label-leader{stroke:var(--as-muted);stroke-width:1;stroke-dasharray:2 2}

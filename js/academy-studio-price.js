@@ -58,10 +58,10 @@
   const tail=alternate?spec.other:spec.tail;
   const full=tail?base.concat(tail.map((c,i)=>{const o=i?tail[i-1]:base.at(-1).c;return bar(o,Math.max(o,c)+1,Math.min(o,c)-1,c);})):base;
   const counts=spec.counts?[...spec.counts,full.length]:[spec.cut,spec.cut,spec.cut,full.length];
-  const count=practice&&!revealed?spec.cut:practice?full.length:counts[step];
+  const available=practice&&!revealed?spec.cut:practice?full.length:counts[step],count=!practice&&Number.isInteger(options.exampleStop)?Math.min(available,options.exampleStop):available;
   const forming=spec.mode==='ohlc'&&!practice&&step<3;
   const bars=forming?[[bar(100,100,100,100)],[bar(100,110,100,110)],[bar(100,110,95,95)]][step]:full.slice(0,count);
-  return {bars,zone:spec.zone&&count>=(spec.zoneAt||1)?spec.zone:null,count,step,hidden:practice&&!revealed,forming};
+  return {bars,zone:spec.zone&&count>=(spec.zoneAt||1)?spec.zone:null,count,step,hidden:practice&&!revealed||!practice&&Number.isInteger(options.exampleStop)&&count<full.length,forming};
  }
  function chart(bars,spec,width,zone,annotations=true){
   const g=geometry(bars,width),{x,y,plot:p}=g;
@@ -242,7 +242,7 @@
    for(const i of spec.reactionHigh)if(i<bars.length)add(i,bars[i].h,'Подход к сопротивлению · свеча '+(i+1));
    if(bars.length>=spec.cut)add(spec.cut-1,bars[spec.cut-1].c,'Новый подход · свеча '+spec.cut);
    const highlight=s.hidden?[spec.cut-1]:s.step===0?[spec.reactionLow[0],spec.reactionHigh[0]]:s.step===1?[spec.reactionLow[1],spec.reactionHigh[1]]:s.step===2?[spec.cut-1]:[];
-   return {id:'price',bars,caption:'Поддержка и сопротивление',zones:spec.zones.map(z=>({...z})),levels,markers,highlight,defaultLimit:bars.length,forming:false,intervalLabel:'завершённые интервалы'};
+   return {id:'price',bars,knownPrefixLength:spec.cut,caption:'Поддержка и сопротивление',zones:spec.zones.map(z=>({...z})),levels,markers,highlight,defaultLimit:bars.length,forming:false,intervalLabel:'завершённые интервалы'};
   }
   if(spec.mode==='ohlc'){
    const grouped=new Map();for(const [label,price] of [['Открытие',last.o],['Максимум',last.h],['Минимум',last.l],[s.forming?'Сейчас':'Закрытие',last.c]])grouped.set(price,[...(grouped.get(price)||[]),label]);
@@ -257,7 +257,7 @@
   else add(bars.length-1,last.c,'Последнее закрытие '+last.c);
   if(Number.isFinite(spec.level))levels.push({price:spec.level,label:key==='2.3'?'Отмена: закрытие ниже '+spec.level:'Заданная граница '+spec.level});
   if(Number.isFinite(spec.target))levels.push({price:spec.target,label:'Ориентир '+spec.target});
-  return {id:'price',bars,caption:spec.mode==='ohlc'?'Одна свеча · '+(s.forming?'интервал ещё идёт':'интервал закрыт'):shortCaptions[key],zone:s.zone?{low:s.zone[0],high:s.zone[1],label:'Выбранная область '+s.zone.join('–')}:undefined,levels,markers,focus:spec.mode==='ohlc'?0:Math.min(bars.length-1,s.step),forming:s.forming,intervalLabel:s.forming?'интервал ещё идёт':spec.mode==='timeframe'?'одна минута':'завершённые интервалы'};
+  return {id:'price',bars,knownPrefixLength:spec.cut,caption:spec.mode==='ohlc'?'Одна свеча · '+(s.forming?'интервал ещё идёт':'интервал закрыт'):shortCaptions[key],zone:s.zone?{low:s.zone[0],high:s.zone[1],label:'Выбранная область '+s.zone.join('–')}:undefined,levels,markers,focus:spec.mode==='ohlc'?0:undefined,forming:s.forming,directOHLC:spec.mode==='ohlc',intervalLabel:s.forming?'интервал ещё идёт':spec.mode==='timeframe'?'одна минута':'завершённые интервалы'};
  }
  for(const [key,spec] of Object.entries(specs)){
   const [goal,plain,read,example,termRows,takeaway]=teachingRows[key],teaching={goal,plain,read,example,terms:[{term:termRows[0],meaning:termRows[1]},{term:termRows[2],meaning:termRows[3]}],takeaway};
