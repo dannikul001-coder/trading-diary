@@ -19,8 +19,8 @@ function inspectStyles(selector){
   const style=getComputedStyle(node),svg=node.namespaceURI==='http://www.w3.org/2000/svg';
   const fore=svg?style.fill:style.color;if(fore==='none'||fore==='transparent')return;
   let back=bg(node);
-  if(svg){const chip=node.closest('.as-terminal-zone-chip'),previous=node.previousElementSibling;
-   const mark=chip?.querySelector('.as-terminal-zone-label-bg')||(previous?.matches('.as-terminal-mark,.as-terminal-price-tag')?previous:null);
+  if(svg){const chip=node.closest('.as-terminal-zone-chip,.as-ref-chip,.as-ref-price-tag'),previous=node.previousElementSibling;
+   const mark=chip?.querySelector('.as-terminal-zone-label-bg,.as-ref-chip-bg')||(node.matches('.as-terminal-mark-text,.as-terminal-tag-text')&&previous?.matches('.as-terminal-mark,.as-terminal-price-tag')?previous:null);
    if(mark)back=blend(color(getComputedStyle(mark).fill),back);
   }
   const a=lum(blend(color(fore),back)),b=lum(back),ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05),size=parseFloat(style.fontSize),weight=parseInt(style.fontWeight)||400;

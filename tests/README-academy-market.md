@@ -20,7 +20,7 @@ The browser checks require Playwright and Chrome or Chromium. Set `TD_NODE_MODUL
 
 ```powershell
 node tests/academy-market-browser.cjs http://127.0.0.1:8767/academy-preview.html
-node tests/academy-annotation-visibility.cjs http://127.0.0.1:8767/academy-preview.html
+node tests/academy-chart-reference.cjs http://127.0.0.1:8767/academy-preview.html
 node tests/academy-market-motion.cjs http://127.0.0.1:8767/academy-preview.html
 node tests/academy-reference-browser.cjs http://127.0.0.1:8767/academy-preview.html
 node tests/academy-model-controls-browser.cjs http://127.0.0.1:8767/academy-preview.html
@@ -30,10 +30,13 @@ node tests/academy-theme-browser.cjs http://127.0.0.1:8767/academy-preview.html
 
 - `academy-market-models.cjs` verifies exact prices, aggregation, TR/ATR, immutable history, causal annotations and independent exercises.
 - `academy-market-browser.cjs` opens all 55 market lessons at 1440, 390 and 320px, traverses every stage and case, checks label bounds and collisions, operates actual controls, and exercises practice, retry, tabs and notes. `TD_MARKET_REPORT` chooses its JSON report path.
-- `academy-annotation-visibility.cjs` checks that explanatory labels stay below the price SVG and cannot obscure its zones, candles or points. It exercises highlighting from the label buttons, persistence across chart redraws and annotation toggling for all 55 market lessons at 1440, 390 and 320px.
+- `academy-chart-reference.cjs` verifies the full-width reference layout, actual candle geometry, reserved annotation gutter, compact semantic labels, colored right-axis prices, source-based time axis, fractional precision and controls. It covers eight representative topics at 1540/390/320px in dark and light themes, then all 55 market lessons on all three widths. The earlier annotation-visibility command forwards to this suite.
+- `academy-chart-reference-meta.cjs` verifies presentation metadata against 1136 frozen configurations, including causal HH/HL/LH/LL labels, exact OB/FVG ranges, synthetic time and source immutability.
 - `academy-market-motion.cjs` records intermediate geometry for applicable changes, checks immediate removal of future intervals and reduced-motion behaviour, and captures every final theory model. `TD_MOTION_OUTPUT` chooses its report and gallery directory.
 - `academy-reference-browser.cjs` completes all 81 lessons, including wrong and correct responses, source cases, save failures, account isolation and completion gates. `TD_REFERENCE_WIDTHS` and `TD_REFERENCE_REPORT` select widths and the report destination.
 - The controls and source-material checks exercise parameter changes, numerical inputs, checklists and the additional practice material.
 - The theme check covers all 18 diary presets and four lesson tabs. Use `TD_THEME_WIDTHS`, `TD_THEME_NAMES` and `TD_THEME_REPORT` to select a subset and report destination.
 
 All browser checks use isolated synthetic browser state. No database migration, RLS modification or production data mutation is part of this change.
+
+Short on-chart labels use the reserved area to the right of available candles. Extended zone rectangles in that area are visual continuations of already defined price ranges. The time axis may extend into that area; the candle selector ends at the final available OHLC interval. Complete explanations and precise values remain in the expandable legend.

@@ -26,7 +26,7 @@ const widths=(process.env.TD_REFERENCE_FIDELITY_WIDTHS||'1540,390,320').split(',
    const geometry=()=>terminal.locator('[data-tc-candles]').evaluate(el=>[...el.querySelectorAll('line,rect')].map(n=>[...n.attributes].filter(a=>a.name!=='class').map(a=>[a.name,a.value])));
    const reference=await geometry();
    const differences=await svg.evaluate((el,bars)=>{
-    const ticks=[...el.querySelectorAll('[data-tc-grid] text')].filter(n=>!n.textContent.includes('Свеча')&&!n.textContent.includes('№'));
+    const ticks=[...el.querySelectorAll('[data-tc-grid] text')].filter(n=>!n.classList.contains('as-terminal-time-tick'));
     const number=n=>Number(n.textContent.replace(/[\s\u00a0\u202f]/g,'').replace(',','.')),first=ticks[0],last=ticks.at(-1),low=number(first),high=number(last);
     const y=value=>Number(first.getAttribute('y'))-4+(value-low)/(high-low)*(Number(last.getAttribute('y'))-Number(first.getAttribute('y')));
     return [...el.querySelectorAll('.as-terminal-candle rect')].map((rect,i)=>Math.max(Math.abs(Number(rect.getAttribute('y'))-Math.min(y(bars[i].o),y(bars[i].c))),Math.abs(Number(rect.getAttribute('height'))-Math.max(2,Math.abs(y(bars[i].o)-y(bars[i].c))))));
