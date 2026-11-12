@@ -101,8 +101,8 @@
   };
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function data(key,state={},parameter='default'){
-    const spec=specs[key],timeline=spec[0]==='macd'?[40,48,60,72,96]:spec[0]==='ao'?[36,44,60,72,96]:[20,36,60,72,96],available=state.practice?(state.revealed?96:80):timeline[Math.max(0,Math.min(4,Number(state.step)||0))],count=!state.practice&&Number.isInteger(state.exampleStop)?Math.min(available,state.exampleStop):available;
-    const source=(state.practice?practiceBars:bars).slice(0,count).map(b=>({...b}));
+    const spec=specs[key],guide=window.TD_MARKET_INDICATOR_GUIDES?.[key],timeline=guide?.counts||[60,68,76,80,96],fixture=(state.practice?guide?.practiceBars:guide?.theoryBars)||(state.practice?practiceBars:bars),available=state.practice?(state.revealed?fixture.length:80):timeline[Math.max(0,Math.min(timeline.length-1,Number(state.step)||0))],count=Math.min(fixture.length,!state.practice&&Number.isInteger(state.exampleStop)?Math.min(available,state.exampleStop):available);
+    const source=fixture.slice(0,count).map(b=>({...b}));
     // An alternative changes only the still-hidden continuation, never history.
     if(state.alternate&&count===96)for(let i=80;i<source.length;i++){const c=source[79].c+(i-79)*.7;source[i]={o:i===80?source[79].c:source[i-1].c,c,h:c+1.4,l:c-1.1};}
     const panels=spec.slice(4).map(type=>{
@@ -119,7 +119,7 @@
     return {bars:source,panels,count,parameter};
   }
   function graph(source,model,candles=false,label='',width=740){
-    const start=Math.max(0,source.length-(width<420?24:40)),shown=source.slice(start),lines=model?model.lines:[],bounded=model&&model.bounded;
+    const start=Math.max(0,source.length-(width<420?40:76)),shown=source.slice(start),lines=model?model.lines:[],bounded=model&&model.bounded;
     const nums=[...(candles?shown.flatMap(b=>[b.h,b.l]):[]),...lines.flatMap(l=>l.values.slice(start).filter(Number.isFinite)),...(model?model.levels:[])];
     if(!nums.length)return '<p class="as-indicator-warmup">Нужна история для полного окна: значения ещё не определены.</p>';
     let low=bounded?0:Math.min(...nums),high=bounded?100:Math.max(...nums);if(low===high){low-=1;high+=1;}const pad=(high-low)*.08;if(!bounded){low-=pad;high+=pad;}
@@ -156,10 +156,12 @@
     const spec=specs[key],teaching=registry[key].teaching,mode=state.context||(state.practice?'practice':'learn');
     let memory=sessions.get(host);if(!memory){memory={};sessions.set(host,memory);}if(!memory[mode]||memory[mode].resetKey!==(state.resetKey||0))memory[mode]={parameter:'default',resetKey:state.resetKey||0};
     let parameter=memory[mode].parameter,terminalCleanups=[];
-    function draw(){terminalCleanups.forEach(fn=>fn());terminalCleanups=[];if(frames.has(host)){window.cancelAnimationFrame(frames.get(host));frames.delete(host);}const d=data(key,state,parameter),latest=d.bars.at(-1),last=d.count-1,plot=(...args)=>graph(...args,Math.max(232,Math.min(1100,(host.clientWidth||764)-8))).replace('<svg ','<svg class="as-indicator-svg" ');
+    function draw(){terminalCleanups.forEach(fn=>fn());terminalCleanups=[];if(frames.has(host)){window.cancelAnimationFrame(frames.get(host));frames.delete(host);}const d=data(key,state,parameter),guide=window.TD_MARKET_INDICATOR_GUIDES?.[key],authored=guide?.build({...state,parameter,data:d}),latest=d.bars.at(-1),last=d.count-1,plot=(...args)=>graph(...args,Math.max(232,Math.min(1100,(host.clientWidth||764)-8))).replace('<svg ','<svg class="as-indicator-svg" ');
+      const layer=(...layers)=>Object.fromEntries(['zones','levels','markers','callouts','segments','highlight'].map(field=>[field,layers.flatMap(value=>value?.[field]||[])]));
+      const chartMeta={authored:!!guide,chartRole:'context',height:420,mobileHeight:340,mobileLimit:40,defaultLimit:authored?.defaultLimit||Math.min(76,d.count),focus:authored?.focus??last,timeframeMinutes:5,intervalLabel:'5 минут · учебная модель',startTime:'2026-01-12T09:00:00Z'};
       const overlay=['ma','fractals','keltner','bollinger','sar','regression','heikin','donchian','supertrend','dual-supertrend'];
       const warming=!d.panels.some(p=>p.lines.some(l=>l.values.some(Number.isFinite)));
-      const panels=(warming?'<p class="as-indicator-warmup" role="status">Пока показано '+d.count+' свечей: цепочке расчёта ещё нужна история. Пропуски не заполняются будущими значениями; переходи к следующим закрытиям.</p>':'')+d.panels.map((p,index)=>'<section class="as-indicator-panel"><h4>'+esc(names[p.type])+'</h4><p class="as-indicator-reading">'+esc(reading(p,d.bars))+'</p><div data-as-indicator-overlay="'+index+'">'+plot(d.bars,p,overlay.includes(p.type),spec[1]+': '+names[p.type])+'</div><ul class="as-indicator-values">'+p.lines.map((l,i)=>'<li class="as-indicator-label-'+i+'">'+esc(l.label)+': <strong>'+(Number.isFinite(l.values[last])?l.values[last].toFixed(2):'нет значения')+'</strong></li>').join('')+'</ul></section>').join('');
+      const panels=(warming?'<p class="as-indicator-warmup" role="status">Пока показано '+d.count+' свечей: цепочке расчёта ещё нужна история. Пропуски не заполняются будущими значениями; переходи к следующим закрытиям.</p>':'')+d.panels.map((p,index)=>'<section class="as-indicator-panel"><h4>'+esc(names[p.type])+'</h4><p class="as-indicator-reading">'+esc(reading(p,d.bars))+'</p><div data-as-indicator-overlay="'+index+'">'+plot(key==='13.8'&&authored?.comparison?authored.comparison.transformedBars:d.bars,p,overlay.includes(p.type),spec[1]+': '+names[p.type])+'</div><ul class="as-indicator-values">'+p.lines.map((l,i)=>'<li class="as-indicator-label-'+i+'">'+esc(l.label)+': <strong>'+(Number.isFinite(l.values[last])?l.values[last].toFixed(2):'нет значения')+'</strong></li>').join('')+'</ul></section>').join('');
       let extra='';
       if(spec[0]==='votes'){const c=d.bars.map(b=>b.c),a=I.sma(c,2).at(-1),b=I.sma(c,5).at(-1),r=I.rsi(c,14).at(-1),votes=[['Close > SMA5',latest.c>b],['SMA2 > SMA5',a>b],['RSI14 > 50',r>50]];extra='<div class="as-indicator-votes">'+votes.map(v=>'<span>'+v[0]+': '+(v[1]?'да':'нет')+'</span>').join('')+'<strong>'+votes.filter(v=>v[1]).length+' из 3 — зависимые расчёты</strong></div>';}
       if(spec[0]==='donchian'){const u=d.panels[0].lines[0].values,fmt=v=>Number.isFinite(v)?v.toFixed(2):'ещё нет полного окна';extra='<p>Верх канала сейчас: '+fmt(u.at(-1))+'; известный до текущей свечи: '+fmt(u.at(-2))+'.</p>';}
@@ -169,23 +171,24 @@
       if(key==='13.3'){const high=Math.max(...d.bars.slice(0,20).map(b=>b.h));contextZone={low:high-1,high,label:'Область первых 20 свечей'};extra='<p class="as-indicator-reading">Область отмечена по уже известным первым 20 свечам: '+contextZone.low.toFixed(2)+'–'+contextZone.high.toFixed(2)+'. Текущее закрытие '+latest.c.toFixed(2)+(latest.c>=contextZone.low&&latest.c<=contextZone.high?' внутри области.':' вне области.')+' RSI не заменяет проверку подхода к этой области.</p>'+extra;}
       const canMa=!state.practice&&['11.4','4.3'].includes(key),canPeriod=!state.practice&&['11.13','11.16'].includes(key);
       if(state.practice){const lastCloses=d.bars.slice(77,80).map(b=>b.c.toFixed(4));extra='<p class="as-indicator-inputs">Исходные Close свечей 78–80: '+lastCloses.join(' · ')+'. Вопрос относится к показанному префиксу до свечи 80; после раскрытия сравни изменение расчёта.</p>'+extra;}
-      const separatePrice=!overlay.includes(d.panels[0].type),checklist=combinationSteps[key];
+      const separatePrice=!overlay.includes(d.panels[0].type)||key==='13.8'&&!!authored?.comparison,checklist=combinationSteps[key];
       host.innerHTML='<div class="as-indicator-root">'+
         '<p class="as-indicator-meaning">'+esc(teaching.plain)+'</p><p class="as-indicator-read"><strong>Как читать: </strong>'+esc(teaching.read)+'</p>'+
         (checklist?'<ol class="as-indicator-checklist">'+checklist.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>':'')+
         (canMa?'<label>Тип средней <select class="as-indicator-parameter"><option value="default">SMA 2/5</option><option value="ema">EMA 2/5</option></select></label>':canPeriod?'<label>Окно <select class="as-indicator-parameter"><option value="default">'+(key==='11.16'?'22':'14')+'</option><option value="short">10</option></select></label>':'')+
         '<p class="as-indicator-status">Доступно '+d.count+' из 96 свечей · '+(state.revealed?'продолжение раскрыто':'будущее скрыто')+'</p>'+
         (separatePrice?'<section class="as-indicator-price"><h4>Цена: исходные свечи</h4><div data-as-indicator-price>'+plot(d.bars,null,true,'Исходные OHLC, только доступные свечи')+'</div></section>':'')+
-        panels+extra+'<details class="as-indicator-formula"><summary>Как получаются числа: формула и параметры</summary><p>'+esc(spec[2])+'</p></details>'+
+        panels+extra+(authored?.detail?.rows?.length?'<section class="as-market-facts"><h3>'+esc(authored.detail.title||'Проверка по выбранному участку')+'</h3><dl>'+authored.detail.rows.map(row=>'<div><dt>'+esc(row[0])+'</dt><dd>'+esc(row[1])+'</dd></div>').join('')+'</dl></section>':'')+'<details class="as-indicator-formula"><summary>Как получаются числа: формула и параметры</summary><p>'+esc(spec[2])+'</p></details>'+
         '<p class="as-indicator-note">'+esc(spec[3])+'</p><p class="as-indicator-note">Синтетический учебный участок помогает понять расчёт. Он не проверяет доходность стратегии.</p></div>';
       const priceHost=host.querySelector('[data-as-indicator-price]');
       if(window.TDTerminalChart?.mount){
-        if(separatePrice&&priceHost){const fn=window.TDTerminalChart.mount(priceHost,{bars:d.bars,zone:contextZone,caption:'Исходная цена · доступны только '+d.count+' закрытых свечей',id:'price',linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);}
-        d.panels.forEach((p,index)=>{const target=host.querySelector('[data-as-indicator-overlay="'+index+'"]');if(!target)return;const candles=overlay.includes(p.type),series=p.lines.map((line,i)=>({...line,kind:p.type==='fractals'||p.type==='sar'&&i===1?'points':p.type==='ao'||p.type==='macd'&&i===2?'bars':'line'}));const fn=window.TDTerminalChart.mount(target,{bars:d.bars,series,mode:candles?'price':'indicator',bounded:!candles&&p.bounded,levels:p.levels.map(price=>({price,label:'Порог '+price})),caption:names[p.type],id:'panel-'+index,linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);});
-        const haHost=host.querySelector('[data-as-indicator-heikin]');if(spec[0]==='heikin'&&haHost)terminalCleanups.push(window.TDTerminalChart.mount(haHost,{bars:I.heikin(d.bars),caption:'Heikin Ashi · вычисленные свечи',id:'heikin',linked:true,knownPrefixLength:80}));
+        if(separatePrice&&priceHost){const fn=window.TDTerminalChart.mount(priceHost,{...chartMeta,...layer(authored?.price),bars:d.bars,zone:guide?undefined:contextZone,caption:'Исходная цена · доступны только '+d.count+' закрытых свечей',id:'price',linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);}
+        d.panels.forEach((p,index)=>{const target=host.querySelector('[data-as-indicator-overlay="'+index+'"]');if(!target)return;const candles=overlay.includes(p.type),transformed=key==='13.8'&&authored?.comparison&&p.type==='dual-supertrend',series=p.lines.map((line,i)=>({...line,kind:p.type==='fractals'||p.type==='sar'&&i===1?'points':p.type==='ao'||p.type==='macd'&&i===2?'bars':'line',...(p.type==='ao'?{colorBy:'delta'}:p.type==='macd'&&i===2?{colorBy:'sign'}:{})})),annotations=guide?layer(candles&&!transformed?authored?.price:null,authored?.panels[index]):{levels:p.levels.map(price=>({price,label:'Порог '+price}))};const fn=window.TDTerminalChart.mount(target,{...chartMeta,...annotations,height:candles?420:280,mobileHeight:candles?340:260,bars:transformed?authored.comparison.transformedBars:d.bars,series,mode:candles?'price':'indicator',bounded:!candles&&p.bounded,caption:(transformed?'Heikin Ashi · ':'')+names[p.type],id:'panel-'+index,linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);});
+        const haHost=host.querySelector('[data-as-indicator-heikin]');if(spec[0]==='heikin'&&haHost){const fn=window.TDTerminalChart.mount(haHost,{...chartMeta,...layer(authored?.ha),bars:I.heikin(d.bars),caption:'Heikin Ashi · вычисленные свечи',id:'heikin',linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);}
       }
       const control=host.querySelector('.as-indicator-parameter');if(control){control.value=parameter;control.onchange=()=>{parameter=control.value;memory[mode].parameter=parameter;draw();};}
       state.onExampleChange?.(workedExample(key,state,parameter));
+      if(authored)state.onDescription?.({title:authored.title,body:authored.explanation,task:authored.task});
       animateGeometry(host,{revealed:!!state.revealed,count:d.count});
     }
     draw();return ()=>{terminalCleanups.forEach(fn=>fn());if(frames.has(host)){window.cancelAnimationFrame(frames.get(host));frames.delete(host);}host.innerHTML='';};
@@ -235,11 +238,12 @@
   }
   for(const [key,spec] of Object.entries(specs)){
     const lesson=course.lessons.find(l=>l.key===key);if(!lesson)throw new Error('Missing indicator lesson '+key);
-    const m=lesson.content.interactiveLesson,g=m.guide;
+    const m=lesson.content.interactiveLesson,g=m.guide,guide=window.TD_MARKET_INDICATOR_GUIDES?.[key];
     const words=explanations[spec[0]]||explanations.ma;
     const teaching={goal:g.goal||spec[1],plain:words[0],read:words[1],example:workedExample(key,{step:4}),terms:[{term:words[2],meaning:words[3]},{term:'Закрытие свечи (Close)',meaning:'Последняя известная цена завершённого интервала; по ней проверяют событие на этом шаге.'}],takeaway:spec[3]};
     if(combinationSteps[key]){teaching.plain='Этот вариант соединяет несколько ценовых условий. Проверяй их по порядку. '+g.plain;teaching.read=combinationSteps[key].join(' ');}
     if(key==='4.3'){teaching.plain=explanations.votes[0]+' Средние и RSI здесь получены из одной последовательности закрытий.';teaching.read=explanations.votes[1];}
+    if(guide?.teaching?.read)teaching.read=guide.teaching.read;
     const stages=[
       {title:'Читаем: '+names[spec.slice(4)[0]],body:teaching.plain,task:teaching.read},
       {title:spec[1]+': читаем числа',body:g.plain,task:'Сопоставь подпись значения над панелью с последним закрытием. '+words[1]},
@@ -247,7 +251,7 @@
       {title:'Когда вывод не подходит',body:g.trap,task:'На текущем участке назови один факт, которого недостаточно для вывода. '+spec[3]},
       {title:'Два продолжения одного наблюдения',body:'До свечи 80 обе ветки совпадают. После неё новые цены меняют расчёт. '+spec[3],task:'Переключи продолжение и сравни подписанные значения. Затем перейди к новому участку практики: его будущее снова скрыто.'}
     ];
-    registry[key]={kind:'indicator',teaching,alternate:true,alternateFromStep:4,alternateAfterReveal:true,stages,render:(host,state)=>render(key,host,state||{}),practice:practiceFor(key,spec),quiz:m.quiz,reflection:'Своими словами: что измеряет линия, где на графике видно событие и какого будущего вывода из него сделать нельзя?'};
+    registry[key]={kind:'indicator',marketAuthored:!!guide,teaching,alternate:true,alternateFromStep:4,alternateAfterReveal:true,stages:guide?.stages||stages,render:(host,state)=>render(key,host,state||{}),practice:practiceFor(key,spec),quiz:m.quiz,reflection:'Своими словами: что измеряет линия, где на графике видно событие и какого будущего вывода из него сделать нельзя?'};
   }
   window.TD_STUDIO_INDICATORS={keys:Object.keys(specs),inspect:data,canAnimate,workedExample};
 })();
