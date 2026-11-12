@@ -24,7 +24,7 @@
   const courseButtons=sectionLessons.map(l=>`<li><button type="button" data-as-open-lesson="${esc(l.id)}" ${l.id===lesson.id?'aria-current="page"':''}><span class="as-course-check">${done(stored[l.id])?'✓':esc(l.key)}</span><span>${esc(l.id===lesson.id?title:l.title)}</span>${l.id===lesson.id?'<small>Сейчас</small>':''}</button></li>`).join('');
   host.innerHTML=`<article class="academy-studio as-lesson as-reference-course" data-studio-root data-lesson-key="${esc(lesson.key)}">
    <div class="as-breadcrumb"><button type="button" data-as-exit>← Обучение</button><span aria-hidden="true">›</span><button type="button" data-as-view="plan">План курса</button><span aria-hidden="true">›</span><span>Урок ${esc(lesson.key)}</span></div>
-   <div class="as-course-mobile"><span class="as-course-emblem" aria-hidden="true">▱</span><div><strong>Trading Diary · Академия</strong><small>${esc(section?.title||'Интерактивный курс')} · ${sectionLessons.length} уроков в этапе</small></div><span class="as-course-mini">${percent}%</span></div>
+   <div class="as-course-mobile"><span class="as-course-emblem" aria-hidden="true">▱</span><div><strong>Trading Diary · Академия</strong><small>${esc(section?.title||'Интерактивный курс')} · ${sectionLessons.length} уроков в этапе</small></div><span class="as-course-mini" style="--course-progress:${percent}%" role="progressbar" aria-label="Прогресс курса" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><span>${percent}%</span></span></div>
    <div class="as-lesson-layout"><div class="as-lesson-main">
     <header class="as-lesson-head"><div><div class="as-lesson-meta"><span class="as-lesson-badge">Урок ${index+1} из ${sequence.length}</span><span>◷ ≈ ${Number(lesson.duration_minutes)||8} мин</span><span class="as-lesson-kind">${esc(kindLabel(entry.kind))}</span></div><h1>${esc(title)}</h1><p>${esc(teaching.goal||entry.intro||old.guide?.goal||old.concept)}</p></div><div class="as-hero-candles" aria-hidden="true"><i></i><i></i><i></i><i></i></div></header>
     <nav class="as-view-nav" role="tablist" aria-label="Разделы урока">${tabNames.map((name,i)=>`<button type="button" id="${uid}-tab-${name}" role="tab" aria-controls="${uid}-content" aria-selected="${i===0}" aria-pressed="${i===0}" data-as-tab="${name}" ${name==='theory'?'data-as-view="model"':name==='examples'?'data-as-view="reference"':name==='practice'?'data-as-to-practice':''}><span class="as-tab-icon" aria-hidden="true">${['▤','▥','◎','▧'][i]}</span>${tabLabels[i]}</button>`).join('')}</nav>
@@ -57,7 +57,7 @@
   function refreshCourseProgress(){
    if(typeof window.courseV1Progress!=='function')return;
    const saved=window.courseV1Progress(),total=course.lessons.filter(l=>done(saved[l.id])).length,value=Math.round(total/course.lessons.length*100);
-   q('.as-course-ring').style.setProperty('--course-progress',value+'%');q('.as-course-ring span').textContent=value+'%';q('.as-course-mini').textContent=value+'%';
+   q('.as-course-ring').style.setProperty('--course-progress',value+'%');q('.as-course-ring span').textContent=value+'%';q('.as-course-mini span').textContent=value+'%';q('.as-course-mini').style.setProperty('--course-progress',value+'%');q('.as-course-mini').setAttribute('aria-valuenow',String(value));
    q('.as-course-progress p').innerHTML=`<strong>Прогресс курса</strong>${total} из ${course.lessons.length} уроков пройдено`;
    const current=q('.as-course-sidebar [aria-current="page"] .as-course-check');if(current)current.textContent='✓';
   }

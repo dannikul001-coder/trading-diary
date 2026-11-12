@@ -1,0 +1,80 @@
+/* Academy surfaces inherit the selected diary theme, including live changes. */
+body{
+ --academy-bg:var(--site-primary);
+ --academy-panel:var(--site-secondary);
+ --academy-ink:var(--site-secondary-ink);
+ --academy-body:color-mix(in srgb,var(--site-secondary-ink) 92%,var(--site-secondary));
+ --academy-muted:color-mix(in srgb,var(--site-secondary-ink) 76%,var(--site-secondary));
+ --academy-raised:color-mix(in srgb,var(--site-secondary) 92%,var(--site-secondary-ink));
+ --academy-control:color-mix(in srgb,var(--site-secondary) 94%,var(--site-secondary-ink));
+ --academy-hover:color-mix(in srgb,var(--site-secondary) 85%,var(--site-secondary-ink));
+ --academy-chart:color-mix(in srgb,var(--site-secondary) 68%,var(--site-primary));
+ --academy-border:color-mix(in srgb,var(--site-secondary-ink) 24%,var(--site-secondary));
+ --academy-border-strong:color-mix(in srgb,var(--site-secondary-ink) 44%,var(--site-secondary));
+ --academy-accent:var(--accent);
+ --academy-accent-readable:var(--accent);
+ --academy-selected:color-mix(in srgb,var(--accent) 12%,var(--site-secondary));
+ --academy-selected-ink:var(--site-secondary-ink);
+ --academy-focus:var(--accent);
+ --academy-up:var(--profit);
+ --academy-down:var(--loss);
+ --academy-success:color-mix(in srgb,var(--profit) 10%,var(--site-secondary));
+ --academy-success-ink:var(--site-secondary-ink);
+ --academy-track:color-mix(in srgb,var(--site-secondary-ink) 38%,var(--site-secondary));
+ --academy-action:var(--accent);
+ --academy-action-ink:var(--site-primary);
+ --academy-scheme:dark;
+}
+body:is(.theme-paper,.theme-ivory,.theme-mist,.theme-sand,.theme-sage,.theme-lavender){
+ --academy-accent-readable:color-mix(in srgb,var(--accent) 30%,var(--site-secondary-ink));
+ --academy-action:color-mix(in srgb,var(--accent) 30%,var(--site-secondary-ink));
+ --academy-action-ink:#fff;
+ --academy-focus:color-mix(in srgb,var(--accent) 30%,var(--site-secondary-ink));
+ --academy-up:color-mix(in srgb,var(--profit) 82%,var(--site-secondary-ink));
+ --academy-down:color-mix(in srgb,var(--loss) 82%,var(--site-secondary-ink));
+ --academy-scheme:light;
+}
+.academy-studio:is(.as-reference-course,.as-reference-route){
+ --as-bg:var(--academy-bg);
+ --as-panel:var(--academy-panel);
+ --as-ink:var(--academy-ink);
+ --as-muted:var(--academy-muted);
+ --as-line:var(--academy-border);
+ --as-accent:var(--academy-accent-readable);
+ --as-soft:var(--academy-selected);
+ --as-up:var(--academy-up);
+ --as-down:var(--academy-down);
+ --as-loss:var(--academy-down);
+ --as-chart-line:color-mix(in srgb,var(--blue,var(--academy-accent)) 55%,var(--academy-ink));
+ --as-chart-line2:color-mix(in srgb,var(--purple,var(--academy-accent)) 55%,var(--academy-ink));
+ --bg:var(--as-bg);--surface:var(--as-panel);--ink:var(--as-ink);
+ --muted:var(--as-muted);--line:var(--as-line);--accent:var(--as-accent);
+ --accent-soft:var(--as-soft);--profit:var(--as-up);--loss:var(--as-down);
+ color-scheme:var(--academy-scheme);
+}
+/* Keep range navigation discoverable in both light and dark charts. */
+.as-reference-course .as-terminal-probe input[type=range]{height:24px;min-height:24px;background:transparent}
+.as-reference-course .as-terminal-probe input[type=range]::-webkit-slider-runnable-track{height:5px;background:var(--academy-track);border-radius:9px}
+.as-reference-course .as-terminal-probe input[type=range]::-webkit-slider-thumb{appearance:none;width:17px;height:17px;margin-top:-6px;border:2px solid var(--academy-panel);border-radius:50%;background:var(--as-accent);box-shadow:0 0 0 1px var(--as-accent)}
+.as-reference-course .as-terminal-probe input[type=range]::-moz-range-track{height:5px;background:var(--academy-track);border-radius:9px}
+.as-reference-course .as-terminal-probe input[type=range]::-moz-range-thumb{width:15px;height:15px;border:2px solid var(--academy-panel);border-radius:50%;background:var(--as-accent)}
+.as-reference-course .as-terminal-price-tag{fill:var(--academy-action)}
+.as-reference-course .as-terminal-svg .as-terminal-tag-text{fill:var(--academy-action-ink)}
+.as-reference-course .as-terminal-area-label,.as-reference-course .as-terminal-svg .as-terminal-zone-chip .as-terminal-area-label{fill:var(--as-ink)}
+.as-reference-course .as-terminal-zone-label-bg{fill:var(--as-panel)}
+.as-reference-course .as-terminal-zone-note{color:var(--as-ink)}
+.as-reference-course .as-indicator-meaning,.as-reference-course .as-indicator-note,.as-reference-course .as-indicator-inputs{color:var(--as-ink)}
+.as-reference-course .as-decision-controls button,.as-reference-course .as-decision-controls button:hover:not(:disabled){background:var(--academy-action);color:var(--academy-action-ink);border-color:var(--academy-action)}
+.as-reference-course .as-reference,.as-reference-course .as-reference>*,.as-reference-course .as-reference details{min-width:0;max-width:100%}
+.as-reference-course .as-reference{grid-template-columns:minmax(0,1fr)}
+.as-reference-course .as-reference *{min-width:0}
+.as-reference-course .as-reference-detail{grid-template-columns:minmax(0,1fr)}
+.as-reference-course .as-reference p{overflow-wrap:anywhere}
+.as-reference-course .as-reference input:not([type=radio]):not([type=checkbox]):not([type=range]),.as-reference-course .as-reference select,.as-reference-course .as-reference textarea{width:100%;min-width:0;max-width:100%}
+.as-reference-course fieldset label>span{min-width:0;overflow-wrap:anywhere}
+.as-reference-course .as-course-mini{border:0;padding:4px;background:conic-gradient(var(--as-accent) var(--course-progress),var(--academy-track) 0)}
+.as-reference-course .as-course-mini>span{width:100%;height:100%;display:grid;place-items:center;border-radius:50%;background:var(--academy-panel);color:var(--as-ink)}
+.as-reference-course [aria-current=page] .as-course-check{background:var(--academy-action);color:var(--academy-action-ink);border-color:transparent}
+.academy-preview-theme{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--site-primary-ink)}
+.academy-preview-theme select{font:inherit;padding:8px 10px;max-width:180px;min-height:40px}
+.academy-preview-theme select,.modal:has(.as-reference-course){color-scheme:var(--academy-scheme)}

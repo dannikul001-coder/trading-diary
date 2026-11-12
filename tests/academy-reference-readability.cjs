@@ -7,7 +7,8 @@ const {chromium}=require(path.join(process.env.TD_NODE_MODULES||'C:/Program File
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(process.argv[2]||pathToFileURL(path.join(__dirname,'../academy-preview.html')).href);
   const report=await page.evaluate(async()=>{
-   const rgb=s=>{const parts=s.match(/[\d.]+/g).map(Number);return [...parts.slice(0,3),parts[3]??1];};
+   const colorCanvas=document.createElement('canvas');colorCanvas.width=colorCanvas.height=1;const colorContext=colorCanvas.getContext('2d',{willReadFrequently:true});
+   const rgb=s=>{colorContext.clearRect(0,0,1,1);colorContext.fillStyle=s;colorContext.fillRect(0,0,1,1);const p=colorContext.getImageData(0,0,1,1).data;return[p[0],p[1],p[2],p[3]/255];};
    const mix=(a,b)=>a.slice(0,3).map((v,i)=>v*a[3]+b[i]*(1-a[3]));
    const lum=color=>color.slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
    function background(node){const chain=[];for(let n=node;n;n=n.parentElement)chain.push(n);return chain.reverse().reduce((color,n)=>mix(rgb(getComputedStyle(n).backgroundColor),color),[255,255,255]);}
