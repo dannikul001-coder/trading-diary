@@ -46,8 +46,8 @@ const themes=[...new Set([...fs.readFileSync(path.join(__dirname,'../index.html'
    await page.getByRole('button',{name:'Предыдущая свеча',exact:true}).click();assert.match(await page.locator('.as-terminal-readout').innerText(),/Закрытие\s+99,4/);
    await svg.press('End');assert.match(await page.locator('[data-tc-index]').innerText(),/48/);
    await page.locator('[data-tc-annotations]').click();assert.equal(await page.locator('.as-terminal-area').count(),0);await page.locator('[data-tc-annotations]').click();
-   await page.locator('[data-as-alternate]').click();assert.match(await page.locator('.as-terminal-readout').innerText(),/Закрытие\s+96,5/);await page.locator('[data-tc-probe]').fill('43');assert.match(await page.locator('.as-terminal-readout').innerText(),/Закрытие\s+97,6/);
-   await page.locator('[data-as-alternate]').click();
+   await page.locator('[data-as-example="contrast"]').click();assert.match(await page.locator('.as-terminal-readout').innerText(),/Закрытие\s+96,5/);await page.locator('[data-tc-probe]').fill('43');assert.match(await page.locator('.as-terminal-readout').innerText(),/Закрытие\s+97,6/);
+   await page.locator('[data-as-example="base"]').click();
    await page.locator('[data-as-tab="theory"]').click();await page.locator('[data-as-replay]').click();
    let context;
    for(const step of [0,1,2]){
