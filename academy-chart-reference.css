@@ -27,46 +27,63 @@ body:is(.theme-paper,.theme-ivory,.theme-mist,.theme-sand,.theme-sage,.theme-lav
 }
 body.theme-midnight .as-terminal[data-reference=true]{--ar-canvas:#151725;--ar-panel:#151725}
 
-/* Give price the entire story row. The explanation follows the chart. */
-.as-reference-course[data-market-reference=true] .as-story,
-.as-reference-course .as-story[data-market-reference=true]{
- display:grid;grid-template-columns:minmax(0,1fr);
- grid-template-areas:'visual' 'reader';
- align-items:start;gap:18px;padding:0;
- border:0;border-radius:0;background:transparent;
+/* Keep the current explanation and its evidence in the same workspace. */
+.as-reference-course.as-reading-desk .as-story{
+ display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,1fr);
+ grid-template-areas:'visual reader';align-items:start;gap:clamp(12px,1.6vw,24px);
+ padding:0;border:0;background:transparent;overflow:visible;
 }
-.as-reference-course[data-market-reference=true] .as-visual,
-.as-reference-course .as-story[data-market-reference=true] .as-visual{
- grid-area:visual;width:100%;min-width:0;max-width:100%;padding:0;
+.as-reading-desk .as-visual{grid-area:visual;min-width:0}
+.as-reference-course.as-reading-desk :is(.as-reader,.as-practice){
+ grid-area:reader;position:sticky;top:8px;z-index:2;display:flex;flex-direction:column;
+ align-items:stretch;gap:12px;min-width:0;max-height:calc(100dvh - 80px);
+ overflow:auto;scrollbar-width:thin;scroll-padding:12px;margin:0;padding:clamp(14px,1.35vw,22px);
+ border:1px solid var(--academy-border);border-radius:12px;background:var(--academy-panel);
 }
-.as-reference-course[data-market-reference=true] .as-reader,
-.as-reference-course .as-story[data-market-reference=true] .as-reader{
- grid-area:reader;display:grid;
- grid-template-columns:minmax(0,1.35fr) minmax(230px,1fr);
- grid-template-areas:'number number' 'title title' 'body meaning' 'task note';
- align-items:start;gap:12px 22px;min-width:0;padding:0 2px;
+.as-reading-desk [hidden]{display:none!important}
+.as-reading-desk .as-reader>*{flex-shrink:0}
+.as-reading-desk .as-reader .as-scene-number{font-size:12px;font-weight:600;line-height:1.4;letter-spacing:.04em;color:var(--as-muted)}
+.as-reading-desk .as-reading-chapters{display:flex;gap:6px}
+.as-reading-desk .as-reading-chapters button{min-width:44px;min-height:36px;padding:4px 10px;font-variant-numeric:tabular-nums}
+.as-reading-desk .as-reader .as-reading-body{font-size:15px;line-height:1.6;color:var(--as-ink);margin:0}
+.as-reading-desk .as-look{padding:10px 12px;border-left:3px solid var(--as-accent);border-radius:6px}
+.as-reading-desk .as-look h3{font-size:12px;letter-spacing:.02em}
+.as-reading-desk .as-reading-forward{align-self:start;color:var(--academy-selected-ink);background:var(--academy-selected);border-color:var(--as-accent)}
+.as-reading-desk .as-reading-detail{border-top:1px solid var(--as-line);padding-top:9px}
+.as-reading-desk .as-reading-detail summary{cursor:pointer;font-size:13px}
+.as-reading-desk .as-reading-detail h3{margin:8px 0 4px}
+.as-reading-desk .as-reading-source{font-size:12px;line-height:1.5;color:var(--as-ink);text-decoration:underline;text-underline-offset:3px}
+.as-reading-desk .as-terminal-svg{cursor:crosshair}
+.as-reading-desk .as-terminal-svg.is-dragging{cursor:grabbing}
+.as-chart-window{font-variant-numeric:tabular-nums;font-size:12px;color:var(--as-muted);align-self:center}
+.as-chart-gestures{flex-basis:100%;font-size:11px;line-height:1.5}
+.as-reading-desk .as-practice-hint{font-size:14px;line-height:1.65}
+@media(max-width:740px){
+ .as-reference-course.as-reading-desk .as-story{grid-template-columns:minmax(0,1fr);grid-template-areas:'reader' 'visual';gap:8px}
+ .as-reference-course.as-reading-desk :is(.as-reader,.as-practice){top:0;max-height:clamp(152px,30dvh,235px);padding:10px 12px;gap:7px;border-radius:8px;box-shadow:0 3px 8px color-mix(in srgb,var(--academy-ink) 9%,transparent)}
+ .as-reference-course.as-reading-desk .as-reader{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start}
+ .as-reading-desk .as-reader>*{grid-column:1/-1}
+ .as-reading-desk .as-reader .as-scene-number{grid-column:1;grid-row:1;align-self:center}
+ .as-reading-desk .as-reader .as-reading-chapters{grid-column:2;grid-row:1}
+ .as-reading-desk .as-reading-chapters button{min-width:34px;min-height:32px}
+ .as-reading-desk .as-reader .as-reading-body{font-size:14px;line-height:1.5}
+ .as-reading-desk .as-reader [data-as-reading-title],.as-reading-desk .as-practice h2{font-size:18px;line-height:1.35}
+ .as-reading-desk .as-visual-label{padding-bottom:4px}
+ .as-reference-course.as-reading-desk .as-course-mobile{display:flex;justify-content:flex-end;padding:0;border:0;background:transparent;min-height:0}
+ .as-reading-desk .as-course-mobile .as-course-emblem,.as-reading-desk .as-course-mobile small,.as-reading-desk .as-hero-candles{display:none}
+ .as-reading-desk .as-course-mobile .as-course-mini{height:auto;width:auto;border:0;border-radius:0}
+ .as-reference-course.as-reading-desk .as-lesson-head{padding:4px 0 8px;background:transparent;border:0}
+ .as-reading-desk .as-lesson-head>div:first-child{gap:4px}
+ .as-reading-desk .as-lesson-head p{font-size:13px;line-height:1.45}
+ .as-reference-course.as-reading-desk .as-view-nav{margin-bottom:8px}
+ .as-reference-course.as-reading-desk .as-view-nav button{min-height:38px;flex-direction:row}
+ .as-reading-desk .as-tab-icon{display:none}
+ .as-reading-desk .as-example-options svg{display:none}
+ .as-reference-course.as-reading-desk .as-example-options{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+ .as-reference-course.as-reading-desk .as-example-options button{display:block;min-height:40px;padding:5px}
+ .as-reading-desk .as-example-options button strong{font-size:11px;line-height:1.35}
+ .as-reading-desk .as-example-picker h2,.as-reading-desk .as-example-options button small{display:none}
 }
-.as-reference-course[data-market-reference=true] .as-reader[hidden],
-.as-reference-course .as-story[data-market-reference=true] .as-reader[hidden]{display:none}
-[data-market-reference=true] .as-reader>.as-scene-number{grid-area:number;margin:0;letter-spacing:1px}
-[data-market-reference=true] .as-reader>h2{grid-area:title;margin:0;font-size:22px;line-height:1.35;letter-spacing:-.35px}
-[data-market-reference=true] .as-reader>[data-as-body]{grid-area:body;margin:0;font-size:14px;line-height:1.75;color:var(--as-ink)}
-[data-market-reference=true] .as-reader>.as-reader-definition{
- grid-area:meaning;display:grid;grid-template-columns:minmax(0,1fr);gap:5px;
- min-width:0;margin:0;padding:0 0 0 16px;border:0;border-left:1px solid var(--as-line);
-}
-[data-market-reference=true] .as-reader-definition h3{margin:0;font-size:12px;line-height:1.6;color:var(--as-muted)}
-[data-market-reference=true] .as-reader-definition p{margin:0;font-size:13px;line-height:1.7}
-[data-market-reference=true] .as-reader>.as-look{
- grid-area:task;min-width:0;margin:0;padding:11px 13px;
- border-radius:6px;background:var(--academy-control);border:1px solid var(--as-line);
-}
-[data-market-reference=true] .as-reader>.as-reader-note{
- grid-area:note;align-self:start;min-width:0;margin:0;padding:10px 0;
- border:0;font-size:12px;line-height:1.65;color:var(--as-muted);
-}
-[data-market-reference=true] .as-reader-note p{margin:0;font-size:12px;line-height:1.65}
-
 /* Instrument and declared timeframe remain visible next to the real controls. */
 .as-terminal[data-reference=true] .as-terminal-market-head{
  display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;
@@ -204,16 +221,6 @@ body.theme-midnight .as-terminal[data-reference=true]{--ar-canvas:#151725;--ar-p
 
 @media(max-width:900px){
  .as-terminal[data-reference=true] .as-market-annotation-list{grid-template-columns:repeat(2,minmax(0,1fr))}
- [data-market-reference=true] .as-reader{column-gap:16px}
-}
-@media(max-width:760px){
- .as-reference-course[data-market-reference=true] .as-reader,
- .as-reference-course .as-story[data-market-reference=true] .as-reader{
-  grid-template-columns:minmax(0,1fr);grid-template-areas:'number' 'title' 'body' 'task' 'meaning' 'note';gap:11px;
- }
- [data-market-reference=true] .as-reader>.as-reader-definition{padding:11px 0 0;border-left:0;border-top:1px solid var(--as-line)}
- [data-market-reference=true] .as-reader>h2{font-size:20px}
- [data-market-reference=true] .as-reader>[data-as-body]{font-size:13px;line-height:1.8}
 }
 @media(max-width:480px){
  .as-terminal[data-reference=true]{border-radius:7px}
@@ -241,3 +248,27 @@ body.theme-midnight .as-terminal[data-reference=true]{--ar-canvas:#151725;--ar-p
  .as-terminal[data-reference=true] .as-ref-swing{fill:CanvasText}
  .as-terminal[data-reference=true] .as-terminal-timeframe{background:Highlight;color:HighlightText;border-color:Highlight}
 }
+
+/* Let the first viewport show the evidence, including on short phones. */
+@media(max-width:740px){
+ .modal:has(.as-reading-desk){width:auto;max-width:calc(100vw - 10px)}
+ .as-reference-course.as-reading-desk{padding:8px 10px 14px;gap:7px}
+ .as-reading-desk .as-breadcrumb{min-height:22px}
+ .as-reading-desk .as-breadcrumb button{min-height:24px}
+ .as-reference-course.as-reading-desk .as-course-mobile{position:absolute;top:11px;right:57px;z-index:1;gap:4px;font-size:10px}
+ .as-reading-desk .as-course-mobile>div{display:none}
+ .as-reading-desk .as-course-mobile .as-course-mini{height:22px;padding:0 4px}
+ .as-reading-desk .as-lesson-head h1{font-size:21px;line-height:1.18}
+ .as-reading-desk .as-lesson-head p{display:none}
+ .as-reading-desk .as-terminal[data-reference=true] .as-terminal-market-head{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:3px;padding:5px 6px}
+ .as-reading-desk .as-terminal[data-reference=true] .as-terminal-instrument{border:0;padding:1px;font-size:10px}
+ .as-reading-desk .as-terminal[data-reference=true] .as-terminal-timeframe{min-width:25px;min-height:20px;padding:1px 3px;font-size:9px}
+ .as-reading-desk .as-terminal[data-reference=true] .as-terminal-zoom{justify-content:flex-end;gap:2px}
+ .as-reading-desk .as-terminal[data-reference=true] .as-terminal-zoom button{min-height:32px;min-width:25px;padding:2px 4px;font-size:10px}
+ .as-reading-desk .as-terminal[data-reference=true] .as-terminal-caption{grid-column:1/-1}
+ .as-reading-desk .as-reader .as-scene-number{display:block}
+}
+
+.as-reading-desk .as-terminal-navigation{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.as-chart-difference{flex-basis:100%;font-size:12px;line-height:1.55;color:var(--as-ink);font-variant-numeric:tabular-nums}
+.as-reading-desk .as-terminal-navigation button{min-height:36px}

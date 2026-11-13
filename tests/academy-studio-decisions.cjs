@@ -34,6 +34,18 @@ lessons['15.1'].render(journal,{step:3});saveHandler();assert.ok(note.focused);a
 note.value='<test> подтверждения нет';saveHandler();assert.ok(journal.innerHTML.includes('Цена 103; входа не было'));assert.ok(journal.innerHTML.includes('&lt;test&gt;'));assert.ok(journal.innerHTML.includes('readonly'));
 lessons['15.1'].render(journal,{step:3});assert.ok(journal.innerHTML.includes('readonly'));assert.ok(journal.innerHTML.includes('&lt;test&gt;'));
 for(const key of keys){const host={innerHTML:'',querySelectorAll(){return[]},querySelector(){return null}};lessons[key].render(host,{practice:true,revealed:false});const hidden=host.innerHTML;assert.ok(hidden.includes('после фиксации ответа'));assert.ok(!hidden.includes(lessons[key].practice.reveal),'answer leaked '+key);lessons[key].render(host,{practice:true,revealed:true});assert.ok(host.innerHTML.includes(lessons[key].practice.reveal.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')),'answer missing '+key);}
+vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/academy-reading-decisions.js'),'utf8'),context);
+for(const key of keys){
+  const model=lessons[key];
+  const {comparison}=context.window.TD_READING_LESSONS[key];
+  const host={innerHTML:'',querySelectorAll(){return[]},querySelector(){return null}};
+  model.render(host,{step:3,exampleRows:comparison.rows,onExampleChange(){assert.fail(key+' used base example feedback for a comparison');}});
+  assert.ok(host.innerHTML.includes(comparison.title),key);
+  assert.ok(host.innerHTML.includes(comparison.task),key);
+  model.render(host,{practice:true,revealed:false,exampleRows:comparison.rows});
+  assert.ok(!host.innerHTML.includes(comparison.body),key);
+  assert.ok(!host.innerHTML.includes(model.practice.choices.find(choice=>choice.correct).text),key);
+}
 const progressive={innerHTML:'',querySelectorAll(){return[]},querySelector(){return null}};lessons['10.2'].render(progressive,{step:0});assert.ok(!progressive.innerHTML.includes('−30 тыс.'));lessons['10.2'].render(progressive,{step:3});assert.ok(progressive.innerHTML.includes('−30 тыс.'));
 for(const key of keys){const t=lessons[key].teaching;for(const field of ['goal','plain','read','example','takeaway'])assert.ok(t[field].length>25,key+' '+field);assert.ok(t.terms.every(x=>x.term&&x.meaning));assert.ok(/\d/.test(t.example)||key==='10.4','concrete example '+key);}
 console.log('26 decision studios: math, source validity, risk invalidation, render and contract passed');

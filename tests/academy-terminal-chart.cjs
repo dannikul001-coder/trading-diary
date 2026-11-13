@@ -33,6 +33,19 @@ test('browser: annotation toggle, keyboard, pointer, range and safe remount work
   await page.evaluate(()=>{fixture=fixture.concat([{o:104,h:106,l:103,c:105}]);mountChart();});assert.match(await page.locator('[data-tc-index]').textContent(),/6/);assert.equal(await page.locator('[data-tc-annotations]').getAttribute('aria-pressed'),'false');
   await page.locator('svg').focus();await page.keyboard.press('Home');assert.match(await page.locator('[data-tc-index]').textContent(),/1/);await page.keyboard.press('End');assert.match(await page.locator('[data-tc-index]').textContent(),/33/);
   const box=await page.locator('svg').boundingBox();await page.mouse.move(box.x+30,box.y+130);assert.doesNotMatch(await page.locator('[data-tc-index]').textContent(),/33/);
+  await page.locator('svg').press('End');
+  await page.locator('[data-tc-in]').click();
+  await page.locator('[data-tc-measure]').click();await page.locator('svg').press('ArrowLeft');
+  assert.match(await page.locator('.as-chart-difference').textContent(),/№ 33 → № 32.*разница/);
+  await page.locator('[data-tc-measure]').click();assert.equal(await page.locator('.as-chart-difference').isVisible(),false);
+  const plot=page.locator('svg'),rightEdge=Number(await plot.getAttribute('data-last')),windowSize=await plot.evaluate(n=>Number(n.dataset.last)-Number(n.dataset.first));
+  const view=await plot.boundingBox();
+  await page.mouse.move(view.x+35,view.y+80);await page.mouse.down();
+  await page.mouse.move(view.x+125,view.y+80,{steps:5});await page.mouse.up();
+  assert(Number(await plot.getAttribute('data-last'))<rightEdge,'drag must reveal earlier candles');
+  assert.equal(await plot.evaluate(n=>Number(n.dataset.last)-Number(n.dataset.first)),windowSize,'drag preserves zoom');
+  await plot.press('PageUp');assert.equal(await plot.getAttribute('data-first'),'1');
+  await plot.press('End');assert.equal(await plot.getAttribute('data-last'),'33');
   await page.evaluate(()=>{fixture=fixture.slice(0,8);document.getElementById('chart').dataset.mode='practice';mountChart();});assert.equal(await page.locator('.as-terminal-candle').count(),8);assert.match(await page.locator('[data-tc-index]').textContent(),/8/);assert.equal(await page.locator('[data-tc-annotations]').getAttribute('aria-pressed'),'true');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>320),false);assert.doesNotMatch(await page.locator('#chart').textContent(),/NaN|undefined|Infinity/);
  }finally{await browser.close();}

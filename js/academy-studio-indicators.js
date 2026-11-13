@@ -142,7 +142,6 @@
     if(['stochastic','vortex','ma'].includes(panel.type))return panel.lines[0].label+' = '+fmt(v)+(b?'; '+panel.lines[1].label+' = '+fmt(b[i])+'. '+cross:'.');
     if(['demarker','stc'].includes(panel.type)){const levels=panel.levels;return 'Значение '+fmt(v)+'. '+(v<levels[0]?'Ниже '+levels[0]:v>levels.at(-1)?'Выше '+levels.at(-1):'Между '+levels.join(' и '))+'. '+(v>previous?'Линия растёт.':v<previous?'Линия снижается.':'Линия не изменилась.')+' Наклон и пересечение порога проверяют отдельно.';}
     if(['ao','momentum'].includes(panel.type)){const zero=panel.type==='ao'?0:100;return 'Сейчас '+fmt(v)+', '+(v>=zero?'выше':'ниже')+' нейтрального уровня '+zero+'. По сравнению с предыдущим закрытием значение '+(v>previous?'увеличилось.':v<previous?'уменьшилось.':'не изменилось.');}
-    if(panel.type==='fractals')return 'Круг отмечает центр поворота. Подтверждение доступно только через две правые свечи; последние две центральные метки ещё неизвестны.';
     if(['keltner','bollinger','donchian','regression'].includes(panel.type)){const close=source[i].c;return 'Исходный Close = '+fmt(close)+'. '+panel.lines.map(l=>l.label+' '+fmt(l.values[i])).join('; ')+'. Сравни положение цены с границами; касание и последующее возвращение — разные события.';}
     if(panel.type==='heikin')return 'Исходный Close = '+fmt(v)+'; вычисленный HA Close = '+fmt(b[i])+'. Разница появилась из преобразования OHLC, а не из другой сделки.';
     return 'Исходный Close = '+fmt(source[i].c)+'. '+panel.lines.map(l=>l.label+' '+fmt(l.values[i])).join('; ')+'. Сравни сторону каждой линии сейчас и на предыдущем закрытии.';
@@ -151,44 +150,89 @@
     const d=data(key,state,parameter);
     return 'Разбор показанного графика: доступно '+d.count+' свечей. На свече '+d.count+' закрытие '+d.bars.at(-1).c.toFixed(2)+'. '+d.panels.map(p=>names[p.type]+': '+reading(p,d.bars)).join(' ')+' Значения рассчитаны по этому участку и выбранным параметрам. Переключение продолжения показывает другой исход того же наблюдения; самостоятельная практика использует новый участок.';
   }
+  // A practice chart supplies observations. Captions containing the formula or
+  // the completed calculation belong to the explanation after the response.
+  const practiceLabels={
+    ao:['AO'],momentum:['Momentum(10)'],fractals:['Верхний фрактал','Нижний фрактал'],
+    regression:['Закрытие','Центр','Верх канала','Низ канала'],
+    stc:['STC'],supertrend:['Supertrend'],sar:['Закрытие','SAR'],
+    keltner:['EMA(19)','Верх канала','Низ канала'],bollinger:['Центр','Верх 2,2σ','Низ 2,2σ','Верх 2,8σ','Низ 2,8σ'],
+    demarker:['DeMarker(14)'], 'dual-supertrend':['Закрытие HA','Первая линия','Вторая линия']
+  };
+  function unansweredPanel(key,panel){
+    return {...panel,lines:panel.lines.map((line,i)=>{
+      const label=practiceLabels[panel.type]?.[i]||line.label;
+      if(key==='4.2'&&panel.type==='ma')return {label,values:line.values.map((value,index)=>index===79?null:value)};
+      return {...line,label};
+    })};
+  }
+  function parameterDescription(authored,d,parameter){
+    if(parameter==='default')return {title:authored.title,body:authored.explanation,task:authored.task,parameter};
+    const option=parameter==='ema'?'EMA(2) и EMA(5)':'окно 10';
+    const observations=d.panels.flatMap(panel=>panel.lines.map(line=>{
+      const v=line.values.at(-1);
+      return line.label+' — '+(Number.isFinite(v)?v.toLocaleString('ru-RU',{maximumFractionDigits:2}):'ещё нет значения');
+    }));
+    return {title:'Сравнение при другой настройке',body:'На свече '+d.count+' выбрана настройка «'+option+'». '+observations.join('. ')+'.',
+      task:'Прочитай значения на свече '+d.count+', затем верни исходную настройку и сравни ту же свечу.',parameter};
+  }
   function render(key,host,state){
     state={...state,revealed:state.practice?!!state.revealed:Number(state.step)===4&&!Number.isInteger(state.exampleStop)};
     const spec=specs[key],teaching=registry[key].teaching,mode=state.context||(state.practice?'practice':'learn');
     let memory=sessions.get(host);if(!memory){memory={};sessions.set(host,memory);}if(!memory[mode]||memory[mode].resetKey!==(state.resetKey||0))memory[mode]={parameter:'default',resetKey:state.resetKey||0};
+    const unanswered=state.practice&&!state.revealed,readingDesk=!!host.closest?.('.as-reading-desk');
     let parameter=memory[mode].parameter,terminalCleanups=[];
     function draw(){terminalCleanups.forEach(fn=>fn());terminalCleanups=[];if(frames.has(host)){window.cancelAnimationFrame(frames.get(host));frames.delete(host);}const d=data(key,state,parameter),guide=window.TD_MARKET_INDICATOR_GUIDES?.[key],authored=guide?.build({...state,parameter,data:d}),latest=d.bars.at(-1),last=d.count-1,plot=(...args)=>graph(...args,Math.max(232,Math.min(1100,(host.clientWidth||764)-8))).replace('<svg ','<svg class="as-indicator-svg" ');
+      if(unanswered)d.panels=d.panels.map(panel=>unansweredPanel(key,panel));
       const layer=(...layers)=>Object.fromEntries(['zones','levels','markers','callouts','segments','highlight'].map(field=>[field,layers.flatMap(value=>value?.[field]||[])]));
-      const chartMeta={authored:!!guide,chartRole:'context',height:420,mobileHeight:340,mobileLimit:40,defaultLimit:authored?.defaultLimit||Math.min(76,d.count),focus:authored?.focus??last,timeframeMinutes:5,intervalLabel:'5 минут · учебная модель',startTime:'2026-01-12T09:00:00Z'};
+      const priceLayer=unanswered?(key==='13.3'?{zones:authored?.price.zones}:null):authored?.price;
+      const chartMeta={authored:!!guide,chartRole:'context',height:420,mobileHeight:340,mobileLimit:40,defaultLimit:authored?.defaultLimit||Math.min(76,d.count),focus:unanswered?last:authored?.focus??last,timeframeMinutes:5,intervalLabel:'5 минут · учебная модель',startTime:'2026-01-12T09:00:00Z'};
       const overlay=['ma','fractals','keltner','bollinger','sar','regression','heikin','donchian','supertrend','dual-supertrend'];
       const warming=!d.panels.some(p=>p.lines.some(l=>l.values.some(Number.isFinite)));
-      const panels=(warming?'<p class="as-indicator-warmup" role="status">Пока показано '+d.count+' свечей: цепочке расчёта ещё нужна история. Пропуски не заполняются будущими значениями; переходи к следующим закрытиям.</p>':'')+d.panels.map((p,index)=>'<section class="as-indicator-panel"><h4>'+esc(names[p.type])+'</h4><p class="as-indicator-reading">'+esc(reading(p,d.bars))+'</p><div data-as-indicator-overlay="'+index+'">'+plot(key==='13.8'&&authored?.comparison?authored.comparison.transformedBars:d.bars,p,overlay.includes(p.type),spec[1]+': '+names[p.type])+'</div><ul class="as-indicator-values">'+p.lines.map((l,i)=>'<li class="as-indicator-label-'+i+'">'+esc(l.label)+': <strong>'+(Number.isFinite(l.values[last])?l.values[last].toFixed(2):'нет значения')+'</strong></li>').join('')+'</ul></section>').join('');
+      const warmup=warming?'<p class="as-indicator-warmup" role="status">Пока показано '+d.count+' свечей. Для расчёта нужно больше истории.</p>':'';
+      const panels=warmup+d.panels.map((panel,index)=>{
+        const name=esc(names[panel.type]),source=key==='13.8'&&authored?.comparison?authored.comparison.transformedBars:d.bars;
+        const empty=unanswered&&key==='4.2'&&panel.type==='ma'?'вычисли самостоятельно':'нет значения';
+        const values=panel.lines.map((line,i)=>{
+          const v=line.values[last],result=Number.isFinite(v)?v.toFixed(2):empty;
+          return '<li class="as-indicator-label-'+i+'">'+esc(line.label)+': <strong>'+result+'</strong></li>';
+        }).join('');
+        const explanation=unanswered?'':'<p class="as-indicator-reading">'+esc(reading(panel,d.bars))+'</p>';
+        return '<section class="as-indicator-panel"><h4>'+name+'</h4>'+explanation+
+          '<div data-as-indicator-overlay="'+index+'">'+plot(source,panel,overlay.includes(panel.type),unanswered?names[panel.type]:spec[1]+': '+names[panel.type])+
+          '</div><ul class="as-indicator-values">'+values+'</ul></section>';
+      }).join('');
       let extra='';
-      if(spec[0]==='votes'){const c=d.bars.map(b=>b.c),a=I.sma(c,2).at(-1),b=I.sma(c,5).at(-1),r=I.rsi(c,14).at(-1),votes=[['Close > SMA5',latest.c>b],['SMA2 > SMA5',a>b],['RSI14 > 50',r>50]];extra='<div class="as-indicator-votes">'+votes.map(v=>'<span>'+v[0]+': '+(v[1]?'да':'нет')+'</span>').join('')+'<strong>'+votes.filter(v=>v[1]).length+' из 3 — зависимые расчёты</strong></div>';}
+      if(spec[0]==='votes'){const c=d.bars.map(b=>b.c),a=I.sma(c,2).at(-1),b=I.sma(c,5).at(-1),r=I.rsi(c,14).at(-1),votes=[['Close > SMA5',latest.c>b],['SMA2 > SMA5',a>b],['RSI14 > 50',r>50]];extra='<div class="as-indicator-votes">'+votes.map(v=>'<span>'+v[0]+': '+(v[1]?'да':'нет')+'</span>').join('')+'<strong>'+votes.filter(v=>v[1]).length+(unanswered?' из 3':' из 3 — зависимые расчёты')+'</strong></div>';}
       if(spec[0]==='donchian'){const u=d.panels[0].lines[0].values,fmt=v=>Number.isFinite(v)?v.toFixed(2):'ещё нет полного окна';extra='<p>Верх канала сейчас: '+fmt(u.at(-1))+'; известный до текущей свечи: '+fmt(u.at(-2))+'.</p>';}
-      if(spec[0]==='fractals')extra='<p>Последние две свечи не могут иметь подтверждённую центральную метку: правых соседей ещё нет. Метка на t становится доступна на закрытии t+2.</p>';
+      if(!unanswered&&spec[0]==='fractals')extra='<p>Последние две свечи не могут иметь подтверждённую центральную метку: правых соседей ещё нет. Метка на t становится доступна на закрытии t+2.</p>';
       if(spec[0]==='heikin'){const ha=I.heikin(d.bars);extra='<h4>Вычисленные свечи Heikin Ashi</h4><div data-as-indicator-heikin>'+plot(ha,null,true,'Heikin Ashi: вычисленные OHLC')+'</div><p>Исходный Close '+latest.c.toFixed(2)+'; HA Close '+ha.at(-1).c.toFixed(2)+'.</p>';}
       let contextZone;
-      if(key==='13.3'){const high=Math.max(...d.bars.slice(0,20).map(b=>b.h));contextZone={low:high-1,high,label:'Область первых 20 свечей'};extra='<p class="as-indicator-reading">Область отмечена по уже известным первым 20 свечам: '+contextZone.low.toFixed(2)+'–'+contextZone.high.toFixed(2)+'. Текущее закрытие '+latest.c.toFixed(2)+(latest.c>=contextZone.low&&latest.c<=contextZone.high?' внутри области.':' вне области.')+' RSI не заменяет проверку подхода к этой области.</p>'+extra;}
+      if(key==='13.3'&&!authored&&d.count>=48){
+        const high=Math.max(...d.bars.slice(24,48).map(bar=>bar.h));
+        contextZone={low:high-1.5,high,from:47,to:last,label:'Верх прошлого диапазона: свечи 25–48'};
+        extra='<p class="as-indicator-reading">Верхняя область диапазона свечей 25–48 известна после закрытия свечи 48. Её границы '+contextZone.low.toFixed(2)+'–'+contextZone.high.toFixed(2)+'.</p>'+extra;
+      }
       const canMa=!state.practice&&['11.4','4.3'].includes(key),canPeriod=!state.practice&&['11.13','11.16'].includes(key);
-      if(state.practice){const lastCloses=d.bars.slice(77,80).map(b=>b.c.toFixed(4));extra='<p class="as-indicator-inputs">Исходные Close свечей 78–80: '+lastCloses.join(' · ')+'. Вопрос относится к показанному префиксу до свечи 80; после раскрытия сравни изменение расчёта.</p>'+extra;}
+      if(state.practice&&key==='4.2'){const lastCloses=d.bars.slice(77,80).map(b=>b.c.toFixed(4));extra='<p class="as-indicator-inputs">Исходные Close свечей 78–80: '+lastCloses.join(' · ')+'. Вопрос относится к показанному префиксу до свечи 80; после раскрытия сравни изменение расчёта.</p>'+extra;}
       const separatePrice=!overlay.includes(d.panels[0].type)||key==='13.8'&&!!authored?.comparison,checklist=combinationSteps[key];
-      host.innerHTML='<div class="as-indicator-root">'+
-        '<p class="as-indicator-meaning">'+esc(teaching.plain)+'</p><p class="as-indicator-read"><strong>Как читать: </strong>'+esc(teaching.read)+'</p>'+
-        (checklist?'<ol class="as-indicator-checklist">'+checklist.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>':'')+
+      const guidance=unanswered?'':'<p class="as-indicator-meaning">'+esc(teaching.plain)+'</p><p class="as-indicator-read"><strong>Как читать: </strong>'+esc(teaching.read)+'</p>'+
+        (checklist?'<ol class="as-indicator-checklist">'+checklist.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>':'');
+      host.innerHTML='<div class="as-indicator-root">'+(readingDesk?'':guidance)+
         (canMa?'<label>Тип средней <select class="as-indicator-parameter"><option value="default">SMA 2/5</option><option value="ema">EMA 2/5</option></select></label>':canPeriod?'<label>Окно <select class="as-indicator-parameter"><option value="default">'+(key==='11.16'?'22':'14')+'</option><option value="short">10</option></select></label>':'')+
         '<p class="as-indicator-status">Доступно '+d.count+' из 96 свечей · '+(state.revealed?'продолжение раскрыто':'будущее скрыто')+'</p>'+
         (separatePrice?'<section class="as-indicator-price"><h4>Цена: исходные свечи</h4><div data-as-indicator-price>'+plot(d.bars,null,true,'Исходные OHLC, только доступные свечи')+'</div></section>':'')+
-        panels+extra+(authored?.detail?.rows?.length?'<section class="as-market-facts"><h3>'+esc(authored.detail.title||'Проверка по выбранному участку')+'</h3><dl>'+authored.detail.rows.map(row=>'<div><dt>'+esc(row[0])+'</dt><dd>'+esc(row[1])+'</dd></div>').join('')+'</dl></section>':'')+'<details class="as-indicator-formula"><summary>Как получаются числа: формула и параметры</summary><p>'+esc(spec[2])+'</p></details>'+
-        '<p class="as-indicator-note">'+esc(spec[3])+'</p><p class="as-indicator-note">Синтетический учебный участок помогает понять расчёт. Он не проверяет доходность стратегии.</p></div>';
+        panels+extra+(readingDesk&&guidance?'<details class="as-indicator-formula"><summary>Как читать эти панели</summary>'+guidance+'</details>':'')+(!unanswered&&authored?.detail?.rows?.length?'<section class="as-market-facts"><h3>'+esc(authored.detail.title||'Проверка по выбранному участку')+'</h3><dl>'+authored.detail.rows.map(row=>'<div><dt>'+esc(row[0])+'</dt><dd>'+esc(row[1])+'</dd></div>').join('')+'</dl></section>':'')+(unanswered?'':'<details class="as-indicator-formula"><summary>Как получаются числа: формула и параметры</summary><p>'+esc(spec[2])+'</p></details>'+
+        '<p class="as-indicator-note">'+esc(spec[3])+'</p>')+'<p class="as-indicator-note">Синтетический учебный участок помогает понять расчёт. Он не проверяет доходность стратегии.</p></div>';
       const priceHost=host.querySelector('[data-as-indicator-price]');
       if(window.TDTerminalChart?.mount){
-        if(separatePrice&&priceHost){const fn=window.TDTerminalChart.mount(priceHost,{...chartMeta,...layer(authored?.price),bars:d.bars,zone:guide?undefined:contextZone,caption:'Исходная цена · доступны только '+d.count+' закрытых свечей',id:'price',linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);}
-        d.panels.forEach((p,index)=>{const target=host.querySelector('[data-as-indicator-overlay="'+index+'"]');if(!target)return;const candles=overlay.includes(p.type),transformed=key==='13.8'&&authored?.comparison&&p.type==='dual-supertrend',series=p.lines.map((line,i)=>({...line,kind:p.type==='fractals'||p.type==='sar'&&i===1?'points':p.type==='ao'||p.type==='macd'&&i===2?'bars':'line',...(p.type==='ao'?{colorBy:'delta'}:p.type==='macd'&&i===2?{colorBy:'sign'}:{})})),annotations=guide?layer(candles&&!transformed?authored?.price:null,authored?.panels[index]):{levels:p.levels.map(price=>({price,label:'Порог '+price}))};const fn=window.TDTerminalChart.mount(target,{...chartMeta,...annotations,height:candles?420:280,mobileHeight:candles?340:260,bars:transformed?authored.comparison.transformedBars:d.bars,series,mode:candles?'price':'indicator',bounded:!candles&&p.bounded,caption:(transformed?'Heikin Ashi · ':'')+names[p.type],id:'panel-'+index,linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);});
-        const haHost=host.querySelector('[data-as-indicator-heikin]');if(spec[0]==='heikin'&&haHost){const fn=window.TDTerminalChart.mount(haHost,{...chartMeta,...layer(authored?.ha),bars:I.heikin(d.bars),caption:'Heikin Ashi · вычисленные свечи',id:'heikin',linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);}
+        if(separatePrice&&priceHost){const fn=window.TDTerminalChart.mount(priceHost,{...chartMeta,...layer(priceLayer),bars:d.bars,zone:guide?undefined:contextZone,caption:'Исходная цена · доступны только '+d.count+' закрытых свечей',id:'price',linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);}
+        d.panels.forEach((p,index)=>{const target=host.querySelector('[data-as-indicator-overlay="'+index+'"]');if(!target)return;const candles=overlay.includes(p.type),transformed=key==='13.8'&&authored?.comparison&&p.type==='dual-supertrend',series=p.lines.map((line,i)=>({...line,kind:p.type==='fractals'||p.type==='sar'&&i===1?'points':p.type==='ao'||p.type==='macd'&&i===2?'bars':'line',...(p.type==='ao'?{colorBy:'delta'}:p.type==='macd'&&i===2?{colorBy:'sign'}:{})})),annotations=guide&&!unanswered?layer(candles&&!transformed?priceLayer:null,authored?.panels[index]):{levels:p.levels.map(price=>({price,label:'Порог '+price}))};const fn=window.TDTerminalChart.mount(target,{...chartMeta,...annotations,height:candles?420:280,mobileHeight:candles?340:260,bars:transformed?authored.comparison.transformedBars:d.bars,series,mode:candles?'price':'indicator',bounded:!candles&&p.bounded,caption:(transformed?'Heikin Ashi · ':'')+names[p.type],id:'panel-'+index,linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);});
+        const haHost=host.querySelector('[data-as-indicator-heikin]');if(spec[0]==='heikin'&&haHost){const fn=window.TDTerminalChart.mount(haHost,{...chartMeta,...layer(unanswered?null:authored?.ha),bars:I.heikin(d.bars),caption:'Heikin Ashi · вычисленные свечи',id:'heikin',linked:true,knownPrefixLength:80});if(typeof fn==='function')terminalCleanups.push(fn);}
       }
       const control=host.querySelector('.as-indicator-parameter');if(control){control.value=parameter;control.onchange=()=>{parameter=control.value;memory[mode].parameter=parameter;draw();};}
       state.onExampleChange?.(workedExample(key,state,parameter));
-      if(authored)state.onDescription?.({title:authored.title,body:authored.explanation,task:authored.task});
+      if(authored&&!unanswered)state.onDescription?.(parameterDescription(authored,d,parameter));
       animateGeometry(host,{revealed:!!state.revealed,count:d.count});
     }
     draw();return ()=>{terminalCleanups.forEach(fn=>fn());if(frames.has(host)){window.cancelAnimationFrame(frames.get(host));frames.delete(host);}host.innerHTML='';};
@@ -216,7 +260,7 @@
       stc:['Это цепочка сглаживаний и нормировок MACD; результат не является вероятностью.','Значение 65 означает 65% вероятности следующего роста.','Название STC гарантирует совпадение всех скрытых настроек автора.'],
       'dual-supertrend':['Сначала вычислены Heikin Ashi, затем обе линии Supertrend по этим свечам.','Одна линия использует реальные заявки, другая — будущие цены.','Результат исполнения нужно считать по синтетическому HA Close.']
     };
-    let question='На свече 80 показана панель «'+names[first.type]+'». '+focus.label+' = '+value+'. Как прочитать этот расчёт?',answers=meanings[spec[0]]||meanings.ma;
+    let question='На свече 80 показана панель «'+names[first.type]+'». '+(practiceLabels[first.type]?.[first.lines.indexOf(focus)]||focus.label)+' = '+value+'. Как прочитать этот расчёт?',answers=meanings[spec[0]]||meanings.ma;
     if(key==='4.2'){
       const inputs=d.bars.slice(-3).map(b=>b.c),answer=inputs.reduce((a,b)=>a+b,0)/3;
       question='На панели SMA(3) для свечи 80. Последние три Close указаны под графиком. Какое значение даёт их среднее (округление до 0,01)?';
