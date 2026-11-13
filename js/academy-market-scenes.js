@@ -12,11 +12,22 @@
   }).join('')+'</div></section>';
  }
  function render(host,key,options){
-  const definition=definitions[key],config=definition.build(options),detail=config.detail;
+  const definition=definitions[key],config=definition.build(options);
+  const awaitingAnswer=options.practice&&!options.revealed;
+  const detail=awaitingAnswer&&key!=='6.3'?null:config.detail;
   if(!host.querySelector('[data-market-primary]'))host.innerHTML='<div data-market-primary></div><div data-market-secondary></div><div data-market-facts></div>';
   const primary=host.querySelector('[data-market-primary]'),secondary=host.querySelector('[data-market-secondary]'),factsHost=host.querySelector('[data-market-facts]'),dispose=[];
   const mount=(target,settings)=>dispose.push(window.TDTerminalChart.mount(target,{authored:true,chartRole:'context',height:420,mobileHeight:340,mobileLimit:40,...settings}));
-  mount(primary,{...config,id:'market-primary',chartRole:'context'});
+  // Keep the problem's price history and stated boundaries available. Worked
+  // labels and calculated panels return once the learner submits an answer.
+  const chart=awaitingAnswer?{
+   ...config,
+   caption:'Самостоятельный участок',
+   markers:[],callouts:[],segments:[],
+   levels:key==='0.1'?[]:config.levels,
+   zones:config.detail?.kind==='aggregation'?[]:config.zones
+  }:config;
+  mount(primary,{...chart,id:'market-primary',chartRole:'context'});
   secondary.hidden=true;
   if(detail&&typeof detail==='object'){
    if(detail.kind==='candle'&&detail.bar){

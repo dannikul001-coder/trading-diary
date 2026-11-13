@@ -30,7 +30,7 @@ async function instrument(page){
     const clip=svg.querySelector('[data-tc-clip]'),grid=[...svg.querySelectorAll('.as-terminal-time-tick')].map(n=>({text:n.textContent.trim(),x:Number(n.getAttribute('x')),y:Number(n.getAttribute('y')),index:Number(n.getAttribute('data-time-index'))})),selected=Number(node.querySelector('[data-tc-probe]')?.value)-1;
     return{reference:node.dataset.reference,authored:node.dataset.authored,role:node.dataset.chartRole,id:config.id,mode:config.mode,caption:config.caption,intervalLabel:config.intervalLabel,timeframeMinutes:config.timeframeMinutes,startTime:config.startTime,symbol:config.symbol,market:config.market,bars:config.bars||[],series:config.series||[],zonesConfig:config.zones||[],levelsConfig:config.levels||[],selected,readout:node.querySelector('.as-terminal-readout')?.textContent,readoutNumbers:[...node.querySelectorAll('.as-terminal-readout b')].map(n=>n.textContent),knownPrefixLength:config.knownPrefixLength,probeMax:Number(node.querySelector('[data-tc-probe]')?.max),layout:{left:layout.left,right:layout.right,top:layout.top,bottom:layout.bottom,dataRight:layout.dataRight,annotationLeft:layout.annotationLeft,start:layout.start,end:layout.end,dx:layout.dx,firstX:layout.x?.(layout.start),lastX:layout.x?.(layout.end)},svg:{w:r.width,h:r.height,viewW:svg.viewBox.baseVal.width,viewH:svg.viewBox.baseVal.height},clip:clip?{x:Number(clip.getAttribute('x')),width:Number(clip.getAttribute('width'))}:null,candles,chips,tags,markers,zones,grid,invalid:/NaN|Infinity|undefined/.test(svg.innerHTML),header:node.querySelector('.as-terminal-head')?.textContent};
    });
-   return{terminals,story:story?{box:box(story),visual:story.querySelector('.as-visual')?box(story.querySelector('.as-visual')):null,reader:story.querySelector('.as-reader')?box(story.querySelector('.as-reader')):null,display:getComputedStyle(story).display,columns:getComputedStyle(story).gridTemplateColumns}:null,overflow:document.documentElement.scrollWidth>innerWidth+1||root.scrollWidth>root.clientWidth+1,tab:root.dataset.lessonTab};
+   return{terminals,story:story?{box:box(story),visual:story.querySelector('.as-visual')?box(story.querySelector('.as-visual')):null,reader:box(story.querySelector(root.dataset.lessonTab==='practice'?'.as-practice':'.as-reader')),areas:getComputedStyle(story).gridTemplateAreas,sticky:getComputedStyle(story.querySelector(root.dataset.lessonTab==='practice'?'.as-practice':'.as-reader')).position,display:getComputedStyle(story).display,columns:getComputedStyle(story).gridTemplateColumns}:null,overflow:document.documentElement.scrollWidth>innerWidth+1||root.scrollWidth>root.clientWidth+1,tab:root.dataset.lessonTab};
   };
  });
 }
@@ -43,7 +43,14 @@ const parse=value=>Number(String(value).replace(/[\s\u00a0\u202f]/g,'').replace(
 function validate(state,key,width,theme,where,{article=true}={}){
  const records=[];
  if(state.overflow)issue(key,width,theme,where,'Horizontal page/article overflow');
- if(article){const story=state.story;if(!story||!story.visual||!story.reader)issue(key,width,theme,where,'Reference article has no full-width visual and reader below it');else{if(story.visual.w<story.box.w*.95)issue(key,width,theme,where,'Chart remains a narrow side column',{story:story.box,visual:story.visual});if(story.reader.w>0&&story.reader.h>0&&story.reader.y<story.visual.bottom-1)issue(key,width,theme,where,'Reader remains beside the graph',{visual:story.visual,reader:story.reader});}}
+ if(article){
+  const story=state.story;
+  if(!story?.reader||!story?.visual)issue(key,width,theme,where,'Missing paired explanation or visual');
+  else if(width>740){
+   if(story.reader.x<story.visual.right-1||story.reader.y>=story.visual.bottom||story.reader.w<250)issue(key,width,theme,where,'Text and chart do not share a readable row',story);
+  }else if(story.areas!=='"reader" "visual"'||story.sticky!=='sticky'||story.reader.h>236)issue(key,width,theme,where,'Mobile reading pane is detached from the chart',story);
+ }
+
  const contexts=state.terminals.filter(t=>t.role==='context');if(!contexts.length)issue(key,width,theme,where,'No authored context chart');
  for(const chart of contexts){
   const l=chart.layout,detail={id:chart.id};
@@ -57,7 +64,7 @@ function validate(state,key,width,theme,where,{article=true}={}){
   const ratio=(l.right-l.annotationLeft)/(l.right-l.left);if(ratio<.02||ratio>.6)issue(key,width,theme,where,'Adaptive annotation gutter has no usable clear space',{...detail,ratio});
   if(!chart.clip||chart.clip.x+chart.clip.width>l.dataRight+1)issue(key,width,theme,where,'Historical candle clip extends into the annotation gutter',{...detail,clip:chart.clip,layout:l});
   if(chart.candles.some(c=>c.rect.right>l.dataRight+1))issue(key,width,theme,where,'A historical candle body enters the reserved annotation gutter',detail);
-  if(chart.probeMax!==chart.bars.length||l.end!==chart.bars.length-1)issue(key,width,theme,where,'A fabricated future candle is selectable',{...detail,end:l.end,max:chart.probeMax,bars:chart.bars.length});
+  if(chart.probeMax!==chart.bars.length||l.end>chart.bars.length-1)issue(key,width,theme,where,'A fabricated future candle is selectable',{...detail,end:l.end,max:chart.probeMax,bars:chart.bars.length});
   for(const chip of chart.chips){
    if(chip.box.x<l.dataRight-1||chip.box.right>l.right+1||chip.box.y<0||chip.box.bottom>chart.svg.viewH+1)issue(key,width,theme,where,'Short semantic label lies outside the annotation gutter',{...detail,chip,layout:l});
    if(chip.text.length>75||chip.text.split(/\s+/).length>9)issue(key,width,theme,where,'A reference chip contains a paragraph instead of a short semantic label',{...detail,chip});

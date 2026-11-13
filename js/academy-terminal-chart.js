@@ -40,6 +40,12 @@
   const fmt=value=>new Intl.NumberFormat('ru-RU',{minimumFractionDigits:precision>=4?precision:0,maximumFractionDigits:precision}).format(value);
 
   const stable=host.closest?.('[data-as-scene]')||host,mode=stable.dataset?.mode||'theory',memory=memo.get(stable)||new Map(),memoryKey=options.id||'main',old=memory.get(memoryKey),id='terminal-clip-'+(++seq),view=initialView(old,data,mode,options.focus,host.clientWidth<480?(reference&&!(options.mobileLimit>50)?Math.min(options.mobileLimit||40,32):(options.mobileLimit??options.defaultLimit)):(reference?Math.min(options.defaultLimit||60,60):options.defaultLimit)),zones=zonesFor(options),indicator=options.mode==='indicator';let disposed=false,raf=0,limit=view.limit,selected=view.selected,annotations=view.annotations,width=0;
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  // A viewport moves within the supplied prefix. No interaction can extend that prefix.
+  if(view.continuous && old.zoomed && Number.isInteger(old.start))limit=Math.min(data.length,old.limit);
+  let start=clamp(view.continuous && old.zoomed && Number.isInteger(old.start)?old.start:data.length-limit,0,data.length-limit);
+  function keepVisible(index){start=clamp(start,Math.max(0,index-limit+1),Math.min(index,data.length-limit));}
+  keepVisible(selected);
   const reset=old?.mode!==mode||data.length<(old?.bars.length||0),canMove=old&&!reset&&(view.continuous||options.forming||old.forming||Number.isInteger(options.knownPrefixLength)&&old.bars.slice(0,Math.min(options.knownPrefixLength,old.bars.length,data.length)).every((b,i)=>sameBar(b,data[i])))&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
   let displayed=canMove?data.map((b,i)=>old.bars[i]||{o:b.o,h:b.o,l:b.o,c:b.o}):data;
   const targetSeries=options.series||[],seriesStart=targetSeries.map((series,j)=>({...series,values:series.values.map((v,i)=>{const prior=old?.series?.[j]?.values;return canMove&&Number.isFinite(v)&&prior?(Number.isFinite(prior[i])?prior[i]:i>=old.bars.length?prior.filter(Number.isFinite).at(-1)??v:v):v;})}));let displayedSeries=seriesStart;
@@ -64,20 +70,47 @@
   if(indicator)q('.as-terminal-foot').innerHTML='<span>Значения индикатора на закрытых свечах</span><span>Свеча → · шкала справа</span>';
   if(options.forming)q('.as-terminal-foot').innerHTML='<span><i class="as-terminal-dot as-terminal-up"></i>Зелёная: цена выше начала</span><span><i class="as-terminal-dot as-terminal-down"></i>Красная: цена ниже начала</span><span>Цена справа · время →</span>';
   if(reference){const note=document.createElement('span');note.textContent=(options.timeAxisLabel||'Учебное время')+' · '+(options.timeframeLabel||'Интервалы');q('.as-terminal-foot').lastElementChild.replaceWith(note);}
+  let measureIndex=null;
+  const valueAt=index=>indicator?targetSeries[0]?.values[index]:data[index].c;
+  const measure=document.createElement('button');
+  measure.type='button';measure.dataset.tcMeasure='';measure.textContent='Сравнить свечи';measure.setAttribute('aria-pressed','false');
+  const difference=document.createElement('output');difference.className='as-chart-difference';difference.setAttribute('aria-live','off');
+  if(data.length>1){
+   q('.as-terminal-navigation').append(measure,difference);
+   measure.onclick=()=>{
+    measureIndex=measureIndex===null?selected:null;
+    measure.setAttribute('aria-pressed',String(measureIndex!==null));
+    measure.textContent=measureIndex===null?'Сравнить свечи':'Завершить сравнение';
+    draw();
+   };
+  }
+  function updateDifference(){
+   difference.hidden=measureIndex===null;
+   if(measureIndex===null)return;
+   const from=valueAt(measureIndex),to=valueAt(selected),delta=to-from;
+   const field=indicator?(targetSeries[0]?.label||'Значение'):(options.forming?'Цена':'Цена закрытия');
+   difference.textContent=selected===measureIndex?'Начало на свече '+(measureIndex+1)+'. Выбери другую свечу.':
+    Number.isFinite(from)&&Number.isFinite(to)?field+' · № '+(measureIndex+1)+' → № '+(selected+1)+' · '+fmt(from)+' → '+fmt(to)+' · разница '+(delta>0?'+':'')+fmt(delta):
+    'Для выбранной пары ещё нет двух рассчитанных значений.';
+  }
   let scale=null;
   function draw(){if(disposed||!host.isConnected)return;const actual=svg.getBoundingClientRect().width;if(actual<1)return;width=actual;
-   const mobile=width<480,height=reference?(indicator?(mobile?280:320):(mobile?440:600)):(mobile?(options.mobileHeight||300):(options.height||360)),start=Math.max(0,data.length-limit),visible=displayed.slice(start);
-   const extras=[...displayedSeries.flatMap(series=>series.values.slice(start,data.length).filter(Number.isFinite)),...zones.flatMap(z=>[z.low,z.high]),...(options.levels||[]).map(l=>l.price).filter(Number.isFinite)];
+   const mobile=width<480,desk=!!host.closest('.as-reading-desk');
+   const normalHeight=reference?(indicator?(mobile?280:320):(mobile?440:600)):(mobile?(options.mobileHeight||300):(options.height||360));
+   const height=desk?Math.min(normalHeight,indicator?200:clamp(Math.round(width*.56),208,352)):normalHeight;
+   const end=start+limit-1,visible=displayed.slice(start,end+1);
+   const extras=[...displayedSeries.flatMap(series=>series.values.slice(start,end+1).filter(Number.isFinite)),...zones.flatMap(z=>[z.low,z.high]),...(options.levels||[]).map(l=>l.price).filter(Number.isFinite)];
    const d=options.bounded?{min:0,max:100,step:25}:(reference?referenceDomain:domain)(indicator?[]:visible,extras),left=reference?16:12,right=width-(reference?(mobile?66:92):66),top=reference?28:(options.markers?.length?48:22),bottom=height-38,plot=right-left;
    const hasInline=zones.some(z=>z.role&&z.role!=='neutral')||!!options.levels?.length,futureWidth=reference?(hasInline?Math.max(mobile?66:150,plot*.28):Math.max(24,plot*(mobile?.12:.08))):0,dataRight=right-futureWidth,annotationLeft=reference?dataRight+8:right,slots=Math.max(6,visible.length+(reference?.35:1.5)),dx=(dataRight-left)/slots;
-   saved.selected=selected;saved.limit=limit;saved.annotations=annotations;
+   saved.selected=selected;saved.start=start;saved.limit=limit;
+   updateDifference();svg.dataset.first=String(start+1);svg.dataset.last=String(end+1);saved.annotations=annotations;
    q('[data-tc-annotations]').setAttribute('aria-pressed',String(annotations));q('[data-tc-annotations]').disabled=!zones.length&&!options.levels?.length&&!options.markers?.length;q('[data-tc-candles]').style.display=indicator?'none':'';
    q('[data-tc-prev]').disabled=selected===0;q('[data-tc-next]').disabled=selected===data.length-1;
    q('.as-terminal-readout').hidden=data.length===1&&annotations&&!!options.directOHLC;q('.as-terminal-markers').hidden=false;
    const x=i=>visible.length===1?left+(dataRight-left)*.45:left+(i-start+.5)*dx,y=v=>top+(d.max-v)/(d.max-d.min)*(bottom-top);scale={start,dx,left,right,dataRight,x,y};svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.height=height+'px';svg.setAttribute('aria-label',`${options.caption||'Учебный график'}. Видно ${visible.length} свечей. Выбрана свеча ${selected+1}: начало ${fmt(data[selected].o)}, максимум ${fmt(data[selected].h)}, минимум ${fmt(data[selected].l)}, ${options.forming&&selected===data.length-1?'сейчас':'закрытие'} ${fmt(data[selected].c)}.`);
    const ticks=[];for(let v=reference?Math.ceil(d.min/d.step)*d.step:d.min;v<=d.max+d.step*.01;v+=d.step){const yy=y(v);ticks.push(`<line x1="${left}" x2="${right}" y1="${yy}" y2="${yy}"/><text x="${right+8}" y="${yy+4}">${fmt(v)}</text>`);}
-   const hasTime=reference&&Number.isFinite(options.timeframeMinutes)&&Number.isFinite(Date.parse(options.startTime)),timeEnd=reference?data.length-1+Math.max(0,(right-dataRight)/dx):data.length-1;
-   const time=reference?Array.from({length:mobile?3:6},(_,i)=>Math.round(start+(timeEnd-start)*i/((mobile?3:6)-1))):[start,Math.floor((start+data.length-1)/2),data.length-1];
+   const hasTime=reference&&Number.isFinite(options.timeframeMinutes)&&Number.isFinite(Date.parse(options.startTime)),timeEnd=reference?end+Math.max(0,(right-dataRight)/dx):end;
+   const time=reference?Array.from({length:mobile?3:6},(_,i)=>Math.round(start+(timeEnd-start)*i/((mobile?3:6)-1))):[start,Math.floor((start+end)/2),end];
    const uniqueTime=[...new Set(time)],timeLabel=i=>hasTime?new Date(Date.parse(options.startTime)+i*options.timeframeMinutes*60000).toISOString().slice(11,16):(width<340?'№':'Свеча ')+(i+1);
    q('[data-tc-grid]').innerHTML=ticks.join('')+uniqueTime.map((i,j)=>`<line class="as-ref-time-grid" x1="${x(i)}" x2="${x(i)}" y1="${top}" y2="${bottom}"/><text class="as-terminal-time-tick" data-time-index="${i}" x="${Math.min(right,Math.max(left,x(i)))}" y="${height-10}" text-anchor="${j===0?'start':j===uniqueTime.length-1?'end':'middle'}">${timeLabel(i)}</text>`).join('');
    q('[data-tc-clip]').setAttribute('x',left);q('[data-tc-clip]').setAttribute('y',top);q('[data-tc-clip]').setAttribute('width',dataRight-left);q('[data-tc-clip]').setAttribute('height',bottom-top);
@@ -90,29 +123,108 @@
     chip.setAttribute('class','as-terminal-zone-chip as-terminal-zone-chip-'+kind);chip.append(background,text);areaLabels.append(chip);
     const box=text.getBBox();background.setAttribute('class','as-terminal-zone-label-bg');for(const [key,value] of Object.entries({x:box.x-5,y:box.y-3,width:box.width+10,height:box.height+6,rx:4}))background.setAttribute(key,value);
    }
-   nodes.forEach((g,i)=>{g.style.display=i<start?'none':'';if(i<start)return;const b=displayed[i],up=b.c>=b.o,line=g.children[0],rect=g.children[1],cw=Math.min(44,dx*(reference?.74:.65));g.setAttribute('class',`as-terminal-candle ${b.c===b.o?'as-terminal-flat':up?'as-terminal-up':'as-terminal-down'}${i===selected?' as-terminal-selected':''}`);for(const [k,v]of Object.entries({x1:x(i),x2:x(i),y1:y(b.h),y2:y(b.l)}))line.setAttribute(k,v);for(const[k,v]of Object.entries({x:x(i)-cw/2,y:Math.min(y(b.o),y(b.c)),width:cw,height:Math.max(2,Math.abs(y(b.o)-y(b.c))),rx:1}))rect.setAttribute(k,v);});
+   nodes.forEach((g,i)=>{g.style.display=i<start||i>end?'none':'';if(i<start||i>end)return;const b=displayed[i],up=b.c>=b.o,line=g.children[0],rect=g.children[1],cw=Math.min(44,dx*(reference?.74:.65));g.setAttribute('class',`as-terminal-candle ${b.c===b.o?'as-terminal-flat':up?'as-terminal-up':'as-terminal-down'}${i===selected?' as-terminal-selected':''}`);for(const [k,v]of Object.entries({x1:x(i),x2:x(i),y1:y(b.h),y2:y(b.l)}))line.setAttribute(k,v);for(const[k,v]of Object.entries({x:x(i)-cw/2,y:Math.min(y(b.o),y(b.c)),width:cw,height:Math.max(2,Math.abs(y(b.o)-y(b.c))),rx:1}))rect.setAttribute(k,v);});
    const b=displayed[selected],selectedForming=options.forming&&selected===data.length-1,value=indicator?displayedSeries[0]?.values[selected]:b.c,sx=x(selected),sy=Number.isFinite(value)?y(value):top;q('[data-tc-focus]').innerHTML=selected>=start?`<line class="as-terminal-cross" x1="${sx}" x2="${sx}" y1="${top}" y2="${bottom}"/><line class="as-terminal-price-line" x1="${Math.min(sx,right)}" x2="${right}" y1="${sy}" y2="${sy}"/><rect class="as-terminal-price-tag" x="${right+1}" y="${sy-11}" width="64" height="22" rx="3"/><text class="as-terminal-tag-text" x="${right+33}" y="${sy+4}" text-anchor="middle">${fmt(value)}</text>`:'';if(indicator&&!Number.isFinite(value))q('[data-tc-focus]').innerHTML=`<line class="as-terminal-cross" x1="${sx}" x2="${sx}" y1="${top}" y2="${bottom}"/>`;
-   const marks=(annotations?options.markers||[]:[]).filter(m=>m.index>=start&&m.index<data.length&&Number.isFinite(m.price));let overlay=displayedSeries.map((series,j)=>{let started=false;const points=series.values.slice(start,data.length).map((v,i)=>{if(!Number.isFinite(v)){started=false;return '';}const point=(started?'L':'M')+x(start+i)+','+y(v);started=true;return point;}).join(' ');if(series.kind==='points')return series.values.slice(start,data.length).map((v,i)=>Number.isFinite(v)?`<circle class="as-terminal-series as-terminal-series-${j%3} as-terminal-series-point" cx="${x(start+i)}" cy="${y(v)}" r="3"/>`:'').join('');if(series.kind==='bars')return series.values.slice(start,data.length).map((v,i)=>Number.isFinite(v)?`<rect class="as-terminal-series as-terminal-series-${j%3} as-terminal-series-bar${series.colorBy?((series.colorBy==='delta'?v-(series.values[start+i-1]??v):v)>=0?' as-market-hist-up':' as-market-hist-down'):''}" x="${x(start+i)-Math.min(8,dx*.5)/2}" y="${Math.min(y(v),y(0))}" width="${Math.min(8,dx*.5)}" height="${Math.max(1,Math.abs(y(v)-y(0)))}"/>`:'').join('');return `<path class="as-terminal-series as-terminal-series-${j%3}" data-series-label="${esc(series.label||'')}" d="${points}" fill="none"/>`;}).join('');q('[data-tc-labels]').innerHTML=overlay+marks.map((m,i)=>`<circle class="as-terminal-mark${options.highlight?.includes(m.index)?' as-terminal-mark-active':''}" cx="${x(m.index)}" cy="${y(m.price)}" r="8"/><text class="as-terminal-mark-text" x="${x(m.index)}" y="${y(m.price)+4}" text-anchor="middle">${i+1}</text>`).join('');q('.as-terminal-markers').innerHTML=(!options.authored?((annotations?zones:[]).map(area=>`<span class="as-terminal-zone-note">${esc(zoneLabel(area))}</span>`).join('')+marks.map((m,i)=>`<span><b>${i+1}</b> ${esc(m.label)} · ${fmt(m.price)}</span>`).join('')+(annotations?options.levels||[]:[]).filter(l=>Number.isFinite(l.price)).map(l=>`<span>${esc(levelLabel(l))}</span>`).join('')):'')+displayedSeries.map((s,j)=>`<span><i class="as-terminal-line-key as-terminal-series-${j%3}"></i>${esc(s.label)}: ${Number.isFinite(s.values[selected])?fmt(s.values[selected]):'нет полного окна'}</span>`).join('');
+   const marks=(annotations?options.markers||[]:[]).filter(m=>m.index>=start&&m.index<=end&&Number.isFinite(m.price));let overlay=displayedSeries.map((series,j)=>{let started=false;const points=series.values.slice(start,end+1).map((v,i)=>{if(!Number.isFinite(v)){started=false;return '';}const point=(started?'L':'M')+x(start+i)+','+y(v);started=true;return point;}).join(' ');if(series.kind==='points')return series.values.slice(start,end+1).map((v,i)=>Number.isFinite(v)?`<circle class="as-terminal-series as-terminal-series-${j%3} as-terminal-series-point" cx="${x(start+i)}" cy="${y(v)}" r="3"/>`:'').join('');if(series.kind==='bars')return series.values.slice(start,end+1).map((v,i)=>Number.isFinite(v)?`<rect class="as-terminal-series as-terminal-series-${j%3} as-terminal-series-bar${series.colorBy?((series.colorBy==='delta'?v-(series.values[start+i-1]??v):v)>=0?' as-market-hist-up':' as-market-hist-down'):''}" x="${x(start+i)-Math.min(8,dx*.5)/2}" y="${Math.min(y(v),y(0))}" width="${Math.min(8,dx*.5)}" height="${Math.max(1,Math.abs(y(v)-y(0)))}"/>`:'').join('');return `<path class="as-terminal-series as-terminal-series-${j%3}" data-series-label="${esc(series.label||'')}" d="${points}" fill="none"/>`;}).join('');q('[data-tc-labels]').innerHTML=overlay+marks.map((m,i)=>`<circle class="as-terminal-mark${options.highlight?.includes(m.index)?' as-terminal-mark-active':''}" cx="${x(m.index)}" cy="${y(m.price)}" r="8"/><text class="as-terminal-mark-text" x="${x(m.index)}" y="${y(m.price)+4}" text-anchor="middle">${i+1}</text>`).join('');q('.as-terminal-markers').innerHTML=(!options.authored?((annotations?zones:[]).map(area=>`<span class="as-terminal-zone-note">${esc(zoneLabel(area))}</span>`).join('')+marks.map((m,i)=>`<span><b>${i+1}</b> ${esc(m.label)} · ${fmt(m.price)}</span>`).join('')+(annotations?options.levels||[]:[]).filter(l=>Number.isFinite(l.price)).map(l=>`<span>${esc(levelLabel(l))}</span>`).join('')):'')+displayedSeries.map((s,j)=>`<span><i class="as-terminal-line-key as-terminal-series-${j%3}"></i>${esc(s.label)}: ${Number.isFinite(s.values[selected])?fmt(s.values[selected]):'нет полного окна'}</span>`).join('');
    q('.as-terminal-readout').innerHTML=`<span>Свеча ${selected+1}</span><span>Начало <b>${fmt(b.o)}</b></span><span>Максимум <b>${fmt(b.h)}</b></span><span>Минимум <b>${fmt(b.l)}</b></span><span>${selectedForming?'Сейчас':'Закрытие'} <b>${fmt(b.c)}</b></span>`;if(indicator){q('.as-terminal-readout').innerHTML=`<span>Свеча ${selected+1}</span>`+displayedSeries.map(s=>`<span>${esc(s.label)} <b>${Number.isFinite(s.values[selected])?fmt(s.values[selected]):'нет значения'}</b></span>`).join('');svg.setAttribute('aria-label',(options.caption||'Индикатор')+'. '+q('.as-terminal-readout').textContent);}
-   q('[data-tc-index]').textContent='№ '+(selected+1);q('[data-tc-in]').disabled=limit<=Math.min(6,data.length);q('[data-tc-out]').disabled=limit>=data.length;q('[data-tc-probe]').value=String(selected+1);
+   viewportStatus.textContent=(start+1)+'–'+(end+1)+' из '+data.length;q('[data-tc-index]').textContent='№ '+(selected+1);q('[data-tc-in]').disabled=limit<=Math.min(6,data.length);q('[data-tc-out]').disabled=limit>=data.length;q('[data-tc-probe]').value=String(selected+1);
    if(data.length===1&&marks.length&&!options.authored){
     q('.as-terminal-markers').hidden=true;
     q('[data-tc-labels]').innerHTML=marks.map(m=>{const text=String(m.label),kind=/Открытие/.test(text)?'Начало':/Максимум/.test(text)?'Максимум':/Минимум/.test(text)?'Минимум':options.forming?'Сейчас':'Закрытие',isClose=kind==='Закрытие'||kind==='Сейчас',price=kind==='Начало'?displayed[0].o:kind==='Максимум'?displayed[0].h:kind==='Минимум'?displayed[0].l:displayed[0].c,tx=isClose?x(0)+30:left+2,ty=y(price)+(isClose?-10:kind==='Максимум'?-14:kind==='Минимум'?19:4);return `<circle class="as-terminal-point" cx="${x(0)}" cy="${y(price)}" r="3"/><text class="as-terminal-direct" x="${tx}" y="${ty}">${kind} ${fmt(price)}</text>`;}).join('');
    }
-   if(options.authored&&window.TDChartAnnotations)window.TDChartAnnotations.render(svg,{...options,zones},{left,right,top,bottom,x,y,start,end:data.length-1,dx,annotations,dataRight,annotationLeft,reference,width,formatPrice:fmt,precision,currentValue:value});else separateLabels(svg);
+   if(options.authored&&window.TDChartAnnotations)window.TDChartAnnotations.render(svg,{...options,zones},{left,right,top,bottom,x,y,start,end,dx,annotations,dataRight,annotationLeft,reference,width,formatPrice:fmt,precision,currentValue:value});else separateLabels(svg);
   }
-  q('[data-tc-in]').onclick=()=>{saved.zoomed=true;limit=Math.max(Math.min(6,data.length),Math.floor(limit*.65));selected=Math.max(selected,data.length-limit);draw();};q('[data-tc-out]').onclick=()=>{saved.zoomed=true;limit=Math.min(data.length,Math.ceil(limit*1.5));draw();};q('[data-tc-all]').onclick=()=>{saved.zoomed=false;limit=data.length;draw();};q('[data-tc-probe]').oninput=e=>select(Number(e.target.value)-1);
-  function select(index){saved.probed=true;selected=Math.max(0,Math.min(data.length-1,index));limit=Math.max(limit,data.length-selected);draw();if(options.linked)stable.dispatchEvent(new CustomEvent('academy-candle-select',{detail:{index:selected,source:host}}));}
-  function linkedSelect(event){if(!options.linked||event.detail.source===host||!Number.isInteger(event.detail.index))return;selected=Math.max(0,Math.min(data.length-1,event.detail.index));saved.probed=true;limit=Math.max(limit,data.length-selected);draw();}
+  const viewportStatus=document.createElement('span');
+  viewportStatus.className='as-chart-window';
+  q('.as-terminal-navigation').insertBefore(viewportStatus,q('[data-tc-next]'));
+  svg.style.touchAction='pan-y';
+  svg.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight Home End PageUp PageDown + -');
+  if(data.length>6){
+   const help=document.createElement('span');
+   help.className='as-chart-gestures';
+   help.textContent='Точка под курсором показывает цену. Приблизь и тяни график вбок, чтобы листать историю.';
+   q('.as-terminal-foot').append(help);
+  }
+  function notify(linkViewport){
+   if(options.linked)stable.dispatchEvent(new CustomEvent('academy-candle-select',{detail:{index:selected,source:host,range:linkViewport?{start,limit}:null}}));
+  }
+  function select(index){
+   saved.probed=true;
+   selected=clamp(index,0,data.length-1);keepVisible(selected);draw();notify(false);
+  }
+  function zoom(to,anchor){
+   const next=clamp(to,Math.min(6,data.length),data.length);
+   if(next===limit)return;
+   const fraction=(anchor-start)/Math.max(1,limit-1);
+   start=clamp(Math.round(anchor-fraction*(next-1)),0,data.length-next);
+   limit=next;selected=clamp(selected,start,start+limit-1);saved.zoomed=true;draw();notify(true);
+  }
+  function pan(to){
+   const next=clamp(to,0,data.length-limit);if(next===start)return;
+   start=next;selected=clamp(selected,start,start+limit-1);saved.zoomed=true;draw();notify(true);
+  }
+  function linkedSelect(event){
+   const other=event.detail;if(!options.linked||other.source===host||!Number.isInteger(other.index))return;
+   if(other.range){limit=clamp(other.range.limit,1,data.length);start=clamp(other.range.start,0,data.length-limit);saved.zoomed=true;}
+   selected=clamp(other.index,0,data.length-1);saved.probed=true;keepVisible(selected);draw();
+  }
   stable.addEventListener('academy-candle-select',linkedSelect);
+  q('[data-tc-in]').onclick=()=>zoom(Math.floor(limit*.65),selected);
+  q('[data-tc-out]').onclick=()=>zoom(Math.ceil(limit*1.5),selected);
+  q('[data-tc-all]').onclick=()=>{zoom(data.length,selected);saved.zoomed=false;};
+  q('[data-tc-probe]').oninput=e=>select(Number(e.target.value)-1);
   q('[data-tc-prev]').onclick=()=>select(selected-1);q('[data-tc-next]').onclick=()=>select(selected+1);
   q('[data-tc-annotations]').onclick=()=>{annotations=!annotations;draw();};
-  function keyboard(event){const target=event.key==='ArrowLeft'?selected-1:event.key==='ArrowRight'?selected+1:event.key==='Home'?0:event.key==='End'?data.length-1:null;if(target!==null){event.preventDefault();select(target);}}
-  svg.addEventListener('keydown',keyboard);
-  function probe(e){if(!scale||data.length===1)return;const px=e.clientX-svg.getBoundingClientRect().left;if(px<scale.left||px>scale.dataRight)return;select(Math.max(scale.start,Math.min(data.length-1,Math.round((px-scale.left)/scale.dx-.5)+scale.start)));}
-  svg.addEventListener('pointermove',probe);svg.addEventListener('pointerdown',probe);const observer=new ResizeObserver(draw);observer.observe(host);draw();
+  function keyboard(event){
+   const stride=Math.max(1,Math.floor(limit*.6));
+   switch(event.key){
+    case 'PageUp':pan(start-stride);break;
+    case 'PageDown':pan(start+stride);break;
+    case '+':case '=':zoom(Math.floor(limit*.65),selected);break;
+    case '-':zoom(Math.ceil(limit*1.5),selected);break;
+    case 'ArrowLeft':select(selected-1);break;
+    case 'ArrowRight':select(selected+1);break;
+    case 'Home':select(0);break;
+    case 'End':select(data.length-1);break;
+    default:return;
+   }
+   event.preventDefault();
+  }
+  function indexAt(event){
+   if(!scale)return null;
+   const px=event.clientX-svg.getBoundingClientRect().left;
+   if(px<scale.left||px>scale.dataRight)return null;
+   return clamp(scale.start+Math.floor((px-scale.left)/scale.dx),scale.start,scale.start+limit-1);
+  }
+  let drag=null;
+  function pointerDown(event){
+   if(!event.isPrimary||event.button!==0||event.target.closest('[role="button"]'))return;
+   const index=indexAt(event);if(index===null)return;
+   drag={id:event.pointerId,x:event.clientX,start,dx:scale.dx,moved:false};
+   svg.setPointerCapture(event.pointerId);select(index);
+  }
+  function pointerMove(event){
+   if(!drag&&event.target.closest('[role="button"]'))return;
+   if(drag&&drag.id===event.pointerId){
+    const shift=event.clientX-drag.x;
+    if(Math.abs(shift)>4){drag.moved=true;svg.classList.add('is-dragging');}
+    if(drag.moved)pan(drag.start-Math.round(shift/drag.dx));
+   }else if(event.pointerType==='mouse'&&!event.buttons){
+    const index=indexAt(event);if(index!==null&&index!==selected)select(index);
+   }
+  }
+  function pointerEnd(){drag=null;svg.classList.remove('is-dragging');}
+  function wheel(event){
+   if(!event.shiftKey)return;
+   const anchor=indexAt(event);if(anchor===null||!event.deltaY)return;
+   event.preventDefault();zoom(event.deltaY<0?Math.floor(limit*.8):Math.ceil(limit*1.25),anchor);
+  }
+  svg.addEventListener('keydown',keyboard);svg.addEventListener('pointerdown',pointerDown);
+  svg.addEventListener('pointermove',pointerMove);svg.addEventListener('lostpointercapture',pointerEnd);
+  svg.addEventListener('wheel',wheel,{passive:false});
+  const observer=new ResizeObserver(draw);observer.observe(host);draw();
   if(canMove){const from=displayed.map(b=>({...b})),begin=performance.now();function tick(now){if(disposed)return;const t=Math.min(1,(now-begin)/480),ease=1-(1-t)**3;displayedSeries=targetSeries.map((series,j)=>({...series,values:series.values.map((v,i)=>Number.isFinite(v)&&Number.isFinite(seriesStart[j].values[i])?seriesStart[j].values[i]+(v-seriesStart[j].values[i])*ease:v)}));displayed=data.map((b,i)=>Object.fromEntries(['o','h','l','c'].map(k=>[k,from[i][k]+(b[k]-from[i][k])*ease])));draw();if(t<1)raf=requestAnimationFrame(tick);}raf=requestAnimationFrame(tick);}
-  return()=>{disposed=true;cancelAnimationFrame(raf);observer.disconnect();stable.removeEventListener('academy-candle-select',linkedSelect);svg.removeEventListener('keydown',keyboard);svg.removeEventListener('pointermove',probe);svg.removeEventListener('pointerdown',probe);};
+  return()=>{disposed=true;cancelAnimationFrame(raf);observer.disconnect();stable.removeEventListener('academy-candle-select',linkedSelect);svg.removeEventListener('keydown',keyboard);svg.removeEventListener('pointermove',pointerMove);svg.removeEventListener('pointerdown',pointerDown);svg.removeEventListener('wheel',wheel);svg.removeEventListener('lostpointercapture',pointerEnd);};
  }
  window.TDTerminalChart={mount,domain,initialView,zonesFor,reset:host=>memo.delete(host.closest?.('[data-as-scene]')||host)};
 })();

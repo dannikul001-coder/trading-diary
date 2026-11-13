@@ -58,6 +58,15 @@
    ].map(c=>({...c,task:entry.teaching.read+' '+entry.teaching.takeaway}));
    continue;
   }
+  const comparison=window.TD_READING_LESSONS?.[key]?.comparison;
+  if(comparison){
+   entry.examples=[
+    {id:'base',title:entry.stages[last].title,step:last,tone:'neutral',body:entry.teaching.example,task:entry.teaching.read},
+    {id:'contrast',title:comparison.title,step:last,tone:'neutral',body:comparison.body,task:comparison.task,rows:comparison.rows},
+    {id:'mistake',title:'Проверь рассуждение',step:last,tone:'open',body:comparison.mistake,task:comparison.task,rows:comparison.rows}
+   ];
+   continue;
+  }
   const question=entry.quiz[0],correct=question.choices.find(c=>c.correct),wrong=question.choices.find(c=>!c.correct);
   entry.examples=[
    {id:'base',title:'Базовая модель',step:last,tone:'neutral',body:entry.teaching.example,task:entry.teaching.read},
